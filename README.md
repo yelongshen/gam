@@ -178,12 +178,92 @@ This release includes:
 
 ### Setup
 
-Clone the repository with Git LFS:
+#### 1. Install Git LFS
+
+Install Git LFS once per machine before cloning or pulling model/data files.
+
+On macOS:
+
 ```bash
-git clone https://github.com/NVlabs/GR00T-WholeBodyControl.git
-cd GR00T-WholeBodyControl
+brew install git-lfs
+git lfs install
+```
+
+On Ubuntu / Unitree dev computer:
+
+```bash
+sudo apt update
+sudo apt install -y git-lfs
+git lfs install
+```
+
+#### 2. Clone the repository and fetch LFS files
+
+```bash
+git clone git@github.com-yelongshen:yelongshen/gam.git
+cd gam
 git lfs pull
 ```
+
+If `git lfs pull` hits an authentication issue, you can run it once through the HTTPS remote URL:
+
+```bash
+git -c remote.origin.url=https://github.com/yelongshen/gam.git lfs pull
+```
+
+#### 3. Create the MuJoCo simulation environment
+
+From the repository root:
+
+```bash
+bash install_scripts/install_mujoco_sim.sh
+source .venv_sim/bin/activate
+```
+
+This creates `.venv_sim` with Python 3.10, installs `gear_sonic[sim]`, and installs the bundled Unitree SDK2 Python package needed by the MuJoCo bridge.
+
+On macOS, run the simulator with `mjpython`:
+
+```bash
+mjpython gear_sonic/scripts/run_sim_loop.py
+```
+
+On Linux, run:
+
+```bash
+python gear_sonic/scripts/run_sim_loop.py
+```
+
+#### 4. Download the SONIC model files
+
+```bash
+source .venv_sim/bin/activate
+pip install huggingface_hub
+python download_from_hf.py
+```
+
+The downloader writes the expected deployment files under `gear_sonic_deploy/`, including:
+
+```text
+gear_sonic_deploy/policy/release/model_decoder.onnx
+gear_sonic_deploy/policy/release/model_encoder.onnx
+gear_sonic_deploy/policy/release/observation_config.yaml
+gear_sonic_deploy/planner/target_vel/V2/planner_sonic.onnx
+```
+
+#### 5. Set up the C++ deployment stack on Linux
+
+The deployment stack is Linux-oriented and is not supported natively on macOS. On a Linux host or the Unitree dev computer:
+
+```bash
+cd gear_sonic_deploy
+chmod +x scripts/install_deps.sh
+./scripts/install_deps.sh
+source scripts/setup_env.sh
+just build
+```
+
+For Sim2Sim, run the MuJoCo simulator in one terminal and the deployment command in another terminal. On macOS, use `mjpython` for the simulator and run the C++ deploy process on Linux or in a properly configured Linux container.
 
 ## Documentation
 
