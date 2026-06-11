@@ -189,20 +189,22 @@ class ZMQPackedMessageSubscriber {
       try {
         socket_ = std::make_unique<zmq::socket_t>(context_, zmq::socket_type::sub);
 
-        socket_->set(zmq::sockopt::rcvtimeo, timeout_ms_);
-        socket_->set(zmq::sockopt::linger, 0);
+        socket_->setsockopt(ZMQ_RCVTIMEO, &timeout_ms_, sizeof(timeout_ms_));
+        const int linger = 0;
+        socket_->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
         if (rcv_hwm_ > 0) {
-          socket_->set(zmq::sockopt::rcvhwm, rcv_hwm_);
+          socket_->setsockopt(ZMQ_RCVHWM, &rcv_hwm_, sizeof(rcv_hwm_));
         }
         if (conflate_) {
-          socket_->set(zmq::sockopt::conflate, 1);
+          const int conflate = 1;
+          socket_->setsockopt(ZMQ_CONFLATE, &conflate, sizeof(conflate));
         }
 
         const std::string endpoint = "tcp://" + host_ + ":" + std::to_string(port_);
         socket_->connect(endpoint);
         
         // Subscribe: if topic is empty, receive all; otherwise filter by topic prefix
-        socket_->set(zmq::sockopt::subscribe, topic_);
+        socket_->setsockopt(ZMQ_SUBSCRIBE, topic_.data(), topic_.size());
 
         if (verbose_) {
           std::cout << "[ZMQPackedMessageSubscriber] Subscribed to '" << topic_ << "' at "
