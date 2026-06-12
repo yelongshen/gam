@@ -144,15 +144,18 @@ def main():
 
     if len(sys.argv) == 2:
         network_interface = sys.argv[1]
+        print(f"Using provided network interface: {network_interface}")
+        ChannelFactoryInitialize(0, network_interface)
     else:
         print_available_interfaces()
         network_interface = pick_default_interface()
         if network_interface is None:
             print("No usable network interface found.")
             sys.exit(1)
-        print(f"No network interface provided. Using first usable interface: {network_interface}")
+        print(f"No network interface provided. First usable interface is: {network_interface}")
+        print("Using CycloneDDS autodetect mode for initialization.")
+        ChannelFactoryInitialize(0)
 
-    ChannelFactoryInitialize(0, network_interface)
     print_motion_switcher_state()
     print_loco_state()
     print_low_state()
