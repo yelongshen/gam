@@ -1,3 +1,4 @@
+import socket
 import sys
 import time
 
@@ -20,6 +21,59 @@ FSM_ID_NAMES = {
     702: "Lie2StandUp",
     706: "squat/stand transition",
 }
+
+IGNORED_INTERFACE_PREFIXES = (
+    "lo",
+    "docker",
+    "dummy",
+    "l4tbr",
+    "rndis",
+    "usb",
+    "br-",
+    "veth",
+)
+
+
+def is_ignored_interface(name):
+    return any(name.startswith(prefix) for prefix in IGNORED_INTERFACE_PREFIXES)
+
+
+def interface_operstate(name):
+    path = f"/sys/class/net/{name}/operstate"
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            return file.read().strip()
+    except OSError:
+        return "unknown"
+
+
+def print_available_interfaces():
+    print("Available network interfaces:")
+    for _, name in socket.if_nameindex():
+        state = interface_operstate(name)
+        ignored = " ignored" if is_ignored_interface(name) else ""
+        print(f"  - {name}: state={state}{ignored}")
+
+
+def pick_default_interface():
+    candidates = []
+    fallback_candidates = []
+
+    for _, name in socket.if_nameindex():
+        if is_ignored_interface(name):
+            continue
+
+        fallback_candidates.append(name)
+        if interface_operstate(name) == "up":
+            candidates.append(name)
+
+    if candidates:
+        return candidates[0]
+
+    if fallback_candidates:
+        return fallback_candidates[0]
+
+    return None
 
 
 def print_motion_switcher_state():
@@ -83,12 +137,22 @@ def print_low_state(timeout=3.0):
 
 
 def main():
-    if len(sys.argv) != 2:
-        print(f"Usage: python3 {sys.argv[0]} networkInterface")
+    if len(sys.argv) > 2:
+        print(f"Usage: python3 {sys.argv[0]} [networkInterface]")
         print("Example: python3 check_g1_mode.py eth0")
         sys.exit(1)
 
-    ChannelFactoryInitialize(0, sys.argv[1])
+    if len(sys.argv) == 2:
+        network_interface = sys.argv[1]
+    else:
+        print_available_interfaces()
+        network_interface = pick_default_interface()
+        if network_interface is None:
+            print("No usable network interface found.")
+            sys.exit(1)
+        print(f"No network interface provided. Using first usable interface: {network_interface}")
+
+    ChannelFactoryInitialize(0, network_interface)
     print_motion_switcher_state()
     print_loco_state()
     print_low_state()
