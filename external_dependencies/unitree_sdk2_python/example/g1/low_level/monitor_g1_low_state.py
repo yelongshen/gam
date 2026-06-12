@@ -70,10 +70,8 @@ def print_low_state(msg):
     print("imu gyroscope:", list(msg.imu_state.gyroscope))
     print("imu accelerometer:", list(msg.imu_state.accelerometer))
 
-    first_motors = min(12, len(msg.motor_state))
-    print(f"first {first_motors} motors [index: q, dq, tau_est]:")
-    for index in range(first_motors):
-        motor = msg.motor_state[index]
+    print(f"all {len(msg.motor_state)} motors [index: q, dq, tau_est]:")
+    for index, motor in enumerate(msg.motor_state):
         print(f"  {index:02d}: q={motor.q:.4f}, dq={motor.dq:.4f}, tau_est={motor.tau_est:.4f}")
 
 
@@ -105,9 +103,9 @@ def main():
     subscriber = ChannelSubscriber("rt/lowstate", LowState_)
     subscriber.Init(callback, 10)
 
-    print("Monitoring rt/lowstate every 5 seconds. Press Ctrl+C to stop.")
+    print("Monitoring rt/lowstate every 10 seconds. Press Ctrl+C to stop.")
     while True:
-        time.sleep(5.0)
+        time.sleep(10.0)
         if state["latest"] is None:
             print("No rt/lowstate received yet. Check interface, robot power, and DDS network.")
         else:
