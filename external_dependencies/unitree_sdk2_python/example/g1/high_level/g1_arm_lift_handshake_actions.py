@@ -168,7 +168,7 @@ def pick_default_interface():
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run conservative G1 arm actions over rt/arm_sdk.")
-    parser.add_argument("action", choices=("lift", "handshake"), help="Arm action to run.")
+    parser.add_argument("action", choices=("lift", "handshake", "lift_handshake"), help="Arm action to run.")
     parser.add_argument("network_interface", nargs="?", help="Optional DDS network interface, for example eth0.")
     parser.add_argument("--hold", type=float, default=1.0, help="Seconds to hold the target pose before return.")
     parser.add_argument("--no-return", action="store_true", help="Do not return to the starting arm pose after the action.")
@@ -270,6 +270,24 @@ def release_arm_sdk(publisher, pose, crc):
         time.sleep(CONTROL_DT)
 
 
+def run_action(publisher, action, start_pose, hold_duration, crc):
+    if action == "lift":
+        ramp_between_poses(publisher, start_pose, LIFT_BOTH_ARMS_TARGET, 4.0, crc)
+        publish_pose_for_duration(publisher, LIFT_BOTH_ARMS_TARGET, hold_duration, crc)
+        return LIFT_BOTH_ARMS_TARGET
+
+    if action == "handshake":
+        ramp_between_poses(publisher, start_pose, HANDSHAKE_RIGHT_ARM_TARGET, 4.0, crc)
+        run_handshake_wave(publisher, HANDSHAKE_RIGHT_ARM_TARGET, 3.0, crc)
+        return HANDSHAKE_RIGHT_ARM_TARGET
+
+    ramp_between_poses(publisher, start_pose, LIFT_BOTH_ARMS_TARGET, 4.0, crc)
+    publish_pose_for_duration(publisher, LIFT_BOTH_ARMS_TARGET, hold_duration, crc)
+    ramp_between_poses(publisher, LIFT_BOTH_ARMS_TARGET, HANDSHAKE_RIGHT_ARM_TARGET, 3.0, crc)
+    run_handshake_wave(publisher, HANDSHAKE_RIGHT_ARM_TARGET, 3.0, crc)
+    return HANDSHAKE_RIGHT_ARM_TARGET
+
+
 def main():
     args = parse_args()
 
@@ -294,23 +312,17 @@ def main():
 
     crc = CRC()
     start_pose = measured_arm_pose(state["low_state"])
-    target_pose = LIFT_BOTH_ARMS_TARGET if args.action == "lift" else HANDSHAKE_RIGHT_ARM_TARGET
 
     print(f"Running action: {args.action}")
-    ramp_between_poses(publisher, start_pose, target_pose, 4.0, crc)
-
-    if args.action == "handshake":
-        run_handshake_wave(publisher, target_pose, 3.0, crc)
-    else:
-        publish_pose_for_duration(publisher, target_pose, args.hold, crc)
+    final_pose = run_action(publisher, args.action, start_pose, args.hold, crc)
 
     if args.no_return:
         print("Holding final pose because --no-return was set. Press Ctrl+C or stop this script when done.")
         while True:
-            publish_pose_for_duration(publisher, target_pose, 1.0, crc)
+            publish_pose_for_duration(publisher, final_pose, 1.0, crc)
 
     print("Returning to the starting arm pose.")
-    ramp_between_poses(publisher, target_pose, start_pose, 4.0, crc)
+    ramp_between_poses(publisher, final_pose, start_pose, 4.0, crc)
     publish_pose_for_duration(publisher, start_pose, 0.5, crc)
     release_arm_sdk(publisher, start_pose, crc)
     print("Done. Released arm_sdk and exited.")
