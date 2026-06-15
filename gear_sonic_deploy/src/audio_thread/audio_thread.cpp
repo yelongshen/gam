@@ -12,7 +12,14 @@ AudioThread::AudioThread():
   client_.Init();
   client_.SetTimeout(10.0f);
   client_.SetVolume(100);
-  thread_ = std::jthread([this](std::stop_token st) { loop(st); });
+  thread_ = std::thread([this]() { loop(); });
+}
+
+AudioThread::~AudioThread() {
+  stop_requested_.store(true, std::memory_order_relaxed);
+  if (thread_.joinable()) {
+    thread_.join();
+  }
 }
 
 void AudioThread::SetCommand(const AudioCommand& command) {
@@ -29,8 +36,8 @@ void AudioThread::SetCommand(const AudioCommand& command) {
   }
 }
 
-void AudioThread::loop(std::stop_token st) {
-  while (!st.stop_requested()) {
+void AudioThread::loop() {
+  while (!stop_requested_.load(std::memory_order_relaxed)) {
     AudioCommand command;
     {
       std::lock_guard<std::mutex> lock(command_mutex_);

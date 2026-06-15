@@ -14,11 +14,12 @@
 
 #pragma once
 
+#include "compat_span.hpp"
+
 #include <array>
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
-#include <span>
 #include <string>
 
 /**

@@ -1,8 +1,10 @@
 #pragma once
 
+#include <atomic>
+#include <chrono>
 #include <memory>
+#include <mutex>
 #include <string>
-#include <stop_token>
 #include <thread>
 #include <unitree/robot/g1/audio/g1_audio_client.hpp>
 
@@ -18,14 +20,16 @@ struct AudioCommand {
 class AudioThread {
  public:
   AudioThread();
+  ~AudioThread();
 
   void SetCommand(const AudioCommand& command);
 
  private:
-  void loop(std::stop_token st);
+  void loop();
 
   unitree::robot::g1::AudioClient client_;
-  std::jthread thread_;
+  std::thread thread_;
+  std::atomic<bool> stop_requested_{false};
 
   std::mutex command_mutex_;
   AudioCommand command_;
