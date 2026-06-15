@@ -20,6 +20,48 @@ fi
 # Detect system architecture for platform-specific setup
 ARCH=$(uname -m)
 
+# Avoid shadowing glibc's <features.h> with CycloneDDS' dds/features.h.
+# Some Unitree environments export .../include/dds in CPATH-like variables, which
+# breaks system headers with errors around __GLIBC_PREREQ and __GNUC_PREREQ.
+sanitize_include_env_var() {
+    local var_name="$1"
+    local value="${!var_name:-}"
+    local cleaned=""
+    local removed=false
+    local entry
+
+    if [ -z "$value" ]; then
+        return
+    fi
+
+    IFS=':' read -ra entries <<< "$value"
+    for entry in "${entries[@]}"; do
+        if [[ "$entry" == */include/dds || "$entry" == */include/dds/ ]]; then
+            removed=true
+            continue
+        fi
+
+        if [ -z "$cleaned" ]; then
+            cleaned="$entry"
+        else
+            cleaned="$cleaned:$entry"
+        fi
+    done
+
+    if [ "$removed" = true ]; then
+        if [ -z "$cleaned" ]; then
+            unset "$var_name"
+        else
+            export "$var_name=$cleaned"
+        fi
+        echo "✅ Removed stale DDS include path from $var_name"
+    fi
+}
+
+sanitize_include_env_var CPATH
+sanitize_include_env_var CPLUS_INCLUDE_PATH
+sanitize_include_env_var C_INCLUDE_PATH
+
 # Set up ONNX Runtime environment - check multiple possible locations
 ONNX_RUNTIME_PATHS=(
     "/opt/onnxruntime"
