@@ -51,7 +51,7 @@ find_package(Threads REQUIRED)
 add_library(unitree_sdk2 STATIC IMPORTED GLOBAL)
 set_target_properties(unitree_sdk2 PROPERTIES
         IMPORTED_LOCATION ${UNITREE_SDK_LIB})
-target_link_libraries(unitree_sdk2 INTERFACE ddsc ddscxx Threads::Threads)
+target_link_libraries(unitree_sdk2 INTERFACE ddscxx ddsc Threads::Threads)
 target_include_directories(unitree_sdk2 INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
