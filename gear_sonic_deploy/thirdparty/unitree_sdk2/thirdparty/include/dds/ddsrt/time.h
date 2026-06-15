@@ -48,8 +48,6 @@
 extern "C" {
 #endif
 
-#endif
-
 /*
   Times are represented using a 64-bit signed integer, encoding
   nanoseconds since the epoch. Considering the nature of these
@@ -324,3 +322,5 @@ DDS_EXPORT void ddsrt_etime_to_sec_usec (int32_t * __restrict sec, int32_t * __r
 #endif
 
 #endif /* DDSRT_TIME_H */
+
+#endif

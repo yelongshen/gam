@@ -37,8 +37,6 @@
 extern "C" {
 #endif
 
-#endif
-
 /**
  * @brief Compare two strings ignoring case.
  *
@@ -217,3 +215,5 @@ ddsrt_nonnull_all;
 #endif
 
 #endif /* DDSRT_STRING_H */
+
+#endif
