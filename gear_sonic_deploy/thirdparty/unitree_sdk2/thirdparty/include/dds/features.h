@@ -12,6 +12,22 @@
 #ifndef _DDS_PUBLIC_FEATURES_H_
 #define _DDS_PUBLIC_FEATURES_H_
 
+/*
+ * This header is normally included as <dds/features.h>. If an environment puts
+ * this directory itself on CPATH/CPLUS_INCLUDE_PATH, glibc's <features.h> can
+ * accidentally resolve here instead. Load the next system <features.h> first so
+ * glibc macros such as __GLIBC_PREREQ and __GNUC_PREREQ remain available.
+ */
+#if defined(__linux__) && !defined(_FEATURES_H)
+#  if defined(__has_include_next)
+#    if __has_include_next(<features.h>)
+#      include_next <features.h>
+#    endif
+#  else
+#    include_next <features.h>
+#  endif
+#endif
+
 /* Whether or not support for DDS Security is included */
 /* #undef DDS_HAS_SECURITY */
 
