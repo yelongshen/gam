@@ -20,9 +20,9 @@ fi
 # Detect system architecture for platform-specific setup
 ARCH=$(uname -m)
 
-# Avoid shadowing glibc's <features.h> with CycloneDDS' dds/features.h.
-# Some Unitree environments export .../include/dds in CPATH-like variables, which
-# breaks system headers with errors around __GLIBC_PREREQ and __GNUC_PREREQ.
+# Avoid shadowing glibc C headers with CycloneDDS headers.
+# Some Unitree environments export nested DDS include dirs in CPATH-like variables,
+# which can break system headers such as <features.h>, <time.h>, and <string.h>.
 sanitize_include_env_var() {
     local var_name="$1"
     local value="${!var_name:-}"
@@ -36,7 +36,7 @@ sanitize_include_env_var() {
 
     IFS=':' read -ra entries <<< "$value"
     for entry in "${entries[@]}"; do
-        if [[ "$entry" == */include/dds || "$entry" == */include/dds/ ]]; then
+        if [[ "$entry" == */include/dds || "$entry" == */include/dds/ || "$entry" == */include/dds/ddsrt || "$entry" == */include/dds/ddsrt/ ]]; then
             removed=true
             continue
         fi

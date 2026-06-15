@@ -9,6 +9,23 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause
  */
+
+/*
+ * This header is normally included as <dds/ddsrt/string.h>. If an environment
+ * puts this directory itself on CPATH/CPLUS_INCLUDE_PATH, glibc's <string.h> can
+ * accidentally resolve here instead. Load the next system <string.h> first so
+ * C++ <cstring> can import the global C string declarations.
+ */
+#if defined(__has_include_next)
+#  if __has_include_next(<string.h>)
+#    include_next <string.h>
+#  endif
+#else
+#  include_next <string.h>
+#endif
+
+#if !defined(__has_include) || __has_include("dds/export.h")
+
 #ifndef DDSRT_STRING_H
 #define DDSRT_STRING_H
 
@@ -18,6 +35,8 @@
 
 #if defined (__cplusplus)
 extern "C" {
+#endif
+
 #endif
 
 /**

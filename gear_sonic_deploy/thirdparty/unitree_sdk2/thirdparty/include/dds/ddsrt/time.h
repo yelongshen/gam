@@ -17,6 +17,23 @@
  * This header file defines the public API of the in the
  * CycloneDDS C language binding.
  */
+
+/*
+ * This header is normally included as <dds/ddsrt/time.h>. If an environment
+ * puts this directory itself on CPATH/CPLUS_INCLUDE_PATH, glibc's <time.h> can
+ * accidentally resolve here instead. Load the next system <time.h> first so
+ * C++ <ctime> can import the global C time declarations.
+ */
+#if defined(__has_include_next)
+#  if __has_include_next(<time.h>)
+#    include_next <time.h>
+#  endif
+#else
+#  include_next <time.h>
+#endif
+
+#if !defined(__has_include) || __has_include("dds/export.h")
+
 #ifndef DDS_TIME_H
 #define DDS_TIME_H
 
@@ -29,6 +46,8 @@
 
 #if defined (__cplusplus)
 extern "C" {
+#endif
+
 #endif
 
 /*
