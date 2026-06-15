@@ -176,6 +176,10 @@ def parse_args():
     parser.add_argument("network_interface", nargs="?", help="Optional DDS network interface, for example eth0.")
     parser.add_argument("--release-mode", action="store_true", help="Release active MotionSwitcher mode before low-level control.")
     parser.add_argument("--hold", type=float, default=1.0, help="Seconds to hold the lift pose before the next stage.")
+    parser.add_argument("--lift-duration", type=float, default=4.0, help="Seconds to ramp from the start pose to the lift pose.")
+    parser.add_argument("--transition-duration", type=float, default=3.0, help="Seconds to ramp from lift pose to handshake pose.")
+    parser.add_argument("--shake-duration", type=float, default=3.0, help="Seconds to run the handshake wave.")
+    parser.add_argument("--return-duration", type=float, default=4.0, help="Seconds to return from the final pose to the measured start pose.")
     return parser.parse_args()
 
 
@@ -377,22 +381,22 @@ def main():
 
     print(f"Running low-level action: {args.action}")
     if args.action == "lift":
-        ramp_targets(publishers, start, lift_target, 4.0, mode_machine, crc)
+        ramp_targets(publishers, start, lift_target, args.lift_duration, mode_machine, crc)
         hold_targets(publishers, lift_target, args.hold, mode_machine, crc)
         final_target = lift_target
     elif args.action == "handshake":
-        ramp_targets(publishers, start, handshake_target, 4.0, mode_machine, crc)
-        run_handshake_wave(publishers, handshake_body, HAND_OPEN_TARGET, HAND_OPEN_TARGET, 3.0, mode_machine, crc)
+        ramp_targets(publishers, start, handshake_target, args.transition_duration, mode_machine, crc)
+        run_handshake_wave(publishers, handshake_body, HAND_OPEN_TARGET, HAND_OPEN_TARGET, args.shake_duration, mode_machine, crc)
         final_target = handshake_target
     else:
-        ramp_targets(publishers, start, lift_target, 4.0, mode_machine, crc)
+        ramp_targets(publishers, start, lift_target, args.lift_duration, mode_machine, crc)
         hold_targets(publishers, lift_target, args.hold, mode_machine, crc)
-        ramp_targets(publishers, lift_target, handshake_target, 3.0, mode_machine, crc)
-        run_handshake_wave(publishers, handshake_body, HAND_OPEN_TARGET, HAND_OPEN_TARGET, 3.0, mode_machine, crc)
+        ramp_targets(publishers, lift_target, handshake_target, args.transition_duration, mode_machine, crc)
+        run_handshake_wave(publishers, handshake_body, HAND_OPEN_TARGET, HAND_OPEN_TARGET, args.shake_duration, mode_machine, crc)
         final_target = handshake_target
 
     print("Returning to measured starting body and hand state.")
-    ramp_targets(publishers, final_target, start, 4.0, mode_machine, crc)
+    ramp_targets(publishers, final_target, start, args.return_duration, mode_machine, crc)
     hold_targets(publishers, start, 0.5, mode_machine, crc)
     print("Done. Low-level action completed and script exited.")
 
