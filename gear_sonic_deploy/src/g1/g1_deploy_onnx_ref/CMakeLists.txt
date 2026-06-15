@@ -1,5 +1,7 @@
 set(EXECUTABLE_NAME g1_deploy_onnx_ref)
 
+option(BUILD_TESTS "Build optional g1_deploy test executables" OFF)
+
 # ROS2 discovery can be controlled via env var HAS_ROS2:
 # - 1: try ROS2 (find_package QUIET)
 # - 0 or unset: disable ROS2 entirely (skip find_package)
@@ -13,6 +15,7 @@ if(DEFINED ENV{HAS_ROS2})
     message(WARNING "HAS_ROS2 should be 0 or 1; got '$ENV{HAS_ROS2}'. Falling back to auto-detect.")
   endif()
 endif()
+
 
 if(ROS2_ENV_REQUEST STREQUAL "off")
   set(rclcpp_FOUND FALSE)
@@ -140,13 +143,13 @@ endif()
 message(STATUS "✅ ZMQ support enabled for main executable")
 
 # Build ZMQ tests
-if(ZMQ_INCLUDE_DIR AND ZMQ_LIBRARY)
+if(BUILD_TESTS AND ZMQ_INCLUDE_DIR AND ZMQ_LIBRARY)
   add_executable(zmq_pose_subscriber_test
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/zmq_pose_subscriber_test.cpp)
   target_include_directories(zmq_pose_subscriber_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${ZMQ_INCLUDE_DIR})
-  target_link_libraries(zmq_pose_subscriber_test PRIVATE ${ZMQ_LIBRARY})
+  target_link_libraries(zmq_pose_subscriber_test PRIVATE ${ZMQ_LIBRARY} Threads::Threads)
   set_target_properties(zmq_pose_subscriber_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/target/release/"
     CXX_STANDARD 20
@@ -160,14 +163,14 @@ if(ZMQ_INCLUDE_DIR AND ZMQ_LIBRARY)
   target_include_directories(zmq_python_sender_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${ZMQ_INCLUDE_DIR})
-  target_link_libraries(zmq_python_sender_test PRIVATE ${ZMQ_LIBRARY})
+  target_link_libraries(zmq_python_sender_test PRIVATE ${ZMQ_LIBRARY} Threads::Threads)
   set_target_properties(zmq_python_sender_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/target/release/"
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF)
   message(STATUS "✅ Added zmq_python_sender_test (ZMQ found)")
-else()
+elseif(BUILD_TESTS)
   message(WARNING "⚠️  libzmq not found - skipping zmq_pose_subscriber_test")
 endif()
 
@@ -233,29 +236,31 @@ else()
 endif()
 
 # test executable:
-include(FetchContent)
+if(BUILD_TESTS)
+  include(FetchContent)
 
-# Download and make GoogleTest available
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
-)
-FetchContent_MakeAvailable(googletest)
+  # Download and make GoogleTest available
+  FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+  )
+  FetchContent_MakeAvailable(googletest)
 
-find_package(GTest REQUIRED)
+  find_package(GTest REQUIRED)
 
-file(GLOB_RECURSE TEST_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/unit_tests/*.cpp)
+  file(GLOB_RECURSE TEST_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/unit_tests/*.cpp)
 
-add_executable(run_tests ${TEST_SRCS})
-target_link_directories(run_tests PRIVATE ${CUDA_LINK_DIRS})
-target_link_libraries(run_tests GTest::GTest GTest::Main ${EXE_LIBS})
-target_include_directories(run_tests PUBLIC ${EXE_INCLUDES})
+  add_executable(run_tests ${TEST_SRCS})
+  target_link_directories(run_tests PRIVATE ${CUDA_LINK_DIRS})
+  target_link_libraries(run_tests GTest::GTest GTest::Main ${EXE_LIBS})
+  target_include_directories(run_tests PUBLIC ${EXE_INCLUDES})
 
-# Setting our output directory and C++ standard
-set_target_properties(
-  run_tests
-  PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/target/release/"
-             OUTPUT_NAME run_tests
-             CXX_STANDARD 20
-             CXX_STANDARD_REQUIRED ON
-             CXX_EXTENSIONS OFF)
+  # Setting our output directory and C++ standard
+  set_target_properties(
+    run_tests
+    PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/target/release/"
+               OUTPUT_NAME run_tests
+               CXX_STANDARD 20
+               CXX_STANDARD_REQUIRED ON
+               CXX_EXTENSIONS OFF)
+endif()
