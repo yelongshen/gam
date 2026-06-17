@@ -1,0 +1,41 @@
+# SONIC Data Processing Configuration
+
+# Dataset paths
+dataset:
+  root: /home/grease/ego_dataset/work_bearlu/data/bones-studio-seed
+  metadata: metadata/seed_metadata_v004.parquet
+  output_dir: ./data/sonic_processed
+
+# Processing
+processing:
+  max_motions: 500  # Process first 500 motions for initial testing
+  # Set to null to process all motions
+  
+  # Modality options
+  load_g_r: true  # Robot motion
+  load_g_h: true  # Human SMPL motion
+  load_g_m: true  # Mixed representation
+  
+  # Data formats
+  g_h_format: proportional  # proportional or uniform SOMA
+
+# Motion window configuration
+motion_window:
+  context_length: 4   # Frames of history
+  action_horizon: 8   # Frames to predict
+  
+# Data split
+split:
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+
+# Output format
+output:
+  format: npy  # npy, h5, or csv
+  compressed: true
+  
+# Logging
+logging:
+  level: INFO
+  verbose: true
