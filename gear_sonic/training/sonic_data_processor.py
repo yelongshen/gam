@@ -70,24 +70,42 @@ class G1RobotDataLoader:
         if not self.g1_csv_root.exists():
             raise FileNotFoundError(f"G1 CSV directory not found: {self.g1_csv_root}")
         
-        # G1 robot has 29 DOF: 7 per arm + 7 per leg + 3 base + 5 spine
+        # G1 robot has 29 DOF - joint order matches CSV columns from Bones-Studio
         self.joint_order = [
-            # Left arm (7 DOF)
-            'L_shoulder_roll', 'L_shoulder_pitch', 'L_shoulder_yaw',
-            'L_elbow', 'L_wrist_roll', 'L_wrist_pitch', 'L_wrist_yaw',
-            # Right arm (7 DOF)
-            'R_shoulder_roll', 'R_shoulder_pitch', 'R_shoulder_yaw',
-            'R_elbow', 'R_wrist_roll', 'R_wrist_pitch', 'R_wrist_yaw',
             # Left leg (6 DOF)
-            'L_hip_roll', 'L_hip_pitch', 'L_hip_yaw',
-            'L_knee', 'L_ankle_pitch', 'L_ankle_roll',
+            'left_hip_pitch_joint_dof',
+            'left_hip_roll_joint_dof',
+            'left_hip_yaw_joint_dof',
+            'left_knee_joint_dof',
+            'left_ankle_pitch_joint_dof',
+            'left_ankle_roll_joint_dof',
             # Right leg (6 DOF)
-            'R_hip_roll', 'R_hip_pitch', 'R_hip_yaw',
-            'R_knee', 'R_ankle_pitch', 'R_ankle_roll',
-            # Waist (1 DOF)
-            'waist_yaw',
-            # Head (2 DOF)
-            'head_pitch', 'head_yaw',
+            'right_hip_pitch_joint_dof',
+            'right_hip_roll_joint_dof',
+            'right_hip_yaw_joint_dof',
+            'right_knee_joint_dof',
+            'right_ankle_pitch_joint_dof',
+            'right_ankle_roll_joint_dof',
+            # Waist (3 DOF)
+            'waist_yaw_joint_dof',
+            'waist_roll_joint_dof',
+            'waist_pitch_joint_dof',
+            # Left arm (7 DOF)
+            'left_shoulder_pitch_joint_dof',
+            'left_shoulder_roll_joint_dof',
+            'left_shoulder_yaw_joint_dof',
+            'left_elbow_joint_dof',
+            'left_wrist_roll_joint_dof',
+            'left_wrist_pitch_joint_dof',
+            'left_wrist_yaw_joint_dof',
+            # Right arm (7 DOF)
+            'right_shoulder_pitch_joint_dof',
+            'right_shoulder_roll_joint_dof',
+            'right_shoulder_yaw_joint_dof',
+            'right_elbow_joint_dof',
+            'right_wrist_roll_joint_dof',
+            'right_wrist_pitch_joint_dof',
+            'right_wrist_yaw_joint_dof',
         ]
         assert len(self.joint_order) == 29, f"Expected 29 joints, got {len(self.joint_order)}"
     
@@ -95,11 +113,19 @@ class G1RobotDataLoader:
         """Load G1 motion from CSV file.
         
         Args:
-            csv_path: Relative path from g1/csv (e.g., "240918/body_check_001__A548.csv")
-            
+            csv_path: Path to CSV, can be:
+                - Relative: "240918/body_check_001__A548.csv"  
+                - Full relative: "g1/csv/240918/body_check_001__A548.csv"
+                
         Returns:
             Motion array [T, 29] or None if load fails
         """
+        csv_path = str(csv_path)
+        
+        # Handle paths that include "g1/csv/" prefix
+        if csv_path.startswith("g1/csv/"):
+            csv_path = csv_path.replace("g1/csv/", "", 1)
+        
         full_path = self.g1_csv_root / csv_path
         
         if not full_path.exists():
@@ -180,12 +206,24 @@ class SOMAHumanDataLoader:
         """Load SOMA motion from BVH file.
         
         Args:
-            bvh_path: Relative path from soma_*/bvh (e.g., "240918/body_check_001__A548.bvh")
+            bvh_path: Path to BVH file, can be:
+                - Relative: "240918/body_check_001__A548.bvh"  
+                - Full relative: "soma_proportional/bvh/240918/body_check_001__A548.bvh"
             use_proportional: Use proportional fit if True, else uniform
             
         Returns:
             Motion array [T, 72] (SMPL format) or None if load fails
         """
+        bvh_path = str(bvh_path)
+        
+        # Handle paths that include directory prefix
+        if bvh_path.startswith("soma_proportional/bvh/"):
+            bvh_path = bvh_path.replace("soma_proportional/bvh/", "", 1)
+            use_proportional = True
+        elif bvh_path.startswith("soma_uniform/bvh/"):
+            bvh_path = bvh_path.replace("soma_uniform/bvh/", "", 1)
+            use_proportional = False
+        
         if use_proportional:
             full_path = self.soma_proportional_root / "bvh" / bvh_path
         else:

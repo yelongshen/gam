@@ -4,11 +4,11 @@
 dataset:
   root: /home/grease/ego_dataset/work_bearlu/data/bones-studio-seed
   metadata: metadata/seed_metadata_v004.parquet
-  output_dir: ./data/sonic_processed
+  output_dir: /home/grease/ego_dataset/work_bearlu/data/bones-studio-processed
 
 # Processing
 processing:
-  max_motions: 500  # Process first 500 motions for initial testing
+  max_motions: null  # Process ALL motions (null = no limit)
   # Set to null to process all motions
   
   # Modality options
