@@ -1,0 +1,31 @@
+# GEAR-SONIC Training Configuration
+# This file configures the egocentric dataset training pipeline
+
+# Data configuration
+data_root: /home/grease/ego_dataset/work_bearlu/data
+task_name: G1_Dex1_Fold_Towel
+
+# Model architecture
+model_type: transformer  # or 'mlp' for MLP baseline
+context_length: 4        # Number of past frames for context
+action_horizon: 8        # Number of future actions to predict
+hidden_dim: 256
+num_layers: 2
+num_heads: 4             # For transformer only
+dropout: 0.1
+
+# Training hyperparameters
+num_epochs: 100
+batch_size: 32
+learning_rate: 1.0e-3
+weight_decay: 1.0e-4
+
+# Data loading
+num_workers: 4
+train_split: 0.8         # 80% train, 20% val
+max_episodes: null       # null = use all episodes
+
+# Checkpointing and logging
+output_dir: outputs/sonic_training
+val_interval: 5          # Validate every N epochs
+save_interval: 10        # Save checkpoint every N epochs

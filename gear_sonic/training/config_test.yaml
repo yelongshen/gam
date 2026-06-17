@@ -1,0 +1,29 @@
+# Quick test training config - subset of data for fast iteration
+# This config trains on a small number of episodes for quick validation
+
+data_root: /home/grease/ego_dataset/work_bearlu/data
+task_name: G1_Dex1_Fold_Towel
+
+# Model architecture
+model_type: mlp  # Use MLP for faster training/testing
+context_length: 4
+action_horizon: 8
+hidden_dim: 256
+num_layers: 2
+dropout: 0.1
+
+# Training hyperparameters
+num_epochs: 50  # Quick training for testing
+batch_size: 32
+learning_rate: 1.0e-3
+weight_decay: 1.0e-4
+
+# Data loading
+num_workers: 4
+train_split: 0.8
+max_episodes: 50  # Use only 50 episodes for quick test
+
+# Checkpointing
+output_dir: outputs/sonic_training_test
+val_interval: 5
+save_interval: 10
