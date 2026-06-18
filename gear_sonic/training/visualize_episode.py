@@ -157,6 +157,7 @@ def run(args):
                               if not _has_nan(f))
     if not motion_files:
         raise FileNotFoundError(f"No valid NPZ files in {args.data_dir}")
+    import random; random.shuffle(motion_files)   # randomise order
     print(f"Available motions: {len(motion_files)}")
 
     motion_idx = 0
@@ -261,6 +262,7 @@ def run(args):
                 print(f"  → Episode {outcome}  "
                       f"steps={ep_steps}  avg_rew={ep_reward/ep_steps:.3f}")
                 if args.loop:
+                    motion_idx = (motion_idx + 1) % len(motion_files)   # advance to next
                     obs_np = _start_episode(motion_idx)
                 else:
                     print("  (press R to restart, N for next motion)")
