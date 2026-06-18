@@ -291,19 +291,25 @@ class SOMAHumanDataLoader:
                 lines = f.readlines()
             
             # Find MOTION section
+            # BVH layout: … MOTION\n  Frames: N\n  Frame Time: t\n  <data>
+            # The MOTION keyword comes first; Frames/Frame Time follow it.
+            motion_start_line = None
             motion_idx = None
             num_frames = None
             frame_time = None
-            
+
             for i, line in enumerate(lines):
-                if line.startswith("Frames:"):
-                    num_frames = int(line.split()[1])
-                elif line.startswith("Frame Time:"):
-                    frame_time = float(line.split()[2])
-                elif line.strip() == "MOTION":
-                    motion_idx = i + 2  # Skip "MOTION" and frame info lines
+                stripped = line.strip()
+                if stripped == "MOTION":
+                    motion_start_line = i
+                elif motion_start_line is not None and stripped.startswith("Frames:"):
+                    num_frames = int(stripped.split()[1])
+                elif motion_start_line is not None and stripped.startswith("Frame Time:"):
+                    frame_time = float(stripped.split()[2])
+                    # First data frame is the line right after "Frame Time:"
+                    motion_idx = i + 1
                     break
-            
+
             if motion_idx is None or num_frames is None:
                 logger.warning(f"Could not parse BVH header in {bvh_path}")
                 return None
