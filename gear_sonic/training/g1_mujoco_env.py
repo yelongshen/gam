@@ -69,6 +69,17 @@ DEFAULT_Q = np.array([
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 SCENE_XML  = str(_REPO_ROOT / "decoupled_wbc/control/robot_model/model_data/g1/scene_29dof.xml")
 
+# ── Observation normaliser (shared with trainer and visualizer) ───────────────
+# obs = [q(29), dq(29), root_pos(3), root_rpy(3), root_vel(6),
+#         ref_q(29), ref_dq(29), phase(2)]  →  130-dim
+OBS_SCALE = np.concatenate([
+    np.full(29, 1/3.), np.full(29, 0.1),   # q (±3 rad), dq (±10 rad/s)
+    np.full(3,  0.2),  np.full(3,  1/3.),  # root_pos (±5 m), root_rpy (±3 rad)
+    np.full(6,  0.2),                       # root_vel (±5 m/s or rad/s)
+    np.full(29, 1/3.), np.full(29, 0.1),   # ref_q, ref_dq
+    np.full(2,  1.0),                       # phase (±1)
+]).astype(np.float32)
+
 
 class G1MuJoCoEnv:
     """

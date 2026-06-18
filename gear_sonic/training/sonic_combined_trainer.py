@@ -17,21 +17,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from gear_sonic.training.encoders       import SonicEncoderDecoder
 from gear_sonic.training.losses         import sonic_loss
-from gear_sonic.training.g1_mujoco_env import G1MuJoCoEnv, N_JOINTS
+from gear_sonic.training.g1_mujoco_env import G1MuJoCoEnv, N_JOINTS, OBS_SCALE
 from gear_sonic.training.ppo_trainer    import PolicyHead, ValueHead
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
 
-# ── Fixed obs scale (physical value ranges) ───────────────────────────────────
-# obs = [q(29), dq(29), root_pos(3), root_rpy(3), root_vel(6), ref_q(29), ref_dq(29), phase(2)]
-_OBS_SCALE = np.concatenate([
-    np.full(29, 1/3.), np.full(29, 0.1),   # q, dq
-    np.full(3,  0.2),  np.full(3,  1/3.),  # root_pos, root_rpy
-    np.full(6,  0.2),                       # root_vel
-    np.full(29, 1/3.), np.full(29, 0.1),   # ref_q, ref_dq
-    np.full(2,  1.0),                       # phase
-]).astype(np.float32)
+# Use shared OBS_SCALE from g1_mujoco_env
+_OBS_SCALE = OBS_SCALE
 
 def _norm(obs: np.ndarray) -> np.ndarray:
     return np.clip(obs * _OBS_SCALE, -10., 10.)
