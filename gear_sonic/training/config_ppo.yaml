@@ -1,0 +1,50 @@
+# SONIC PPO Training Configuration
+# ----------------------------------
+# Stage 2: policy decoder trained on top of pre-trained encoders (Stage 1)
+# Requires MuJoCo physics simulation — NO external robotics SDK needed.
+#
+# Run:
+#   source .venv_sim/bin/activate
+#   python gear_sonic/training/ppo_trainer.py \
+#       --config gear_sonic/training/config_ppo.yaml
+
+# ── Data ─────────────────────────────────────────────────────────────────────
+data_dir:   /home/grease/ego_dataset/work_bearlu/data/bones-studio-processed
+output_dir: outputs/sonic_ppo
+
+# ── Pre-trained encoder (Stage 1 checkpoint) ─────────────────────────────────
+# Leave null to start with random encoders (not recommended)
+encoder_ckpt:   outputs/sonic_exp/best_model.pt
+encoder_window: 8
+token_dim:      64
+encoder_hidden: 256
+
+# ── Policy network ────────────────────────────────────────────────────────────
+policy_hidden: 256      # MLP hidden width for PolicyHead and ValueHead
+
+# ── Simulation ────────────────────────────────────────────────────────────────
+sim_dt:         0.005   # MuJoCo physics timestep (s)
+control_hz:     50.0    # Policy control frequency (Hz)
+episode_frames: 300     # Max steps per episode (~6s at 50Hz)
+min_height:     0.3     # Fall detection height threshold (m)
+
+# ── PPO hyperparameters ───────────────────────────────────────────────────────
+n_iterations: 1000      # Number of PPO update iterations
+n_steps:      2048      # Rollout steps per iteration
+mini_batch:   256       # Mini-batch size for PPO update
+k_epochs:     10        # PPO update epochs per iteration
+gamma:        0.99      # Discount factor
+gae_lambda:   0.95      # GAE lambda
+clip_eps:     0.2       # PPO clipping epsilon
+vf_coef:      0.5       # Value loss coefficient
+ent_coef:     0.01      # Entropy bonus coefficient
+max_grad_norm: 1.0      # Gradient clipping
+
+# ── Optimiser ─────────────────────────────────────────────────────────────────
+lr: 3.0e-4
+
+# ── Reward weights (see rewards.py) ──────────────────────────────────────────
+# r_total = (w_tracking*r_track + w_balance*r_bal + w_smooth*r_smooth) / sum(w)
+w_tracking: 1.0
+w_balance:  0.2
+w_smooth:   0.1
