@@ -1,7 +1,23 @@
 """
 SONIC supervised training experiment (no RL/PPO).
 
-Implements Steps 1–2 of the SONIC training flow with:
+Implements Steps 1        if stats is None:   # compute on training split
+            self.stats = {}
+            for k in raws:
+                arr = np.concatenate(raws[k])
+                mu  = np.nan_to_num(np.nanmean(arr, 0), nan=0.0)
+                sig = np.nan_to_num(np.nanstd(arr, 0),  nan=1.0)
+                sig = np.where(sig < 1e-3, 1.0, sig)
+                self.stats[k] = (mu.astype(np.float32), sig.astype(np.float32))
+        else:
+            self.stats = stats
+
+        # normalise
+        for k in raws:
+            raws[k] = [(x - self.stats[k][0]) / self.stats[k][1] for x in raws[k]]       self.wins = []
+        for gr, gh in zip(raws["g_r"], raws["g_h"]):
+            for s in range(0, len(gr) - window + 1, self.stride):
+                self.wins.append((gr[s:s+window], gh[s:s+window]))raining flow with:
   L_total = L_recon + λ_token * L_token + λ_cycl                loss, comp = sonic_loss(out, g_r,
                                          lambda_recon=cfg.get("lambda_recon", 1.0),
                                          lambda_token=cfg["lambda_token"],
@@ -52,21 +68,19 @@ class _WindowDataset(torch.utils.data.Dataset):
         files  = files[:n_val] if split == "val" else files[n_val:]
         logger.info(f"  [{split}] {len(files)} files")
 
-        raws = {"g_r": [], "g_h": [], "g_m": []}
+        raws = {"g_r": [], "g_h": []}
         skipped = 0
         for f in files:
             d = np.load(f)
-            T = min(len(d["g_r"]), len(d["g_h"]), len(d["g_m"]))
+            T = min(len(d["g_r"]), len(d["g_h"]))
             g_r_f = d["g_r"][:T].astype(np.float32)
             g_h_f = d["g_h"][:T].astype(np.float32)
-            g_m_f = d["g_m"][:T].astype(np.float32)
             # Skip files that still have NaN (e.g. pre-FK-fix leftovers)
-            if np.isnan(g_r_f).any() or np.isnan(g_h_f).any() or np.isnan(g_m_f).any():
+            if np.isnan(g_r_f).any() or np.isnan(g_h_f).any():
                 skipped += 1
                 continue
             raws["g_r"].append(g_r_f)
             raws["g_h"].append(g_h_f)
-            raws["g_m"].append(g_m_f)
         if skipped:
             logger.warning(f"  [{split}] Skipped {skipped} files with NaN values")
 
@@ -87,9 +101,9 @@ class _WindowDataset(torch.utils.data.Dataset):
 
         # build windows
         self.wins = []
-        for gr, gh, gm in zip(raws["g_r"], raws["g_h"], raws["g_m"]):
+        for gr, gh in zip(raws["g_r"], raws["g_h"]):
             for s in range(0, len(gr) - window + 1, stride):
-                self.wins.append((gr[s:s+window], gh[s:s+window], gm[s:s+window]))
+                self.wins.append((gr[s:s+window], gh[s:s+window]))
         logger.info(f"  [{split}] {len(self.wins)} windows")
 
     def __len__(self):  return len(self.wins)
@@ -154,10 +168,10 @@ def train(cfg: dict):
         tr_totals = {"L_recon": 0., "L_token": 0., "L_cycle": 0., "L_total": 0.}
         t0 = time.time()
 
-        for g_r, g_h, g_m in dl_tr:
-            g_r, g_h, g_m = g_r.to(device), g_h.to(device), g_m.to(device)
+        for g_r, g_h in dl_tr:
+            g_r, g_h = g_r.to(device), g_h.to(device)
             optim.zero_grad()
-            out  = model(g_r, g_h, g_m)
+            out  = model(g_r, g_h)          # g_m omitted (Phase 1)
             loss, comp = sonic_loss(out, g_r,
                                     lambda_recon=cfg.get("lambda_recon", 1.0),
                                     lambda_token=cfg["lambda_token"],
@@ -174,9 +188,9 @@ def train(cfg: dict):
         model.eval()
         val_total = 0.
         with torch.no_grad():
-            for g_r, g_h, g_m in dl_val:
-                g_r, g_h, g_m = g_r.to(device), g_h.to(device), g_m.to(device)
-                out  = model(g_r, g_h, g_m)
+            for g_r, g_h in dl_val:
+                g_r, g_h = g_r.to(device), g_h.to(device)
+                out  = model(g_r, g_h)      # g_m omitted (Phase 1)
                 loss, _ = sonic_loss(out, g_r,
                                      lambda_token=cfg["lambda_token"],
                                      lambda_cycle=cfg["lambda_cycle"])

@@ -121,15 +121,16 @@ class MotionDecoder(nn.Module):
 
 class SonicEncoderDecoder(nn.Module):
     """
-    Full SONIC encoder–decoder for the supervised (no-RL) training phase.
+    SONIC encoder–decoder — Phase 1: robot ↔ human only (no g_m / E_m).
 
-    Three encoders share a single decoder D_r for the reconstruction,
-    token-alignment, and cycle-consistency objectives.
+    Two encoders share one decoder D_r.  E_m is excluded to simplify the
+    first training phase; add it back by setting use_mixed=True once the
+    robot↔human alignment is stable.
 
-    Step 2 of the SONIC training flow is implemented in forward():
-      1. Encode each representation → z_r, z_h, z_m
-      2. Decode from every token → g_r_hat (for L_recon)
-      3. Cycle decode: D_r(z_h) re-encoded by E_r → z_r_cycle (for L_cycle)
+    Step 2 of the SONIC training flow:
+      1. Encode g_r → z_r  and  g_h → z_h
+      2. Decode from both tokens → g_r_hat  (for L_recon)
+      3. Cycle: D_r(z_h) → E_r → z_r_cycle  (for L_cycle)
     """
 
     def __init__(
@@ -137,49 +138,57 @@ class SonicEncoderDecoder(nn.Module):
         window: int = 8,
         token_dim: int = 64,
         hidden_dim: int = 256,
+        use_mixed: bool = False,   # set True to re-enable E_m
     ):
         super().__init__()
-        self.window = window
-        self.token_dim = token_dim
+        self.window     = window
+        self.token_dim  = token_dim
+        self.use_mixed  = use_mixed
 
         self.E_r = RobotEncoder(window, token_dim, hidden_dim)
         self.E_h = HumanEncoder(window, token_dim, hidden_dim)
-        self.E_m = MixedEncoder(window, token_dim, hidden_dim)
         self.D_r = MotionDecoder(token_dim, window, 29, hidden_dim)
+
+        if use_mixed:
+            self.E_m = MixedEncoder(window, token_dim, hidden_dim)
 
     def forward(
         self,
         g_r: torch.Tensor,
         g_h: torch.Tensor,
-        g_m: torch.Tensor,
+        g_m: Optional[torch.Tensor] = None,
     ) -> dict:
         """
-        g_r: (B, W, 29)   g_h: (B, W, 72)   g_m: (B, W, 11)
-
-        Returns a dict with all intermediate tensors needed for loss computation.
+        g_r : (B, W, 29)  — robot joint angles  [required]
+        g_h : (B, W, 72)  — SMPL joint positions [required]
+        g_m : (B, W, 11)  — VR mixed input       [optional, only if use_mixed=True]
         """
-        # ── Step 2.2: encode ─────────────────────────────────────────────────
+        # ── encode ───────────────────────────────────────────────────────────
         z_r = self.E_r(g_r)   # (B, token_dim)
         z_h = self.E_h(g_h)   # (B, token_dim)
-        z_m = self.E_m(g_m)   # (B, token_dim)
 
-        # ── Step 2.3: decode — reconstruct g_r from every token ──────────────
+        # ── decode — reconstruct g_r from both tokens ─────────────────────
         g_r_from_r = self.D_r(z_r)   # (B, W, 29)
         g_r_from_h = self.D_r(z_h)   # (B, W, 29)
-        g_r_from_m = self.D_r(z_m)   # (B, W, 29)
 
-        # ── Cycle: D_r(z_h) → E_r → z_r_cycle ───────────────────────────────
+        # ── cycle: D_r(z_h) → E_r → z_r_cycle ───────────────────────────
         z_r_cycle = self.E_r(g_r_from_h)   # (B, token_dim)
 
-        return {
+        out = {
             "z_r": z_r,
             "z_h": z_h,
-            "z_m": z_m,
             "g_r_from_r": g_r_from_r,
             "g_r_from_h": g_r_from_h,
-            "g_r_from_m": g_r_from_m,
-            "z_r_cycle": z_r_cycle,
+            "z_r_cycle":  z_r_cycle,
         }
+
+        # optional E_m path (Phase 2)
+        if self.use_mixed and g_m is not None:
+            z_m = self.E_m(g_m)
+            out["z_m"]       = z_m
+            out["g_r_from_m"] = self.D_r(z_m)
+
+        return out
 
     @torch.no_grad()
     def encode(
@@ -192,5 +201,5 @@ class SonicEncoderDecoder(nn.Module):
         out = {}
         if g_r is not None: out["z_r"] = self.E_r(g_r)
         if g_h is not None: out["z_h"] = self.E_h(g_h)
-        if g_m is not None: out["z_m"] = self.E_m(g_m)
+        if g_m is not None and self.use_mixed: out["z_m"] = self.E_m(g_m)
         return out

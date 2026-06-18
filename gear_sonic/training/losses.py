@@ -61,13 +61,14 @@ def sonic_loss(
     """
 
     # ── L_recon ───────────────────────────────────────────────────────────────
-    # All three tokens must reconstruct g_r via the SHARED decoder D_r.
-    # Spec: L_recon = ||D_r(z_r)-g_r||² + ||D_r(z_h)-g_r||² + ||D_r(z_m)-g_r||²
+    # Phase 1 (no g_m): L_recon = ||D_r(z_r)-g_r||² + ||D_r(z_h)-g_r||²
+    # Phase 2 (use_mixed): adds       + ||D_r(z_m)-g_r||²  when "g_r_from_m" in out
     L_recon = (
         _mse(out["g_r_from_r"], g_r)
         + _mse(out["g_r_from_h"], g_r)
-        + _mse(out["g_r_from_m"], g_r)
     )
+    if "g_r_from_m" in out:
+        L_recon = L_recon + _mse(out["g_r_from_m"], g_r)
 
     # ── L_token ───────────────────────────────────────────────────────────────
     # Spec: L_token = ||z_r - z_h||²
