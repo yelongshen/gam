@@ -1,0 +1,34 @@
+# SONIC Supervised Encoder Experiment
+# ------------------------------------
+# Small experiment on ~250 processed NPZ files.
+# No RL / physics simulation — encoder-alignment phase only.
+#
+# Run:
+#   source .venv_sim/bin/activate
+#   python gear_sonic/training/sonic_train_exp.py \
+#       --config gear_sonic/training/config_sonic_exp.yaml
+
+# ── Data ─────────────────────────────────────────────────────────────────────
+data_dir: /home/grease/ego_dataset/work_bearlu/data/bones-studio-processed
+output_dir: outputs/sonic_exp
+
+# ── Window config ─────────────────────────────────────────────────────────────
+window: 8        # frames per training sample (context + predict)
+stride: 4        # sliding-window step (50% overlap)
+val_ratio: 0.10  # fraction of files held out for validation
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+token_dim: 64    # latent token size shared by E_r, E_h, E_m, D_r
+hidden_dim: 256  # MLP hidden width inside each encoder/decoder
+
+# ── Training ──────────────────────────────────────────────────────────────────
+epochs: 50
+batch_size: 64
+lr: 1.0e-3
+weight_decay: 1.0e-4
+grad_clip: 1.0
+
+# ── Loss weights ──────────────────────────────────────────────────────────────
+# L_total = L_recon + lambda_token * L_token + lambda_cycle * L_cycle
+lambda_token: 0.5
+lambda_cycle: 0.1
