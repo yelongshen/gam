@@ -260,7 +260,7 @@ class SOMAHumanDataLoader:
         try:
             from bvh import Bvh
         except ImportError:
-            logger.warning("bvh-python not installed, trying manual parsing...")
+            # bvh-python not installed — fall through to manual FK parser (expected path)
             return self._parse_bvh_manual(bvh_path)
         
         try:
