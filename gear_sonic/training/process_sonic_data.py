@@ -284,33 +284,85 @@ def main():
     # Load config
     logger.info(f"Loading config from {args.config}")
     config = load_config(args.config)
-    
-    output_dir = config['dataset']['output_dir']
-    
+
+    dataset_config   = config['dataset']
+    processing_config = config['processing']
+    output_config    = config['output']
+    output_dir       = Path(dataset_config['output_dir'])
+    output_dir.mkdir(parents=True, exist_ok=True)
+    fmt              = output_config.get('format', 'npy')
+
     # Process dataset
     if not args.skip_processing:
-        logger.info("Starting data processing...")
-        motions = process_dataset(config, max_motions=args.max_motions)
-        
-        # Save processed data
-        save_processed_data(
-            motions,
-            output_dir,
-            format=config['output']['format'],
+        logger.info("Starting data processing (incremental save — no OOM risk)...")
+
+        data_root     = dataset_config['root']
+        metadata_path = os.path.join(data_root, dataset_config['metadata'])
+        max_motions   = args.max_motions if args.max_motions is not None \
+                        else processing_config.get('max_motions', None)
+
+        processor = SonicDataProcessor(
+            data_root=data_root,
+            metadata_path=metadata_path,
         )
+
+        logger.info(f"Processing dataset with max_motions={max_motions}")
+
+        # ── Streaming: process + save one motion at a time ────────────────
+        # Avoids accumulating all motions in RAM (would need ~50 GB for full set).
+        import pandas as pd
+        df = processor.metadata
+        if max_motions is not None:
+            df = df.head(max_motions)
+
+        saved = failed = 0
+        total = len(df)
+        for i, (idx, row) in enumerate(df.iterrows()):
+            if i % 100 == 0:
+                logger.info(f"Processing motion {i}/{total}...")
+
+            try:
+                motion = processor.process_single_motion(row)
+            except Exception as e:
+                logger.error(f"Motion {i} failed: {e}")
+                failed += 1
+                continue
+
+            if motion is None:
+                failed += 1
+                continue
+
+            # Save immediately — then free from RAM
+            try:
+                out_path = output_dir / f"{motion.move_name}.npz"
+                np.savez_compressed(
+                    out_path,
+                    g_r=motion.g_r,
+                    g_h=motion.g_h,
+                    g_m=motion.g_m,
+                    move_name=motion.move_name,
+                    actor_id=motion.actor_id,
+                    date=motion.date,
+                )
+                saved += 1
+            except Exception as e:
+                logger.error(f"Save failed for {motion.move_name}: {e}")
+                failed += 1
+
+        logger.info(f"Processed {saved}/{total} motions successfully. Failed: {failed}")
     else:
         logger.info("Skipping processing step")
-    
+
     # Create splits
     if not args.skip_splits:
         logger.info("Creating train/val/test splits...")
-        create_data_splits(output_dir, config['split'])
-    
+        create_data_splits(str(output_dir), config['split'])
+
     # Generate statistics
     logger.info("Generating statistics...")
-    stats = generate_statistics(output_dir)
+    stats = generate_statistics(str(output_dir))
     print_statistics(stats)
-    
+
     logger.info("Data processing pipeline complete!")
     logger.info(f"Output directory: {output_dir}")
 
