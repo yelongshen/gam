@@ -8,8 +8,7 @@ dataset:
 
 # Processing
 processing:
-  max_motions: null  # Process ALL motions (null = no limit)
-  # Set to null to process all motions
+  max_motions: null  # Process ALL motions (142,220 total)
   
   # Modality options
   load_g_r: true  # Robot motion
