@@ -46,7 +46,7 @@ clip_eps:       0.2
 vf_coef:        0.5
 ent_coef:       0.01
 max_grad_norm:  1.0
-lr:             3.0e-4
+lr:             1.0e-4      # lower for stability with combined losses
 
 # ── Supervised mini-batch (L_recon + L_token + L_cycle) ─────────────────────
 # Sampled independently from dataset each PPO mini-batch iteration

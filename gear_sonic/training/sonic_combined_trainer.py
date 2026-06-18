@@ -90,7 +90,9 @@ class MotionWindowSampler:
         self.gh_mu,self.gh_sig = all_gh.mean(0),np.where(all_gh.std(0)<1e-3,1.,all_gh.std(0))
 
     @staticmethod
-    def _nan(f): d=np.load(f); return np.isnan(d["g_r"]).any()
+    def _nan(f):
+        d = np.load(f)
+        return np.isnan(d["g_r"]).any() or np.isnan(d["g_h"]).any()
 
     def sample(self, device):
         idx = np.random.randint(0,len(self.wins),self.bs)
@@ -197,7 +199,7 @@ def train(cfg):
         obs_b  = torch.from_numpy(buf.obs).to(device)
         grw_b  = torch.from_numpy(buf.g_r_win).to(device)
         act_b  = torch.from_numpy(buf.actions).to(device)
-        olp_b  = torch.from_numpy(buf.log_probs).to(device)
+        olp_b  = torch.from_numpy(buf.log_probs).to(device).clamp(-20., 0.)  # prevent extreme ratios
         adv_b  = torch.from_numpy(buf.advantages).to(device)
         ret_b  = torch.from_numpy(buf.returns.astype(np.float32)).to(device)
 
@@ -230,8 +232,16 @@ def train(cfg):
                                           lambda_cycle=cfg["lambda_cycle"])
 
                 loss = L_ppo + cfg["vf_coef"]*L_val - cfg["ent_coef"]*ent + L_sup
+                if torch.isnan(loss):
+                    _log(f"  ⚠ NaN loss in iter {itr} — skipping mini-batch")
+                    continue
                 optim.zero_grad(); loss.backward()
                 nn.utils.clip_grad_norm_(all_params, cfg["max_grad_norm"]); optim.step()
+
+                # Reset any NaN weights (can happen early in training)
+                for p in all_params:
+                    if p.data.isnan().any():
+                        nn.init.zeros_(p.data); _log("  ⚠ NaN weight reset")
 
                 st["PPO"]  += L_ppo.item(); st["recon"] += comp["L_recon"]
                 st["token"]+= comp["L_token"]; st["cycle"]+= comp["L_cycle"]

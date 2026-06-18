@@ -86,7 +86,8 @@ class PolicyHead(nn.Module):
 
     def get_action(self, obs: torch.Tensor, z: torch.Tensor):
         mean, log_std = self(obs, z)
-        dist   = Normal(mean, log_std.exp())
+        std  = log_std.exp().clamp(1e-4, 2.0)  # prevent std collapse / explosion
+        dist = Normal(mean, std, validate_args=False)
         action = dist.rsample()
         log_p  = dist.log_prob(action).sum(-1)
         return action, log_p, dist.entropy().sum(-1)
