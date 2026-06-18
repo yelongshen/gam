@@ -2,7 +2,10 @@
 SONIC supervised training experiment (no RL/PPO).
 
 Implements Steps 1–2 of the SONIC training flow with:
-  L_total = L_recon + λ_token * L_token + λ_cycle * L_cycle
+  L_total = L_recon + λ_token * L_token + λ_cycl                loss, comp = sonic_loss(out, g_r,
+                                         lambda_recon=cfg.get("lambda_recon", 1.0),
+                                         lambda_token=cfg["lambda_token"],
+                                         lambda_cycle=cfg["lambda_cycle"])L_cycle
 
 No physics simulation is used — this is the encoder-alignment phase.
 Run with:
@@ -156,6 +159,7 @@ def train(cfg: dict):
             optim.zero_grad()
             out  = model(g_r, g_h, g_m)
             loss, comp = sonic_loss(out, g_r,
+                                    lambda_recon=cfg.get("lambda_recon", 1.0),
                                     lambda_token=cfg["lambda_token"],
                                     lambda_cycle=cfg["lambda_cycle"])
             loss.backward()

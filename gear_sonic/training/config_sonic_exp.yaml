@@ -29,6 +29,8 @@ weight_decay: 1.0e-4
 grad_clip: 1.0
 
 # ── Loss weights ──────────────────────────────────────────────────────────────
-# L_total = L_recon + lambda_token * L_token + lambda_cycle * L_cycle
+# L_total = λ_recon·L_recon + λ_token·L_token + λ_cycle·L_cycle
+# (L_PPO omitted — requires physics simulation; see TRAINING_README.md § Item 3)
+lambda_recon: 1.0
 lambda_token: 0.5
 lambda_cycle: 0.1
