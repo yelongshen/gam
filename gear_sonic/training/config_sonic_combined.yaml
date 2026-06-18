@@ -1,0 +1,60 @@
+# SONIC Combined Training Configuration
+# --------------------------------------
+# Full SONIC training:
+#   L_total = L_PPO + λ_recon·L_recon + λ_token·L_token + λ_cycle·L_cycle
+#
+# All networks updated jointly in one backward():
+#   - E_r, E_h, D_r  ← supervised losses provide representation alignment
+#   - PolicyHead      ← PPO loss trains the policy decoder
+#   - ValueHead       ← value function baseline
+#
+# Run:
+#   source .venv_sim/bin/activate
+#   python gear_sonic/training/sonic_combined_trainer.py \
+#       --config gear_sonic/training/config_sonic_combined.yaml
+
+# ── Data ─────────────────────────────────────────────────────────────────────
+data_dir:   /home/grease/ego_dataset/work_bearlu/data/bones-studio-processed
+output_dir: outputs/sonic_combined
+
+# ── Optional warm-start checkpoints ──────────────────────────────────────────
+encoder_ckpt: outputs/sonic_exp/best_model.pt   # Stage 1 encoder (recommended)
+ppo_ckpt:     null                               # Stage 2 PPO ckpt (optional)
+
+# ── Encoder (E_r, E_h, D_r) ──────────────────────────────────────────────────
+encoder_window: 8
+token_dim:      64
+encoder_hidden: 256
+
+# ── Policy + Value head ───────────────────────────────────────────────────────
+policy_hidden:  256
+
+# ── Simulation ────────────────────────────────────────────────────────────────
+sim_dt:         0.005     # MuJoCo physics timestep (s)
+control_hz:     50.0      # Policy control rate (Hz)
+episode_frames: 300       # Max steps per episode (~6s)
+min_height:     0.3       # Fall threshold (m)
+
+# ── PPO ───────────────────────────────────────────────────────────────────────
+n_iterations:   2000      # Training iterations
+n_steps:        2048      # Rollout steps collected before each update
+ppo_mini_batch: 256       # Mini-batch size for PPO update
+k_epochs:       10        # PPO update epochs per iteration
+gamma:          0.99
+gae_lambda:     0.95
+clip_eps:       0.2
+vf_coef:        0.5
+ent_coef:       0.01
+max_grad_norm:  1.0
+lr:             3.0e-4
+
+# ── Supervised mini-batch (L_recon + L_token + L_cycle) ─────────────────────
+# Sampled independently from dataset each PPO mini-batch iteration
+sup_batch:    256         # Supervised batch size (matched to ppo_mini_batch)
+
+# ── Loss weights ──────────────────────────────────────────────────────────────
+# L_total = L_PPO + vf_coef·L_val - ent_coef·H
+#         + lambda_recon·L_recon + lambda_token·L_token + lambda_cycle·L_cycle
+lambda_recon:  1.0
+lambda_token:  0.5
+lambda_cycle:  0.1
