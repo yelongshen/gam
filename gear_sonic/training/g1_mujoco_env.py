@@ -112,6 +112,10 @@ class G1MuJoCoEnv:
         self.data  = mujoco.MjData(self.model)
         self.model.opt.timestep = sim_dt
 
+        # Second model/data used purely for reference FK (no simulation)
+        self._ref_model = mujoco.MjModel.from_xml_path(scene_xml)
+        self._ref_data  = mujoco.MjData(self._ref_model)
+
         # Actuator indices matching JOINT_NAMES order
         self._act_idx = np.array([
             mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, n)
@@ -194,16 +198,29 @@ class G1MuJoCoEnv:
         return np.concatenate([q, dq, root_pos, rpy, root_vel, ref_q, ref_dq, phase]).astype(np.float32)
 
     def _compute_reward(self, action: np.ndarray) -> float:
+        """Full Table S3 reward using FK on both current and reference state."""
         from gear_sonic.training.rewards import compute_reward
-        q    = self.data.qpos[self._qpos_idx]
-        dq   = self.data.qvel[self._qvel_idx]
-        return compute_reward(
-            q=q, dq=dq,
-            ref_q=self._ref_at(self._step_idx - 1),
-            root_vel=self.data.qvel[:6],
+
+        # Set reference model to the reference joint angles and run FK
+        ref_q_rad = self._ref_at(self._step_idx - 1)   # (29,) radians
+        mujoco.mj_resetData(self._ref_model, self._ref_data)
+        self._ref_data.qpos[2]                    = self.data.qpos[2]  # same height
+        self._ref_data.qpos[3:7]                  = self.data.qpos[3:7]  # same orientation
+        self._ref_data.qpos[self._qpos_idx]        = ref_q_rad
+        # Set ref velocities (finite diff)
+        ref_dq = self._ref_vel_at(self._step_idx - 1)
+        self._ref_data.qvel[self._qvel_idx]        = ref_dq
+        mujoco.mj_forward(self._ref_model, self._ref_data)
+
+        total, _ = compute_reward(
+            model=self.model,
+            data=self.data,
+            ref_model=self._ref_model,
+            ref_data=self._ref_data,
             action=action,
             prev_action=self._prev_action,
         )
+        return total
 
     def _is_done(self) -> bool:
         height = self.data.qpos[2]
