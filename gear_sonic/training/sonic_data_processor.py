@@ -282,60 +282,148 @@ class SOMAHumanDataLoader:
             return None
     
     def _parse_bvh_manual(self, bvh_path: Path) -> Optional[np.ndarray]:
-        """Manual BVH parsing as fallback.
-        
-        Extracts position data from BVH format.
+        """
+        Parse BVH and return SMPL-compatible world-space joint positions.
+
+        Returns: np.ndarray [T, 72]  (24 SMPL joints × 3 coords, in BVH world units)
+
+        The previous implementation incorrectly returned raw BVH channel values
+        (rotation angles), which are meaningless as positions.  This version runs
+        proper forward kinematics to compute the 3-D world position of each joint.
         """
         try:
             with open(bvh_path) as f:
-                lines = f.readlines()
-            
-            # Find MOTION section
-            # BVH layout: … MOTION\n  Frames: N\n  Frame Time: t\n  <data>
-            # The MOTION keyword comes first; Frames/Frame Time follow it.
+                lines = f.read().split('\n')
+
+            # ── 1. Parse hierarchy ────────────────────────────────────────────
+            joints, offsets, channels, parents = [], {}, {}, {}
+            stack, ch_idx, i = [], 0, 0
+            while i < len(lines):
+                line = lines[i].strip()
+                if line.startswith('ROOT ') or line.startswith('JOINT '):
+                    name = line.split()[1]
+                    joints.append(name)
+                    parents[name] = stack[-1] if stack else None
+                    stack.append(name)
+                elif line.startswith('OFFSET') and stack:
+                    p = line.split()
+                    offsets[stack[-1]] = np.array([float(p[1]), float(p[2]), float(p[3])])
+                elif line.startswith('CHANNELS') and stack:
+                    p = line.split(); n = int(p[1])
+                    channels[stack[-1]] = {'start': ch_idx, 'types': p[2:2+n]}
+                    ch_idx += n
+                elif line.startswith('End Site'):   # consume without touching stack
+                    i += 1
+                    while i < len(lines):
+                        if lines[i].strip() == '}': break
+                        i += 1
+                elif line == '}' and stack:
+                    stack.pop()
+                elif line.strip() == 'MOTION':
+                    break
+                i += 1
+
+            # ── 2. Load motion frames ─────────────────────────────────────────
             motion_start_line = None
             motion_idx = None
             num_frames = None
-            frame_time = None
-
             for i, line in enumerate(lines):
                 stripped = line.strip()
-                if stripped == "MOTION":
+                if stripped == 'MOTION':
                     motion_start_line = i
-                elif motion_start_line is not None and stripped.startswith("Frames:"):
+                elif motion_start_line is not None and stripped.startswith('Frames:'):
                     num_frames = int(stripped.split()[1])
-                elif motion_start_line is not None and stripped.startswith("Frame Time:"):
-                    frame_time = float(stripped.split()[2])
-                    # First data frame is the line right after "Frame Time:"
+                elif motion_start_line is not None and stripped.startswith('Frame Time:'):
                     motion_idx = i + 1
                     break
 
             if motion_idx is None or num_frames is None:
                 logger.warning(f"Could not parse BVH header in {bvh_path}")
                 return None
-            
-            # Parse frame data
-            motion = []
-            for i in range(motion_idx, motion_idx + num_frames):
-                if i < len(lines):
-                    frame_vals = [float(x) for x in lines[i].split()]
-                    motion.append(frame_vals)
-            
-            motion = np.array(motion, dtype=np.float32)
-            
-            # Ensure 72 dimensions
-            if motion.shape[1] >= 72:
-                motion = motion[:, :72]  # Take first 72 dims
-            else:
-                logger.warning(
-                    f"BVH has {motion.shape[1]} dims, expected 72. Padding..."
-                )
-                motion = np.pad(motion, ((0, 0), (0, 72 - motion.shape[1])))
-            
-            return motion
-            
+
+            frame_data = []
+            for k in range(motion_idx, motion_idx + num_frames):
+                vals = lines[k].split()
+                if vals:
+                    frame_data.append([float(v) for v in vals])
+            frame_data = np.array(frame_data, dtype=np.float64)
+
+            # ── 3. Forward kinematics ─────────────────────────────────────────
+            def Rx(a): c,s=np.cos(a),np.sin(a); return np.array([[1,0,0],[0,c,-s],[0,s,c]])
+            def Ry(a): c,s=np.cos(a),np.sin(a); return np.array([[c,0,s],[0,1,0],[-s,0,c]])
+            def Rz(a): c,s=np.cos(a),np.sin(a); return np.array([[c,-s,0],[s,c,0],[0,0,1]])
+
+            def fk_frame(frame):
+                wp, wr = {}, {}
+                for j in joints:
+                    if j not in channels:
+                        wp[j] = wp.get(parents.get(j), np.zeros(3)).copy()
+                        wr[j] = wr.get(parents.get(j), np.eye(3)).copy()
+                        continue
+                    ch = channels[j]; start, types = ch['start'], ch['types']
+                    pos_v = [None, None, None]; rot_a, rot_t = [], []
+                    for k, t in enumerate(types):
+                        v = frame[start + k]
+                        if 'position' in t.lower():
+                            pos_v['XYZ'.index(t[0].upper())] = v
+                        else:
+                            rot_a.append(v); rot_t.append(t)
+                    R = np.eye(3)
+                    for ang, t in zip(rot_a, rot_t):
+                        a = np.radians(ang)
+                        if t == 'Xrotation': R = R @ Rx(a)
+                        elif t == 'Yrotation': R = R @ Ry(a)
+                        elif t == 'Zrotation': R = R @ Rz(a)
+                    parent = parents[j]
+                    if parent is None:
+                        wp[j] = np.array([v if v is not None else 0.0 for v in pos_v])
+                        wr[j] = R
+                    else:
+                        lp = np.array([v if v is not None else 0.0 for v in pos_v])
+                        wp[j] = wp.get(parent, np.zeros(3)) + wr.get(parent, np.eye(3)) @ offsets.get(j, np.zeros(3)) + lp
+                        wr[j] = wr.get(parent, np.eye(3)) @ R
+                return wp
+
+            # ── 4. Map SOMA BVH joints → 24 SMPL indices ─────────────────────
+            # SOMA BVH joint name → SMPL joint index (0-based, standard ordering)
+            SOMA_TO_SMPL = {
+                'Hips': 0,          # Pelvis
+                'LeftLeg': 1,       # L_Hip
+                'RightLeg': 2,      # R_Hip
+                'Spine1': 3,        # Spine1
+                'LeftShin': 4,      # L_Knee
+                'RightShin': 5,     # R_Knee
+                'Spine2': 6,        # Spine2
+                'LeftFoot': 7,      # L_Ankle
+                'RightFoot': 8,     # R_Ankle
+                'Chest': 9,         # Spine3
+                'LeftToeBase': 10,  # L_Foot
+                'RightToeBase': 11, # R_Foot
+                'Neck1': 12,        # Neck
+                'LeftShoulder': 13, # L_Collar
+                'RightShoulder': 14,# R_Collar
+                'Head': 15,         # Head
+                'LeftArm': 16,      # L_Shoulder
+                'RightArm': 17,     # R_Shoulder
+                'LeftForeArm': 18,  # L_Elbow
+                'RightForeArm': 19, # R_Elbow
+                'LeftHand': 20,     # L_Wrist
+                'RightHand': 21,    # R_Wrist
+                # joints 22-23 (hands) are finger-tip approx; leave as zero if absent
+            }
+
+            # ── 5. Compute positions for all frames ───────────────────────────
+            result = np.zeros((len(frame_data), 72), dtype=np.float32)
+            for fi, frame in enumerate(frame_data):
+                wp = fk_frame(frame)
+                for bvh_name, smpl_idx in SOMA_TO_SMPL.items():
+                    if bvh_name in wp:
+                        result[fi, smpl_idx * 3: smpl_idx * 3 + 3] = wp[bvh_name]
+
+            return result
+
         except Exception as e:
-            logger.error(f"Manual BVH parsing failed: {e}")
+            logger.error(f"Manual BVH FK parsing failed: {e}")
             return None
 
 
