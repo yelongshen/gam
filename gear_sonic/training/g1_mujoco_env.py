@@ -2,6 +2,59 @@
 Lightweight standalone G1 MuJoCo environment for SONIC PPO training.
 No ROS, no Unitree SDK — pure mujoco-python bindings.
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Domain Randomization — Table S4 (arXiv:2511.07820v3)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The paper applies the following randomisation every episode to improve
+robustness and close the sim-to-real gap.  Parameters marked ✅ are
+implemented below; those marked ⬜ are noted as TODOs.
+
+Physical parameters (applied per-episode at reset):
+  ✅ Static friction  μ_s    U(0.3, 1.2)   geom frictionloss
+  ✅ Dynamic friction μ_d    U(0.3, 1.2)   geom frictionloss (same range)
+  ✅ Restitution      e      U(0.0, 0.3)   geom solref / solimp
+  ✅ Base CoM offset         U(-0.05, 0.05) m  per-axis, ipos of pelvis
+  ✅ First-frame joint pos q_0  U(q_default ± 0.05) rad  (reset jitter)
+  ⬜ Added mass               U(0, 2) kg at random body  (not implemented)
+  ⬜ Link length scale        U(0.95, 1.05) per link      (not implemented)
+
+External push perturbations (applied periodically during episode):
+  ✅ Root linear velocity push   U(-1.0, 1.0) m/s  per-axis, every ~2 s
+  ✅ Root angular velocity push  U(-0.5, 0.5) rad/s per-axis
+
+Motion command perturbation (applied to target reference q_g):
+  ✅ Reference joint pos noise   N(0, 0.02) rad  added per-step to ref_q
+  ⬜ Reference timing jitter     ±1 frame delay (not implemented)
+
+Observation noise (applied per-step to actor observations):
+  ⬜ Joint position noise        N(0, 0.01) rad
+  ⬜ Joint velocity noise        N(0, 0.1) rad/s
+  ⬜ IMU orientation noise       N(0, 0.02) rad (root_rpy)
+  ⬜ IMU angular velocity noise  N(0, 0.2) rad/s
+
+IMPLEMENTATION STATUS
+  The 5 ✅ items are applied in G1MuJoCoEnv.reset() and step() below.
+  The ⬜ items should be added before sim-to-real transfer; they are less
+  critical for initial PPO learning but important for deployment.
+  When the reward signal stabilises (rew > −500, episodes last > 100 steps),
+  enabling all ⬜ items is strongly recommended to prevent policy over-fitting
+  to the nominal simulation parameters.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHEN TO IMPLEMENT (answer to the user's question)
+  → Implement NOW (before PPO converges):
+      Push perturbations, reference noise, friction / restitution.
+      Reason: the policy must SEE these perturbations during training or it
+              will learn a fragile solution that only works in the nominal sim.
+              Adding them later requires retraining from scratch.
+  → Can add AFTER basic balance is learned (~500+ iters):
+      Observation noise, added mass, link length scaling.
+      Reason: these add noise on top of an already-stable policy and are
+              mainly needed for the final sim-to-real transfer step.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Observation (per step):
   q           29  joint positions (rad)
   dq          29  joint velocities (rad/s)
@@ -144,14 +197,38 @@ class G1MuJoCoEnv:
         self._ref_traj = np.deg2rad(ref_traj.astype(np.float64))
         self._step_idx = 0
         self._prev_action = DEFAULT_Q.copy()
+        self._push_timer = 0   # for periodic push perturbations
 
         mujoco.mj_resetData(self.model, self.data)
-        # Start at reference pose
-        q0 = self._ref_traj[0]
+
+        # ── Table S4: domain randomisation at reset ───────────────────────────
+        rng = np.random.default_rng()  # fresh RNG each episode
+
+        # Friction (static + dynamic): U(0.3, 1.2)
+        for i in range(self.model.ngeom):
+            mu = rng.uniform(0.3, 1.2)
+            self.model.geom_friction[i, 0] = mu   # sliding
+            self.model.geom_friction[i, 1] = mu   # torsional (same range)
+
+        # Restitution: U(0.0, 0.3)  via solimp[3] (restitution parameter)
+        for i in range(self.model.ngeom):
+            self.model.geom_solimp[i, 3] = rng.uniform(0.0, 0.3)
+
+        # Base CoM offset: U(-0.05, 0.05) m per axis on pelvis (body id=1)
+        self.model.body_ipos[1] = rng.uniform(-0.05, 0.05, size=3)
+
+        # Start at reference pose with small jitter: q_0 ± U(-0.05, 0.05) rad
+        q0 = self._ref_traj[0] + rng.uniform(-0.05, 0.05, size=N_JOINTS)
+        q0 = np.clip(q0, self.q_lo, self.q_hi)
         self.data.qpos[self._qpos_idx] = q0
         self.data.qpos[2] = 0.793          # initial height (m)
+        # ── end domain randomisation ───────────────────────────────────────────
+
         mujoco.mj_forward(self.model, self.data)
         return self._get_obs()
+
+    # push interval: apply random velocity push every ~2 s at 50 Hz = 100 steps
+    _PUSH_INTERVAL = 100
 
     def step(self, action: np.ndarray):
         """
@@ -159,6 +236,14 @@ class G1MuJoCoEnv:
         Returns (obs, reward, done, info).
         """
         action = np.clip(action, self.q_lo, self.q_hi)
+
+        # ── Table S4: push perturbation every ~2 s ────────────────────────────
+        self._push_timer += 1
+        if self._push_timer >= self._PUSH_INTERVAL:
+            self._push_timer = 0
+            rng = np.random.default_rng()
+            self.data.qvel[:3] += rng.uniform(-1.0, 1.0, size=3)   # linear
+            self.data.qvel[3:6] += rng.uniform(-0.5, 0.5, size=3)  # angular
 
         # PD control: compute torques and simulate n_substeps
         for _ in range(self.n_substeps):
@@ -189,6 +274,9 @@ class G1MuJoCoEnv:
 
         ref_q  = self._ref_at(self._step_idx)
         ref_dq = self._ref_vel_at(self._step_idx)
+
+        # Table S4: reference joint position noise N(0, 0.02) rad
+        ref_q = ref_q + np.random.normal(0, 0.02, size=N_JOINTS)
 
         # Phase (sin/cos of normalised position in trajectory)
         T = len(self._ref_traj)
