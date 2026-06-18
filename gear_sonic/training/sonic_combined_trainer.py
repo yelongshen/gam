@@ -172,10 +172,11 @@ def train(cfg):
                 act, lp, _     = policy.get_action(obs_t, z)
                 val            = critic(obs_t, z)
             action_np = act.squeeze(0).cpu().numpy()
-            action_np = act.squeeze(0).cpu().numpy()
             obs_np2, rew, done, _ = env.step(action_np)
             ep_rew += rew
-            buf.add(_norm(obs_np), g_r_win, action_np, lp.item(), rew, val.item(), float(done))
+            # Normalise reward for PPO stability (FK reward scale is ~[-5000, 0])
+            rew_norm = rew / cfg.get("reward_scale", 1.0)
+            buf.add(_norm(obs_np), g_r_win, action_np, lp.item(), rew_norm, val.item(), float(done))
             obs_np = obs_np2; step_ep += 1
             if done:
                 ep_rewards.append(ep_rew); ep_rew = 0.

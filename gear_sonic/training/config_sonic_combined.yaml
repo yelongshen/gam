@@ -52,7 +52,10 @@ lr:             1.0e-4      # lower for stability with combined losses
 # Sampled independently from dataset each PPO mini-batch iteration
 sup_batch:    256         # Supervised batch size (matched to ppo_mini_batch)
 
-# ── Loss weights ──────────────────────────────────────────────────────────────
+# ── Reward normalisation ──────────────────────────────────────────────────────
+# The full FK reward (Table S3) sums to ~[-5000, 0].
+# Dividing by reward_scale brings it to ~[-1, 0] for stable PPO training.
+reward_scale: 5000.0   # divide env reward by this before storing in buffer
 # L_total = L_PPO + vf_coef·L_val - ent_coef·H
 #         + lambda_recon·L_recon + lambda_token·L_token + lambda_cycle·L_cycle
 lambda_recon:  1.0
