@@ -56,7 +56,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from gear_sonic.training.encoders       import SonicEncoderDecoder
 from gear_sonic.training.g1_mujoco_env import G1MuJoCoEnv, N_JOINTS, OBS_SCALE
-from gear_sonic.training.ppo_trainer    import PolicyHead, ValueHead
+from gear_sonic.training.ppo_trainer    import ValueHead
 
 logging.basicConfig(
     level=logging.INFO,
@@ -73,29 +73,86 @@ def _norm(obs: np.ndarray) -> np.ndarray:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# SonicActor  (matches official Actor from actor_critic_modules.py)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class SonicActor(nn.Module):
+    """
+    Actor with INPUT-INDEPENDENT shared noise std.
+
+    This matches the official Actor in actor_critic_modules.py:
+
+        self.log_std = nn.Parameter(
+            torch.log(init_noise_std * torch.ones(num_actions))
+        )
+        self.distribution = Normal(action_mean,
+                                   (action_mean * 0.0 + self.std).clamp(min=1e-6))
+
+    Using a shared (observation-independent) log_std parameter is the
+    standard approach for locomotion RL (RSL-RL, Isaac Lab, SONIC official).
+    It avoids the entropy-collapse failure mode where the network learns to
+    increase log_std to maximise the entropy bonus instead of tracking motion.
+
+    Official config: init_noise_std = 0.05  (after supervised pre-training)
+    """
+
+    def __init__(self, obs_dim: int, token_dim: int, action_dim: int,
+                 hidden: int, init_noise_std: float = 1.0):
+        super().__init__()
+        in_dim = obs_dim + token_dim
+        self.net = nn.Sequential(
+            nn.Linear(in_dim, hidden), nn.LayerNorm(hidden), nn.ELU(),
+            nn.Linear(hidden, hidden), nn.LayerNorm(hidden), nn.ELU(),
+            nn.Linear(hidden, hidden), nn.ELU(),
+        )
+        self.mean_head = nn.Linear(hidden, action_dim)
+        # Shared log_std — a single learnable vector, NOT input-dependent
+        self.log_std = nn.Parameter(
+            torch.full((action_dim,), float(np.log(init_noise_std)))
+        )
+        nn.init.uniform_(self.mean_head.weight, -0.01, 0.01)
+        nn.init.zeros_(self.mean_head.bias)
+
+    def forward(self, obs: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        """Returns action_mean (B, act_dim)."""
+        return self.mean_head(self.net(torch.cat([obs, z], dim=-1)))
+
+    @property
+    def std(self) -> torch.Tensor:
+        """Clamped std identical to official get_std."""
+        return self.log_std.clamp(-20, 2).exp().clamp(min=1e-6)
+
+    def get_action(self, obs: torch.Tensor, z: torch.Tensor):
+        """Sample action + compute log-prob + entropy (no-grad caller)."""
+        mean = self.forward(obs, z)
+        std  = self.std
+        dist = Normal(mean, std.expand_as(mean), validate_args=False)
+        action   = dist.rsample()
+        log_prob = dist.log_prob(action).sum(-1)
+        entropy  = dist.entropy().sum(-1)
+        return action, log_prob, entropy
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # PolicyAndValueWrapper  (mirrors TRL's PolicyAndValueWrapper)
 # ──────────────────────────────────────────────────────────────────────────────
 
 class PolicyAndValueWrapper(nn.Module):
     """
-    Wraps encoder, policy head, and critic into a single nn.Module.
+    Wraps encoder, SonicActor, and critic into a single nn.Module.
 
     Mirrors TRL's ``PolicyAndValueWrapper`` which exposes:
       - forward_component(mode="policy", ...)  → log-probs, action stats
       - forward_component(mode="value", ...)   → value estimates
 
-    Here we merge both into a single forward() call for simplicity.
-
     Inputs
     ------
     obs  : (B, 130)  normalised proprioceptive + reference observations
     z    : (B, token_dim)  already-encoded reference motion token
-
-    The caller is responsible for computing z via encoder.E_r(g_r_win).
     """
 
     def __init__(self, encoder: SonicEncoderDecoder,
-                 policy: PolicyHead, critic: ValueHead):
+                 policy: SonicActor, critic: ValueHead):
         super().__init__()
         self.encoder = encoder
         self.policy  = policy
@@ -118,13 +175,12 @@ class PolicyAndValueWrapper(nn.Module):
         """
         action, log_p, entropy = self.policy.get_action(obs_t, z_t)
         value = self.critic(obs_t, z_t)
-        mean, log_std = self.policy(obs_t, z_t)
         return {
             "actions":     action,
             "log_prob":    log_p,
             "value":       value,
-            "action_mean": mean,
-            "action_std":  log_std.exp(),
+            "action_mean": self.policy.forward(obs_t, z_t),
+            "action_std":  self.policy.std,
         }
 
     # ── training forward ─────────────────────────────────────────────────────
@@ -137,9 +193,9 @@ class PolicyAndValueWrapper(nn.Module):
 
         Returns dict with keys: log_prob, value, entropy
         """
-        mean, log_std = self.policy(obs_t, z_t)
-        std = log_std.exp().clamp(1e-4, 2.0)
-        dist = Normal(mean, std, validate_args=False)
+        mean  = self.policy(obs_t, z_t)
+        std   = self.policy.std.expand_as(mean)
+        dist  = Normal(mean, std, validate_args=False)
         log_prob = dist.log_prob(actions).sum(-1)
         entropy  = dist.entropy().sum(-1)
         value    = self.critic(obs_t, z_t)
@@ -286,11 +342,15 @@ def train(cfg: dict):
     gamma      = cfg.get("gamma",           0.99)
     lam        = cfg.get("gae_lambda",      0.95)
     clip_eps   = cfg.get("clip_range",       0.2)
-    vf_coef    = cfg.get("vf_coef",          2.0)
+    vf_coef    = cfg.get("vf_coef",          1.0)
     ent_coef   = cfg.get("ent_coef",         0.01)
     max_gnorm  = cfg.get("max_grad_norm",    1.0)
     rew_scale  = cfg.get("reward_scale",  5000.0)
     save_freq  = cfg.get("save_freq",        50)
+    # Adaptive KL learning rate — matches official schedule: "adaptive"
+    desired_kl    = cfg.get("desired_kl",     0.01)
+    adaptive_lr_min = cfg.get("adaptive_lr_min", 1e-5)
+    adaptive_lr_max = cfg.get("adaptive_lr_max", 1e-2)
 
     OBS_DIM = G1MuJoCoEnv.OBS_DIM  # 130
     ACT_DIM = N_JOINTS              # 29
@@ -312,7 +372,11 @@ def train(cfg: dict):
     else:
         _log("No encoder checkpoint — encoder trained jointly with policy")
 
-    policy = PolicyHead(OBS_DIM, token_dim, ACT_DIM, hidden_dim).to(device)
+    # SonicActor: input-independent shared log_std — matches official Actor
+    # init_noise_std=1.0 (random init); use 0.05 when loading from pretrained
+    init_noise_std = cfg.get("init_noise_std", 1.0)
+    policy = SonicActor(OBS_DIM, token_dim, ACT_DIM, hidden_dim,
+                        init_noise_std=init_noise_std).to(device)
     critic = ValueHead(OBS_DIM, token_dim, hidden_dim).to(device)
 
     model  = PolicyAndValueWrapper(encoder, policy, critic)
@@ -486,6 +550,16 @@ def train(cfg: dict):
                 ent_vals.append(entropy.mean().item())
                 kl_vals.append(approx_kl)
 
+        # ── 3b. Adaptive KL learning rate  (official schedule: "adaptive") ──
+        # Mirrors TRLPPOTrainer._adjust_learning_rate_based_on_kl()
+        kl_mean = float(np.mean(kl_vals))
+        if kl_mean > 2.0 * desired_kl:
+            lr = max(lr / 1.5, adaptive_lr_min)
+        elif kl_mean < 0.5 * desired_kl:
+            lr = min(lr * 1.5, adaptive_lr_max)
+        for pg in optimizer.param_groups:
+            pg["lr"] = lr
+
         # ── 4. Logging ────────────────────────────────────────────────────────
         iter_time = time.time() - iter_t0
         mean_rew  = np.mean(list(ep_rew_buf)) if ep_rew_buf else float("nan")
@@ -499,6 +573,8 @@ def train(cfg: dict):
             f"vf={np.mean(vf_losses):.3f} | "
             f"ent={np.mean(ent_vals):.3f} | "
             f"kl={np.mean(kl_vals):.4f} | "
+            f"std={policy.std.mean().item():.4f} | "
+            f"lr={lr:.2e} | "
             f"{iter_time:.1f}s"
         )
         _log(msg)

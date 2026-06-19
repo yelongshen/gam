@@ -1,8 +1,9 @@
 # SONIC Training Configuration (TRL-style)
 # Based on official NVlabs GR00T-WholeBodyControl training setup
+# Reference: gear_sonic/config/algo/ppo_im_phc.yaml
 
 # Environment
-num_steps_per_env: 24  # Rollout length per env per iteration
+num_steps_per_env: 32    # official: num_steps_per_env: 32
 data_dir: "/home/grease/ego_dataset/work_bearlu/data/bones-studio-processed"
 
 # Model Architecture
@@ -11,16 +12,26 @@ token_dim: 64        # Latent token dimension
 hidden_dim: 256      # MLP hidden size
 encoder_ckpt: null   # Path to pretrained encoder checkpoint (null = train jointly)
 
-# PPO Hyperparameters (matching official SONIC Table S1)
-learning_rate: 3.0e-4
-mini_batch_size: 48       # transitions per mini-batch update
-num_ppo_epochs: 5         # PPO epochs per iteration
-gamma: 0.99               # Discount factor
-gae_lambda: 0.95          # GAE λ
-clip_range: 0.2           # PPO clip ε
-vf_coef: 2.0              # Value loss coefficient
-ent_coef: 0.01            # Entropy regularization
-max_grad_norm: 1.0        # Gradient clipping
+# Action noise — matches official Actor
+# Official: init_noise_std = 0.05 (after supervised pre-training)
+# Use 1.0 for random init (no pre-training)
+init_noise_std: 1.0  # shared input-independent std parameter
+
+# PPO Hyperparameters — from official ppo_im_phc.yaml
+learning_rate: 2.0e-5    # official: actor_learning_rate: 2e-5
+mini_batch_size: 48
+num_ppo_epochs: 5        # official: num_learning_epochs: 5
+gamma: 0.99              # official: gamma: 0.99
+gae_lambda: 0.95         # official: lam: 0.95
+clip_range: 0.2          # official: clip_param: 0.2
+vf_coef: 1.0             # official: value_loss_coef: 1.0
+ent_coef: 0.01           # official: entropy_coef: 0.01
+max_grad_norm: 1.0       # official: max_grad_norm: 1.0
+
+# Adaptive KL learning rate — official schedule: "adaptive"
+desired_kl: 0.01         # official: desired_kl: 0.01
+adaptive_lr_min: 1.0e-5  # official: adaptive_lr_min: 1e-5
+adaptive_lr_max: 1.0e-2  # official: adaptive_lr_max: 2e-4 (slightly relaxed)
 
 # Training
 num_iterations: 500
