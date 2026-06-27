@@ -1,0 +1,41 @@
+name: AVPHandStreamer
+options:
+  bundleIdPrefix: com.gamsonic
+  deploymentTarget:
+    visionOS: "2.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "7"        # visionOS
+    SUPPORTS_MACCATALYST: "NO"
+    SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
+
+targets:
+  AVPHandStreamer:
+    type: application
+    platform: visionOS
+    deploymentTarget: "2.0"
+    sources:
+      - path: AVPHandStreamer
+        excludes:
+          - "Info.plist"
+    info:
+      path: AVPHandStreamer/Info.plist
+    entitlements:
+      path: AVPHandStreamer/AVPHandStreamer.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gamsonic.AVPHandStreamer
+        PRODUCT_NAME: AVPHandStreamer
+        INFOPLIST_FILE: AVPHandStreamer/Info.plist
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""          # ← fill in your Team ID or set in Xcode
+        ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "YES"
+        ENABLE_PREVIEWS: "YES"
+    dependencies:
+      - framework: ARKit.framework
+        embed: false
+      - framework: RealityKit.framework
+        embed: false
