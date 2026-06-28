@@ -6,6 +6,10 @@ struct AVPHandStreamerApp: App {
         WindowGroup {
             ContentView()
         }
-        .windowResizability(.contentSize)
+
+        ImmersiveSpace(id: "HandTracking") {
+            ImmersiveView()
+        }
+        .immersionStyle(selection: .constant(.mixed), in: .mixed)
     }
 }

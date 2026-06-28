@@ -21,6 +21,12 @@ echo "[OK] $(xcodebuild -version | head -1)"
 
 # ── 1. Resolve Team ID ────────────────────────────────────────────────────────
 TEAM_ID="${1:-}"
+# First try: read from the project file (most reliable — set via Xcode UI)
+if [[ -z "$TEAM_ID" ]]; then
+    TEAM_ID="$(grep -m1 'DEVELOPMENT_TEAM = ' "$PROJECT/project.pbxproj" \
+               | sed 's/.*DEVELOPMENT_TEAM = \([^;]*\);.*/\1/' | tr -d '[:space:]' || true)"
+fi
+# Second try: keychain certificate
 if [[ -z "$TEAM_ID" ]]; then
     TEAM_ID="$(security find-certificate -a -c 'Apple Development' \
                  -p ~/Library/Keychains/login.keychain-db 2>/dev/null \
@@ -41,7 +47,8 @@ fi
 echo "[INFO] Looking for connected Apple Vision Pro..."
 DEVICE_ID="$(xcrun devicectl list devices 2>/dev/null \
              | grep -i "apple vision" \
-             | awk '{print $NF}' | head -1 || true)"
+             | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' \
+             | head -1 || true)"
 
 if [[ -z "$DEVICE_ID" ]]; then
     echo "[WARN] No Apple Vision Pro found via USB. Will build and archive only."
@@ -59,11 +66,12 @@ xcodebuild \
     -project "$PROJECT" \
     -scheme "$SCHEME" \
     -destination "generic/platform=visionOS" \
+    -sdk xros \
     -archivePath "$ARCHIVE" \
-    ${TEAM_ARG:+"$TEAM_ARG"} \
+    ${TEAM_ARG:+DEVELOPMENT_TEAM="${TEAM_ID}"} \
     CODE_SIGN_STYLE=Automatic \
-    clean archive \
-    | xcpretty 2>/dev/null || cat   # fall back to raw output if xcpretty absent
+    -allowProvisioningUpdates \
+    clean archive
 
 echo "[OK] Archive: $ARCHIVE"
 

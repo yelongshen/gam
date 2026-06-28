@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		12A703179B4BC6A7AECD2710 /* HandStreamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D466B90B2943D1B5D3A2490 /* HandStreamer.swift */; };
+		A1B2C3D4E5F60001AABB0001 /* ImmersiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002AABB0002 /* ImmersiveView.swift */; };
 		49F71F06431FD4FFDDA175CF /* ARKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 864A45F450939ACB7F8585F4 /* ARKit.framework */; };
 		8D35E2FA22E6BA63F64DF5F4 /* AVPHandStreamerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E38DEA6DECDBA47A849AAF /* AVPHandStreamerApp.swift */; };
 		DED497C9FFB52D1023E304FD /* RealityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 611ABF673D483D5276FCA2C5 /* RealityKit.framework */; };
@@ -16,9 +17,10 @@
 
 /* Begin PBXFileReference section */
 		1467CCA3FEC7C745593CED69 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		177147CE8B43A090A3F34D18 /* AVPHandStreamer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AVPHandStreamer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		177147CE8B43A090A3F34D18 /* AVPHandStreamer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AVPHandStreamer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		611ABF673D483D5276FCA2C5 /* RealityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = RealityKit.framework; sourceTree = "<group>"; };
 		6D466B90B2943D1B5D3A2490 /* HandStreamer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandStreamer.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002AABB0002 /* ImmersiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveView.swift; sourceTree = "<group>"; };
 		864A45F450939ACB7F8585F4 /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = ARKit.framework; sourceTree = "<group>"; };
 		90E38DEA6DECDBA47A849AAF /* AVPHandStreamerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVPHandStreamerApp.swift; sourceTree = "<group>"; };
 		A845440F87F032F5E0F0F9AA /* AVPHandStreamer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AVPHandStreamer.entitlements; sourceTree = "<group>"; };
@@ -44,6 +46,7 @@
 				90E38DEA6DECDBA47A849AAF /* AVPHandStreamerApp.swift */,
 				1467CCA3FEC7C745593CED69 /* ContentView.swift */,
 				6D466B90B2943D1B5D3A2490 /* HandStreamer.swift */,
+				A1B2C3D4E5F60002AABB0002 /* ImmersiveView.swift */,
 			);
 			path = AVPHandStreamer;
 			sourceTree = "<group>";
@@ -105,7 +108,6 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					454457EFC7B2490A4458CA2E = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -137,6 +139,7 @@
 				8D35E2FA22E6BA63F64DF5F4 /* AVPHandStreamerApp.swift in Sources */,
 				F94766F21857511E670CE060 /* ContentView.swift in Sources */,
 				12A703179B4BC6A7AECD2710 /* HandStreamer.swift in Sources */,
+				A1B2C3D4E5F60001AABB0001 /* ImmersiveView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -275,7 +278,7 @@
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CODE_SIGN_ENTITLEMENTS = AVPHandStreamer/AVPHandStreamer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = J2LRQM78EB;
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -301,7 +304,7 @@
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CODE_SIGN_ENTITLEMENTS = AVPHandStreamer/AVPHandStreamer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = J2LRQM78EB;
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",

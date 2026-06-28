@@ -1,70 +1,87 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var streamer = HandStreamer()
+    @ObservedObject private var streamer = HandStreamer.shared
+    @Environment(\.openImmersiveSpace) private var openImmersiveSpace
+    @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
+    @State private var spaceIsOpen = false
 
     var body: some View {
-        VStack(spacing: 20) {
-            Text("AVP → G1 Hand Teleop")
-                .font(.title)
+        VStack(spacing: 16) {
+            Text("AVP → G1 Hand Teleop").font(.title)
 
             HStack(spacing: 40) {
                 VStack {
-                    Circle()
-                        .fill(streamer.leftActive ? Color.green : Color.gray)
+                    Circle().fill(streamer.leftActive ? Color.green : Color.gray)
                         .frame(width: 24, height: 24)
-                    Text("Left Hand").font(.caption)
+                    Text("Left").font(.caption)
                 }
                 VStack {
-                    Circle()
-                        .fill(streamer.rightActive ? Color.green : Color.gray)
+                    Circle().fill(streamer.rightActive ? Color.green : Color.gray)
                         .frame(width: 24, height: 24)
-                    Text("Right Hand").font(.caption)
+                    Text("Right").font(.caption)
                 }
             }
 
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                Label("Host IP", systemImage: "network")
-                    .font(.headline)
-                TextField("192.168.1.100", text: $streamer.hostIP)
-                    .textFieldStyle(.roundedBorder)
-                    .keyboardType(.decimalPad)
-                    .frame(width: 200)
-
+                Label("Host IP", systemImage: "network").font(.headline)
+                TextField("192.168.1.13", text: $streamer.hostIP)
+                    .textFieldStyle(.roundedBorder).frame(width: 200)
                 HStack {
                     Label("Port", systemImage: "number")
                     TextField("9870", text: $streamer.portStr)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 80)
+                        .textFieldStyle(.roundedBorder).frame(width: 80)
                 }
             }
 
-            Button(streamer.streaming ? "Stop Streaming" : "Start Streaming") {
-                if streamer.streaming {
-                    streamer.stop()
-                } else {
-                    streamer.start()
+            // Direct openImmersiveSpace — no pre-flight auth call (matches Apple HappyBeam pattern)
+            Button(spaceIsOpen ? "Stop Streaming" : "Start Streaming") {
+                Task {
+                    if spaceIsOpen {
+                        streamer.log("Dismissing space")
+                        await dismissImmersiveSpace()
+                        spaceIsOpen = false
+                        streamer.stop()
+                    } else {
+                        streamer.log("→ openImmersiveSpace()")
+                        switch await openImmersiveSpace(id: "HandTracking") {
+                        case .opened:
+                            streamer.log("✅ space opened")
+                            spaceIsOpen = true
+                            streamer.setupUDP()
+                        case .error:
+                            streamer.log("❌ space FAILED")
+                        case .userCancelled:
+                            streamer.log("space cancelled")
+                        @unknown default:
+                            streamer.log("space unknown result")
+                        }
+                    }
                 }
             }
             .buttonStyle(.borderedProminent)
-            .tint(streamer.streaming ? .red : .blue)
+            .tint(spaceIsOpen ? .red : .blue)
 
-            if streamer.streaming {
-                Text("Streaming at \(streamer.hz, specifier: "%.0f") Hz")
-                    .foregroundColor(.secondary)
-                    .font(.caption)
+            Text("Hz: \(streamer.hz, specifier: "%.0f")  |  \(streamer.sessionStatus)")
+                .font(.caption).foregroundColor(.secondary)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Debug Log:").font(.caption).bold()
+                ForEach(streamer.debugLines, id: \.self) { line in
+                    Text(line).font(.system(size: 11, design: .monospaced))
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             if let err = streamer.errorMessage {
-                Text(err)
-                    .foregroundColor(.red)
-                    .font(.caption)
+                Text(err).foregroundColor(.red).font(.caption)
             }
         }
         .padding(40)
-        .frame(minWidth: 380, minHeight: 340)
-        .onDisappear { streamer.stop() }
+        .frame(minWidth: 520, minHeight: 480)
     }
 }

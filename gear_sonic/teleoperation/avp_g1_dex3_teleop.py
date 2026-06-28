@@ -89,8 +89,30 @@ from unitree_sdk2py.core.channel import (
 )
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import HandCmd_, HandState_
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__HandCmd_
-from unitree_sdk2py.utils.crc import CRC
-from unitree_sdk2py.utils.thread import RecurrentThread
+import threading as _threading
+
+class RecurrentThread:
+    """Cross-platform replacement for unitree_sdk2py RecurrentThread (uses threading.Timer)."""
+    def __init__(self, interval, target, name="RecurrentThread"):
+        self._interval = interval
+        self._target   = target
+        self._name     = name
+        self._stop_evt = _threading.Event()
+        self._thread   = None
+
+    def _run(self):
+        while not self._stop_evt.wait(self._interval):
+            self._target()
+
+    def Start(self):
+        self._stop_evt.clear()
+        self._thread = _threading.Thread(target=self._run, name=self._name, daemon=True)
+        self._thread.start()
+
+    def Stop(self):
+        self._stop_evt.set()
+        if self._thread:
+            self._thread.join(timeout=2.0)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 UDP_PORT   = 9870
@@ -125,89 +147,66 @@ J_MID_IT       = 13
 J_MID_TIP      = 14
 
 
-# ── Geometry helpers ──────────────────────────────────────────────────────────
+# ── DexPilot retargeting (official Unitree algorithm) ────────────────────────
+# Uses dex-retargeting library with pinocchio IK.
+# DexPilot takes 6 fingertip-pair direction vectors and solves the 7-DOF Dex3
+# joint configuration via nonlinear optimization.
 
-def _p(joints: list, idx: int) -> np.ndarray:
-    return np.array(joints[idx], dtype=np.float64)
+import yaml as _yaml
+from pathlib import Path as _Path
+from dex_retargeting.retargeting_config import RetargetingConfig as _RetargetingConfig
 
+_ASSETS = _Path(__file__).parent / "assets"
+_RetargetingConfig.set_default_urdf_dir(str(_ASSETS))
+_cfg_yaml = _yaml.safe_load((_ASSETS / "unitree_hand/unitree_dex3.yml").read_text())
 
-def _angle(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:
-    """Angle at joint B in radians."""
-    v1, v2 = a - b, c - b
-    n1, n2 = np.linalg.norm(v1), np.linalg.norm(v2)
-    if n1 < 1e-6 or n2 < 1e-6:
-        return 0.0
-    return float(np.arccos(np.clip(np.dot(v1, v2) / (n1 * n2), -1.0, 1.0)))
+def _fix_dexpilot_cfg(d: dict) -> dict:
+    d = dict(d)
+    if "target_link_human_indices_dexpilot" in d:
+        d["target_link_human_indices"] = d.pop("target_link_human_indices_dexpilot")
+    for k in ("target_link_human_indices_vector", "target_origin_link_names",
+              "target_task_link_names", "scaling_factor"):
+        d.pop(k, None)
+    return d
 
+_left_retarget  = _RetargetingConfig.from_dict(_fix_dexpilot_cfg(_cfg_yaml["left"])).build()
+_right_retarget = _RetargetingConfig.from_dict(_fix_dexpilot_cfg(_cfg_yaml["right"])).build()
 
-def _lateral(wrist: np.ndarray, thumb_kn: np.ndarray,
-             idx_kn: np.ndarray) -> float:
-    """Thumb abduction angle relative to palm plane."""
-    palm = idx_kn - wrist
-    thumb = thumb_kn - wrist
-    np_ = np.linalg.norm(palm)
-    nt  = np.linalg.norm(thumb)
-    if np_ < 1e-6 or nt < 1e-6:
-        return 0.0
-    palm /= np_
-    cos_a = np.clip(np.dot(palm, thumb / nt), -1.0, 1.0)
-    return float(np.arccos(cos_a)) - np.pi / 2.0
+# Hardware joint order (from Unitree hand_retargeting.py)
+_LEFT_HW_JOINTS  = ["left_hand_thumb_0_joint",  "left_hand_thumb_1_joint",  "left_hand_thumb_2_joint",
+                    "left_hand_middle_0_joint",  "left_hand_middle_1_joint",
+                    "left_hand_index_0_joint",   "left_hand_index_1_joint"]
+_RIGHT_HW_JOINTS = ["right_hand_thumb_0_joint", "right_hand_thumb_1_joint", "right_hand_thumb_2_joint",
+                    "right_hand_index_0_joint",  "right_hand_index_1_joint",
+                    "right_hand_middle_0_joint", "right_hand_middle_1_joint"]
 
+_left_to_hw  = [_left_retarget.joint_names.index(n)  for n in _LEFT_HW_JOINTS]
+_right_to_hw = [_right_retarget.joint_names.index(n) for n in _RIGHT_HW_JOINTS]
+_left_indices  = _left_retarget.optimizer.target_link_human_indices   # shape (2,6)
+_right_indices = _right_retarget.optimizer.target_link_human_indices
 
-# ── Retargeting ───────────────────────────────────────────────────────────────
 
 def retarget(joints: list, is_right: bool) -> np.ndarray:
     """
-    Map AVP 27-joint list → Dex3 7-DOF motor targets (radians).
+    Map AVP 27-joint list → Dex3 7-DOF motor targets using the official
+    Unitree DexPilot algorithm (pinocchio IK via dex-retargeting library).
 
-    joints : list of 27 entries, each [x, y, z]  (meters, world frame)
+    DexPilot feeds 6 fingertip-pair direction vectors to a nonlinear optimizer
+    that solves the robot joint angles satisfying those tip-to-tip directions.
+    This is the same algorithm used in unitreerobotics/xr_teleoperate.
     """
     if len(joints) < 15:
         return np.zeros(MOTOR_NUM)
 
-    wrist     = _p(joints, J_WRIST)
-    thumb_kn  = _p(joints, J_THUMB_KN)
-    thumb_ib  = _p(joints, J_THUMB_IB)
-    thumb_it  = _p(joints, J_THUMB_IT)
-    thumb_tip = _p(joints, J_THUMB_TIP)
-    idx_kn    = _p(joints, J_IDX_KN)
-    idx_ib    = _p(joints, J_IDX_IB)
-    idx_tip   = _p(joints, J_IDX_TIP)
-    mid_kn    = _p(joints, J_MID_KN)
-    mid_ib    = _p(joints, J_MID_IB)
-    mid_tip   = _p(joints, J_MID_TIP)
+    pts = np.array(joints, dtype=np.float64)   # (27, 3)
+    retargeter = _right_retarget if is_right else _left_retarget
+    indices    = _right_indices  if is_right else _left_indices
+    to_hw      = _right_to_hw   if is_right else _left_to_hw
 
-    sign = 1.0 if is_right else -1.0
-
-    # Motor 0: thumb abduction
-    q0 = np.clip(sign * _lateral(wrist, thumb_kn, idx_kn) * 0.6,
-                 JOINT_MIN[0], JOINT_MAX[0])
-
-    # Motor 1: thumb MCP flex
-    q1 = np.clip((np.pi - _angle(wrist, thumb_ib, thumb_it)) * 0.8 * -1,
-                 JOINT_MIN[1], JOINT_MAX[1])
-
-    # Motor 2: thumb IP flex
-    q2 = np.clip((np.pi - _angle(thumb_ib, thumb_it, thumb_tip)) * 0.9,
-                 JOINT_MIN[2], JOINT_MAX[2])
-
-    # Motor 3: index MCP flex
-    q3 = np.clip(-(np.pi - _angle(wrist, idx_kn, idx_ib)) * 0.9,
-                 JOINT_MIN[3], JOINT_MAX[3])
-
-    # Motor 4: index PIP flex
-    q4 = np.clip(-(np.pi - _angle(idx_kn, idx_ib, idx_tip)) * 0.9,
-                 JOINT_MIN[4], JOINT_MAX[4])
-
-    # Motor 5: middle MCP flex
-    q5 = np.clip(-(np.pi - _angle(wrist, mid_kn, mid_ib)) * 0.9,
-                 JOINT_MIN[5], JOINT_MAX[5])
-
-    # Motor 6: middle PIP flex
-    q6 = np.clip(-(np.pi - _angle(mid_kn, mid_ib, mid_tip)) * 0.9,
-                 JOINT_MIN[6], JOINT_MAX[6])
-
-    return np.array([q0, q1, q2, q3, q4, q5, q6], dtype=np.float64)
+    # Build 6 direction vectors: tip_to[i] - tip_from[i]
+    ref = pts[indices[1]] - pts[indices[0]]    # shape (6, 3)
+    q_retarget = retargeter.retarget(ref)      # solver order
+    return q_retarget[to_hw]                   # hardware order [thumb0,1,2, idx0,1, mid0,1]
 
 
 # ── UDP receiver thread ───────────────────────────────────────────────────────
@@ -287,7 +286,6 @@ class Dex3Commander:
         self._left_pub.Init()
         self._right_pub.Init()
 
-        self._crc = CRC()
         self._receiver = receiver
         self._q_left  = np.zeros(MOTOR_NUM)
         self._q_right = np.zeros(MOTOR_NUM)
@@ -304,7 +302,7 @@ class Dex3Commander:
             m.kp  = KP[i]
             m.kd  = KD[i]
             m.mode = (i & 0x0F) | (0x01 << 4) | (0x01 << 7)
-        cmd.crc = self._crc.Crc(cmd)
+        # HandCmd_ does not use CRC (unlike LowCmd_) — per official Unitree examples
         return cmd
 
     def _control_loop(self):
@@ -345,12 +343,19 @@ def main():
                     help="Network interface connected to G1 (default: enp36s0f1)")
     ap.add_argument("--port", type=int, default=UDP_PORT,
                     help=f"UDP port to receive AVP hand data (default: {UDP_PORT})")
+    ap.add_argument("--print-only", action="store_true",
+                    help="Print raw joint angles only; do not connect to G1")
     args = ap.parse_args()
 
-    print(f"[Info] PC IP: ", end="")
-    import subprocess
-    print(subprocess.check_output("hostname -I | awk '{print $1}'",
-                                  shell=True).decode().strip())
+    # Detect local IP (cross-platform: connect a UDP socket to get the outbound IP)
+    try:
+        _s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        _s.connect(("8.8.8.8", 80))
+        _local_ip = _s.getsockname()[0]
+        _s.close()
+    except Exception:
+        _local_ip = socket.gethostbyname(socket.gethostname())
+    print(f"[Info] PC IP: {_local_ip}")
     print(f"[Info] Waiting for AVPHandStreamer app on UDP port {args.port} ...")
     print(f"[Info] Enter this IP and port {args.port} in the AVP app.\n")
 
@@ -364,6 +369,32 @@ def main():
             break
         time.sleep(0.1)
     print("[AVP] Hand data received! Starting G1 control.\n")
+
+    if args.print_only:
+        print("[Info] --print-only mode: printing raw joint angles, no G1 connection.\n")
+        try:
+            while True:
+                l_joints, r_joints, la, ra = receiver.get()
+                ql = retarget(l_joints, is_right=False) if la else np.zeros(MOTOR_NUM)
+                qr = retarget(r_joints, is_right=True)  if ra else np.zeros(MOTOR_NUM)
+                print(
+                    f"  L({'ON ' if la else 'OFF'}): "
+                    f"abd={ql[0]:+.2f} tmcp={ql[1]:+.2f} tip={ql[2]:+.2f} "
+                    f"imcp={ql[3]:+.2f} ipip={ql[4]:+.2f} "
+                    f"mmcp={ql[5]:+.2f} mpip={ql[6]:+.2f}"
+                )
+                print(
+                    f"  R({'ON ' if ra else 'OFF'}): "
+                    f"abd={qr[0]:+.2f} tmcp={qr[1]:+.2f} tip={qr[2]:+.2f} "
+                    f"imcp={qr[3]:+.2f} ipip={qr[4]:+.2f} "
+                    f"mmcp={qr[5]:+.2f} mpip={qr[6]:+.2f}"
+                )
+                time.sleep(0.1)
+        except KeyboardInterrupt:
+            print("\n[Info] Shutting down...")
+        finally:
+            receiver.stop()
+        return
 
     commander = Dex3Commander(network_interface=args.net, receiver=receiver)
     commander.start()
