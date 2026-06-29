@@ -161,14 +161,17 @@ _RetargetingConfig.set_default_urdf_dir(str(_ASSETS))
 _cfg_yaml = _yaml.safe_load((_ASSETS / "unitree_hand/unitree_dex3.yml").read_text())
 
 def _make_vector_cfg(d: dict) -> dict:
-    """Extract the 'vector' (Geometric) retargeting config from the combined YAML entry."""
-    d = dict(d)
-    d["type"] = "vector"
-    if "target_link_human_indices_vector" in d:
-        d["target_link_human_indices"] = d.pop("target_link_human_indices_vector")
-    for k in ("target_link_human_indices_dexpilot", "wrist_link_name", "finger_tip_link_names"):
-        d.pop(k, None)
-    return d
+    """Build a clean 'vector' (Geometric) retargeting config dict."""
+    return {
+        "type": "vector",
+        "urdf_path": d["urdf_path"],
+        "target_joint_names": d["target_joint_names"],
+        "target_origin_link_names": d["target_origin_link_names"],
+        "target_task_link_names": d["target_task_link_names"],
+        "target_link_human_indices": np.array(d["target_link_human_indices_vector"]),
+        "scaling_factor": d.get("scaling_factor", 1.0),
+        "low_pass_alpha": d.get("low_pass_alpha", 0.2),
+    }
 
 _left_retarget  = _RetargetingConfig.from_dict(_make_vector_cfg(_cfg_yaml["left"])).build()
 _right_retarget = _RetargetingConfig.from_dict(_make_vector_cfg(_cfg_yaml["right"])).build()
@@ -183,8 +186,53 @@ _RIGHT_HW_JOINTS = ["right_hand_thumb_0_joint", "right_hand_thumb_1_joint", "rig
 
 _left_to_hw  = [_left_retarget.joint_names.index(n)  for n in _LEFT_HW_JOINTS]
 _right_to_hw = [_right_retarget.joint_names.index(n) for n in _RIGHT_HW_JOINTS]
-_left_indices  = _left_retarget.optimizer.target_link_human_indices   # shape (2,6)
+_left_indices  = _left_retarget.optimizer.target_link_human_indices   # shape (2,3)
 _right_indices = _right_retarget.optimizer.target_link_human_indices
+
+# Coordinate transform: AVP visionOS world frame → robot URDF base_link frame.
+# In visionOS (standing, palm facing forward toward robot):
+#   +X = right, +Y = up, +Z = toward viewer (away from robot = dorsal for palm-forward)
+# In robot URDF base_link frame:
+#   +X ≈ dorsal (back of hand), -Y = distal (finger extension), ±Z = lateral
+# Mapping: negate X and Y; keep Z.  det([[-1,0,0],[0,-1,0],[0,0,1]]) = +1
+# For LEFT hand the lateral direction (Z) is mirrored.
+_R_AVP2ROBOT_RIGHT = np.array([[-1.,0.,0.],[0.,-1.,0.],[0.,0., 1.]])
+_R_AVP2ROBOT_LEFT  = np.array([[-1.,0.,0.],[0.,-1.,0.],[0.,0.,-1.]])
+
+
+def _thumb_angles_geometric(pts: np.ndarray, is_right: bool) -> np.ndarray:
+    """Compute Dex3 thumb joint angles directly from AVP joint positions.
+
+    Returns [thumb_0_abd, thumb_1_mcp, thumb_2_ip] in radians.
+    """
+    p_w   = pts[0]   # wrist
+    p_th  = pts[4]   # thumb tip
+    p_idx = pts[9]   # index tip
+
+    v_th  = p_th  - p_w
+    v_idx = p_idx - p_w
+
+    # Abduction: separation angle between thumb and index finger directions
+    cos_sep   = np.clip(np.dot(v_th / (np.linalg.norm(v_th)+1e-8),
+                                v_idx / (np.linalg.norm(v_idx)+1e-8)), -1., 1.)
+    sep_angle = np.arccos(cos_sep)
+    thumb_abd = float(np.clip(sep_angle * (1.745 / 1.2), 0., 1.745))
+
+    # Flexion: thumb-tip ↔ index-tip distance, normalised by wrist-to-middle-tip
+    # (middle-tip is a stable reference that doesn't change with thumb/pinch motion).
+    # Open:   ti_dist/wm_dist ≈ 0.65 → flex_t = 0
+    # Pinch:  ti_dist/wm_dist ≈ 0.05 → flex_t = 1
+    # Fist:   ti_dist/wm_dist ≈ 0.25 → flex_t = 0.6
+    p_mid     = pts[14]  # middle tip
+    ti_dist   = np.linalg.norm(p_th - p_idx)
+    wm_dist   = np.linalg.norm(p_mid - p_w) + 1e-8
+    ratio     = ti_dist / wm_dist
+    # Map: 0.65 (open) → 0,  0.0 (pinched) → 1
+    flex_t    = float(np.clip(1.0 - ratio / 0.65, 0., 1.))
+    thumb_mcp = flex_t * 1.2   # [0, 1.571]
+    thumb_ip  = flex_t * 1.4   # [0, 1.745]
+
+    return np.array([thumb_abd, thumb_mcp, thumb_ip])
 
 
 def retarget(joints: list, is_right: bool) -> np.ndarray:
@@ -192,21 +240,26 @@ def retarget(joints: list, is_right: bool) -> np.ndarray:
     Map AVP 27-joint list → Dex3 7-DOF motor targets using the Geometric
     (vector) algorithm (pinocchio IK via dex-retargeting library).
 
-    Builds 3 wrist→fingertip vectors (thumb, index, middle) and solves robot
-    joint angles that minimise the distance between robot and human tip vectors.
+    Index/middle: vector optimizer with AVP→robot coordinate transform.
+    Thumb: direct geometric mapping (abduction angle + pinch distance).
     """
     if len(joints) < 15:
         return np.zeros(MOTOR_NUM)
 
-    pts = np.array(joints, dtype=np.float64)   # (27, 3)
+    pts        = np.array(joints, dtype=np.float64)
     retargeter = _right_retarget if is_right else _left_retarget
     indices    = _right_indices  if is_right else _left_indices
     to_hw      = _right_to_hw   if is_right else _left_to_hw
+    R          = _R_AVP2ROBOT_RIGHT if is_right else _R_AVP2ROBOT_LEFT
 
-    # Build 3 wrist→tip vectors: [thumb_tip - wrist, index_tip - wrist, middle_tip - wrist]
-    ref = pts[indices[1]] - pts[indices[0]]    # shape (3, 3)
-    q_retarget = retargeter.retarget(ref)      # solver order
-    return q_retarget[to_hw]                   # hardware order [thumb0,1,2, idx0,1, mid0,1]
+    # Rotate wrist→tip vectors into robot frame, then optimise
+    raw_ref    = pts[indices[1]] - pts[indices[0]]   # shape (3, 3)
+    ref        = (R @ raw_ref.T).T                   # shape (3, 3) in robot frame
+    q          = retargeter.retarget(ref)[to_hw]     # hardware order
+
+    # Override thumb with geometric angles (vector solver gives poor thumb coverage)
+    q[0], q[1], q[2] = _thumb_angles_geometric(pts, is_right)
+    return q
 
 
 # ── UDP receiver thread ───────────────────────────────────────────────────────
