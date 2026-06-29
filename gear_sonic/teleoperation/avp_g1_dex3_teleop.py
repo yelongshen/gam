@@ -160,17 +160,18 @@ _ASSETS = _Path(__file__).parent / "assets"
 _RetargetingConfig.set_default_urdf_dir(str(_ASSETS))
 _cfg_yaml = _yaml.safe_load((_ASSETS / "unitree_hand/unitree_dex3.yml").read_text())
 
-def _fix_dexpilot_cfg(d: dict) -> dict:
+def _make_vector_cfg(d: dict) -> dict:
+    """Extract the 'vector' (Geometric) retargeting config from the combined YAML entry."""
     d = dict(d)
-    if "target_link_human_indices_dexpilot" in d:
-        d["target_link_human_indices"] = d.pop("target_link_human_indices_dexpilot")
-    for k in ("target_link_human_indices_vector", "target_origin_link_names",
-              "target_task_link_names", "scaling_factor"):
+    d["type"] = "vector"
+    if "target_link_human_indices_vector" in d:
+        d["target_link_human_indices"] = d.pop("target_link_human_indices_vector")
+    for k in ("target_link_human_indices_dexpilot", "wrist_link_name", "finger_tip_link_names"):
         d.pop(k, None)
     return d
 
-_left_retarget  = _RetargetingConfig.from_dict(_fix_dexpilot_cfg(_cfg_yaml["left"])).build()
-_right_retarget = _RetargetingConfig.from_dict(_fix_dexpilot_cfg(_cfg_yaml["right"])).build()
+_left_retarget  = _RetargetingConfig.from_dict(_make_vector_cfg(_cfg_yaml["left"])).build()
+_right_retarget = _RetargetingConfig.from_dict(_make_vector_cfg(_cfg_yaml["right"])).build()
 
 # Hardware joint order (from Unitree hand_retargeting.py)
 _LEFT_HW_JOINTS  = ["left_hand_thumb_0_joint",  "left_hand_thumb_1_joint",  "left_hand_thumb_2_joint",
@@ -188,12 +189,11 @@ _right_indices = _right_retarget.optimizer.target_link_human_indices
 
 def retarget(joints: list, is_right: bool) -> np.ndarray:
     """
-    Map AVP 27-joint list → Dex3 7-DOF motor targets using the official
-    Unitree DexPilot algorithm (pinocchio IK via dex-retargeting library).
+    Map AVP 27-joint list → Dex3 7-DOF motor targets using the Geometric
+    (vector) algorithm (pinocchio IK via dex-retargeting library).
 
-    DexPilot feeds 6 fingertip-pair direction vectors to a nonlinear optimizer
-    that solves the robot joint angles satisfying those tip-to-tip directions.
-    This is the same algorithm used in unitreerobotics/xr_teleoperate.
+    Builds 3 wrist→fingertip vectors (thumb, index, middle) and solves robot
+    joint angles that minimise the distance between robot and human tip vectors.
     """
     if len(joints) < 15:
         return np.zeros(MOTOR_NUM)
@@ -203,8 +203,8 @@ def retarget(joints: list, is_right: bool) -> np.ndarray:
     indices    = _right_indices  if is_right else _left_indices
     to_hw      = _right_to_hw   if is_right else _left_to_hw
 
-    # Build 6 direction vectors: tip_to[i] - tip_from[i]
-    ref = pts[indices[1]] - pts[indices[0]]    # shape (6, 3)
+    # Build 3 wrist→tip vectors: [thumb_tip - wrist, index_tip - wrist, middle_tip - wrist]
+    ref = pts[indices[1]] - pts[indices[0]]    # shape (3, 3)
     q_retarget = retargeter.retarget(ref)      # solver order
     return q_retarget[to_hw]                   # hardware order [thumb0,1,2, idx0,1, mid0,1]
 

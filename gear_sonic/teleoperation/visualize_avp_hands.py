@@ -67,7 +67,7 @@ def _draw_avp(ax, joints, active, side):
     ax.text(w[0], w[1], w[2], f" {side}", fontsize=7, color="white", alpha=a)
 
 # ---------------------------------------------------------------------------
-# Retargeting — official Unitree DexPilot algorithm via dex-retargeting
+# Retargeting — Geometric (vector) algorithm via dex-retargeting
 # ---------------------------------------------------------------------------
 
 MOTOR_NUM = 7
@@ -81,17 +81,18 @@ _ASSETS = _Path(__file__).parent / "assets"
 _RetargetingConfig.set_default_urdf_dir(str(_ASSETS))
 _cfg_yaml = _yaml.safe_load((_ASSETS / "unitree_hand/unitree_dex3.yml").read_text())
 
-def _fix_dexpilot_cfg(d):
+def _make_vector_cfg(d):
+    """Extract the 'vector' (Geometric) retargeting config from the combined YAML entry."""
     d = dict(d)
-    if "target_link_human_indices_dexpilot" in d:
-        d["target_link_human_indices"] = d.pop("target_link_human_indices_dexpilot")
-    for k in ("target_link_human_indices_vector","target_origin_link_names",
-              "target_task_link_names","scaling_factor"):
+    d["type"] = "vector"
+    if "target_link_human_indices_vector" in d:
+        d["target_link_human_indices"] = d.pop("target_link_human_indices_vector")
+    for k in ("target_link_human_indices_dexpilot", "wrist_link_name", "finger_tip_link_names"):
         d.pop(k, None)
     return d
 
-_left_retarget  = _RetargetingConfig.from_dict(_fix_dexpilot_cfg(_cfg_yaml["left"])).build()
-_right_retarget = _RetargetingConfig.from_dict(_fix_dexpilot_cfg(_cfg_yaml["right"])).build()
+_left_retarget  = _RetargetingConfig.from_dict(_make_vector_cfg(_cfg_yaml["left"])).build()
+_right_retarget = _RetargetingConfig.from_dict(_make_vector_cfg(_cfg_yaml["right"])).build()
 
 _LEFT_HW  = ["left_hand_thumb_0_joint","left_hand_thumb_1_joint","left_hand_thumb_2_joint",
              "left_hand_middle_0_joint","left_hand_middle_1_joint",
@@ -101,18 +102,22 @@ _RIGHT_HW = ["right_hand_thumb_0_joint","right_hand_thumb_1_joint","right_hand_t
              "right_hand_middle_0_joint","right_hand_middle_1_joint"]
 _left_to_hw  = [_left_retarget.joint_names.index(n)  for n in _LEFT_HW]
 _right_to_hw = [_right_retarget.joint_names.index(n) for n in _RIGHT_HW]
-_left_indices  = _left_retarget.optimizer.target_link_human_indices
+_left_indices  = _left_retarget.optimizer.target_link_human_indices   # shape (2,3)
 _right_indices = _right_retarget.optimizer.target_link_human_indices
 
 def retarget(joints, is_right):
-    """DexPilot retargeting: AVP 27-joint -> Dex3 7-DOF (hardware order)."""
+    """Geometric (vector) retargeting: AVP 27-joint -> Dex3 7-DOF (hardware order).
+
+    Builds 3 wrist→fingertip vectors (thumb, index, middle) and solves robot
+    joint angles that minimise the distance between robot and human tip vectors.
+    """
     if len(joints) < 15:
         return np.zeros(MOTOR_NUM)
     pts        = np.array(joints, dtype=np.float64)
     retargeter = _right_retarget if is_right else _left_retarget
     indices    = _right_indices  if is_right else _left_indices
     to_hw      = _right_to_hw   if is_right else _left_to_hw
-    ref = pts[indices[1]] - pts[indices[0]]   # 6 tip-pair direction vectors
+    ref = pts[indices[1]] - pts[indices[0]]   # shape (3, 3): 3 wrist→tip vectors
     return retargeter.retarget(ref)[to_hw]
 
 # ---------------------------------------------------------------------------
