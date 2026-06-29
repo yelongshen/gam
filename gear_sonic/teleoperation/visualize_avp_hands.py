@@ -440,8 +440,10 @@ def main():
     # Keep a strong reference so FuncAnimation is not garbage-collected
     _ani = FuncAnimation(fig, update, interval=50, cache_frame_data=False)
 
+    plt.show(block=False)
     try:
-        plt.show()   # blocks until window is closed
+        while plt.get_fignums():   # loop until window is closed
+            plt.pause(0.05)
     except KeyboardInterrupt:
         pass
     finally:
