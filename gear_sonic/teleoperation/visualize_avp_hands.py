@@ -107,55 +107,50 @@ _right_to_hw = [_right_retarget.joint_names.index(n) for n in _RIGHT_HW]
 _left_indices  = _left_retarget.optimizer.target_link_human_indices   # shape (2,6) for DexPilot
 _right_indices = _right_retarget.optimizer.target_link_human_indices
 
-# Coordinate transform: AVP visionOS (OpenXR) world frame → Unitree URDF hand frame.
-# Official pipeline from unitreerobotics/televuer tv_wrapper.py:
-#   Step 1: change basis OpenXR → Robot:  R_ROBOT_OPENXR = [[0,0,-1],[-1,0,0],[0,1,0]]
-#   Step 2: wrist-relative vectors (pts[tip]-pts[wrist] cancels translation)
-#   Step 3: change initial pose convention:  T_TO_UNITREE_HAND_rot = [[0,0,1],[-1,0,0],[0,-1,0]]
-# Combined: R = T_TO_UNITREE_HAND_rot @ R_ROBOT_OPENXR = [[0,1,0],[0,0,1],[1,0,0]]
-# In OpenXR/visionOS:  +Y=up, +X=right, -Z=toward robot (finger extension direction)
-# In Unitree URDF:     +X=dorsal, -Y=distal (finger extension), ±Z=lateral
-# Mapping: (-Z in OpenXR) → (-Y in URDF)  ✓  both hands use same transform (official)
-_R_AVP2ROBOT_RIGHT = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
-_R_AVP2ROBOT_LEFT  = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
+# Coordinate transform: wrist-local geometric frame → Unitree URDF hand frame.
+# Derived as R_old @ R_wrist_local_to_world, where R_old=[[0,1,0],[0,0,1],[1,0,0]]
+# was the original OpenXR-world → URDF rotation, and the wrist-local frame has:
+#   x_local = OpenXR +X (ulnar)   y_local = OpenXR -Z (distal)   z_local = OpenXR +Y (dorsal)
+# Mapping:
+#   x_local (ulnar)  → URDF +Z      y_local (distal) → URDF -Y      z_local (dorsal) → URDF +X
+# Verification: URDF zero-pose fingertip at (0, -0.174, ±0.029) → both -Y (distal ✓) and ±Z (lateral ✓)
+_R_WRIST_TO_URDF = np.array([[0., 0., 1.],
+                              [0.,-1., 0.],
+                              [1., 0., 0.]])
 
 
-def _pts_to_wrist_frame(pts: np.ndarray) -> np.ndarray:
+def _pts_to_wrist_frame(pts: np.ndarray, is_right: bool) -> np.ndarray:
     """Transform 25 joint positions into the estimated wrist-local frame.
 
-    The official xr_teleoperate pipeline (tv_wrapper.py) does this via
-    fast_mat_inv(wrist_pose) using the XR device's tracked SE(3) wrist pose.
-    Our UDP stream sends joint positions only, so we reconstruct the wrist
-    rotation from hand geometry using three stable palm landmarks:
-
+    Replicates tv_wrapper.py fast_mat_inv(wrist_pose) using hand geometry.
+    Axes are defined consistently for both hands so _R_WRIST_TO_URDF applies:
       origin : wrist (joint 0)
-      y-axis : wrist → middle metacarpal (joint 10) — distal direction
-      x-axis : index metacarpal (5) → pinky metacarpal (20), orth. to y — ulnar
-      z-axis : x × y — dorsal direction
-
-    After this transform, DexPilot vectors are invariant to wrist rotation
-    in world space (open hand + wrist rotation → same retargeted output).
+      y-axis : wrist → middle metacarpal (joint 10) — distal
+      x-axis : ulnar direction (toward pinky), orthogonalized against y
+               For right hand: pts[20]-pts[5]; for left hand negated so dorsal
+               z = x×y always points dorsally (right-handed frame).
+      z-axis : x × y — dorsal
     """
     origin = pts[0]
-    # Distal axis: wrist → middle metacarpal
     y = pts[10] - origin
     yn = np.linalg.norm(y)
     if yn < 1e-9:
         return pts - origin
     y /= yn
-    # Ulnar axis: index metacarpal → pinky metacarpal, orthogonalized
+    # Ulnar direction: pinky_meta - index_meta for right hand; negate for left so
+    # that z = x × y always points dorsally (ensures right-handed coordinate system).
     x = pts[20] - pts[5]
+    if not is_right:
+        x = -x
     x -= np.dot(x, y) * y
     xn = np.linalg.norm(x)
     if xn < 1e-9:
         return pts - origin
     x /= xn
-    # Dorsal axis; re-orthogonalize x
     z = np.cross(x, y)
-    x = np.cross(y, z)
-    # R_wrist columns = wrist-frame axes in world; project pts onto them
-    R_wrist = np.stack([x, y, z], axis=1)   # (3, 3)
-    return (pts - origin) @ R_wrist          # (25, 3) in wrist-local frame
+    x = np.cross(y, z)          # re-orthogonalize x
+    R_wrist = np.stack([x, y, z], axis=1)   # (3,3): columns are local axes in world
+    return (pts - origin) @ R_wrist          # (25,3) in wrist-local frame
 
 
 def retarget(joints, is_right):
@@ -183,16 +178,14 @@ def retarget(joints, is_right):
     retargeter = _right_retarget if is_right else _left_retarget
     indices    = _right_indices  if is_right else _left_indices
     to_hw      = _right_to_hw   if is_right else _left_to_hw
-    R          = _R_AVP2ROBOT_RIGHT if is_right else _R_AVP2ROBOT_LEFT
 
-    # Step 1: transform to wrist-local frame (replicates tv_wrapper fast_mat_inv).
-    # This makes DexPilot vectors invariant to wrist rotation in world space.
-    pts_local = _pts_to_wrist_frame(pts)
-    # Step 2: compute 6 DexPilot vectors in wrist-local frame.
-    raw_ref = pts_local[indices[1]] - pts_local[indices[0]]  # (6, 3) wrist frame
-    # Step 3: rotate into Unitree URDF frame.
-    ref = (R @ raw_ref.T).T                                  # (6, 3) URDF frame
-    return retargeter.retarget(ref)[to_hw]         # hardware order
+    # Step 1: wrist-local frame (invariant to wrist rotation in world space).
+    pts_local = _pts_to_wrist_frame(pts, is_right)
+    # Step 2: 6 DexPilot inter-finger vectors in wrist-local frame.
+    raw_ref = pts_local[indices[1]] - pts_local[indices[0]]  # (6, 3)
+    # Step 3: rotate wrist-local frame → Unitree URDF frame for DexPilot.
+    ref = (raw_ref @ _R_WRIST_TO_URDF.T)                    # (6, 3)
+    return retargeter.retarget(ref)[to_hw]
 
 # ---------------------------------------------------------------------------
 # Dex3 forward kinematics
