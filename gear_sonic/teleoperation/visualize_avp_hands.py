@@ -251,10 +251,14 @@ def dex3_fk(angles, is_right):
     #   left  thumb_1: lower=-0.724 (flexed),   upper=+0.920 (abducted)→ positive = abducted
     # DexPilot outputs th1≈-0.921 for right open, +0.921 for left open.
     # flex_mcp = sign*q[1]: right→-0.921, left→-0.921 → both produce dorsal (spread) direction ✓
-    # flex_mcp = -q[1] (old):  right→+0.921 → palmar (wrong for right hand) ✗
-    thumb_cmc=np.array([sign*0.042, 0.010, 0.002])
+    # thumb_cmc must be on the RADIAL side (same as index = -sign*X):
+    #   index is at [-sign*0.015, ...] → thumb at [-sign*0.042, ...]
+    #   right: x=-0.042 (radial) ✓   left: x=+0.042 (radial) ✓
+    # thumb_rest: points from CMC in spread direction (-sign*X + Y)
+    #   right: [-sin(π/4), cos(π/4), 0]   left: [+sin(π/4), cos(π/4), 0]
+    thumb_cmc=np.array([-sign*0.042, 0.010, 0.002])
     pts["thumb_cmc"]=thumb_cmc
-    thumb_rest=np.array([sign*np.sin(np.pi/4), np.cos(np.pi/4), 0.0])
+    thumb_rest=np.array([-sign*np.sin(np.pi/4), np.cos(np.pi/4), 0.0])
     R_abd=_rz(sign*q[0])
     abd_dir=R_abd@thumb_rest
     thumb_mcp=thumb_cmc + abd_dir*0.038
