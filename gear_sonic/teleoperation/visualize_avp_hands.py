@@ -26,11 +26,15 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
 # ---------------------------------------------------------------------------
-# AVP skeleton connectivity
+# AVP skeleton connectivity  (WebXR 25-joint layout, matches official xr_teleoperate)
 # ---------------------------------------------------------------------------
+# Joint order (0-24) — same as WebXR XRHand spec and TeleVuer/vuer:
+#  0=wrist  1-4=thumb(metacarpal→tip)  5-9=index  10-14=middle
+#  15-19=ring  20-24=little
+# (AVP HandSkeleton.allCases adds joints 25=forearmWrist, 26=forearmArm;
+#  we ignore those extra two so our indexing is identical to the official code.)
 
 BONES = [
-    (26, 25), (25, 0),
     (0, 1), (1, 2), (2, 3), (3, 4),
     (0, 5), (5, 6), (6, 7), (7, 8), (8, 9),
     (0, 10), (10, 11), (11, 12), (12, 13), (13, 14),
@@ -51,12 +55,10 @@ def _avp_bone_color(a, b):
     for rng, col in _FINGER_RANGES:
         if a in rng or b in rng:
             return col
-    if a in (25, 26) or b in (25, 26):
-        return "#DDA0DD"
     return "#888888"
 
 def _draw_avp(ax, joints, active, side):
-    pts = np.array(joints, dtype=np.float32)
+    pts = np.array(joints[:25], dtype=np.float32)  # use only first 25 joints
     a = 1.0 if active else 0.25
     for (i, j) in BONES:
         ax.plot([pts[i,0],pts[j,0]], [pts[i,1],pts[j,1]], [pts[i,2],pts[j,2]],
@@ -128,24 +130,27 @@ _R_AVP2ROBOT_LEFT  = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
 
 
 def retarget(joints, is_right):
-    """Pure DexPilot retargeting: AVP 27-joint -> Dex3 7-DOF (hardware order).
+    """Pure DexPilot retargeting: AVP joint positions -> Dex3 7-DOF (hardware order).
 
     Exactly matches the official unitreerobotics/xr_teleoperate algorithm:
       robot_hand_unitree.py Dex3_1_Controller.control_process()
 
+      hand_data = np.array(hand_array[:]).reshape(25, 3)   # 25 joints
       ref_value = hand_data[indices[1,:]] - hand_data[indices[0,:]]
       q_target  = retargeting.retarget(ref_value)[dex_retargeting_to_hardware]
 
-    DexPilot indices (from unitree_dex3.yml):
-      origins : [index_tip, middle_tip, middle_tip, wrist, wrist,  wrist ]
-      targets : [thumb_tip, thumb_tip,  index_tip,  thumb, index,  middle]
+    Uses only the first 25 joints (WebXR XRHand layout). AVP sends 27;
+    joints 25-26 (forearmWrist, forearmArm) are ignored.
 
-    Output hardware order (both hands, from hand_retargeting.py dex3_api_joint_names):
-      [thumb_0, thumb_1, thumb_2, middle_0, middle_1, index_0, index_1]
+    DexPilot indices (from unitree_dex3.yml):
+      origins : [index_tip(9), middle_tip(14), middle_tip(14), wrist(0), wrist(0),  wrist(0) ]
+      targets : [thumb_tip(4), thumb_tip(4),   index_tip(9),  thumb(4), index(9), middle(14)]
+
+    Output hardware order (both hands): [thumb_0, thumb_1, thumb_2, middle_0, middle_1, index_0, index_1]
     """
-    if len(joints) < 15:
+    if len(joints) < 25:
         return np.zeros(MOTOR_NUM)
-    pts        = np.array(joints, dtype=np.float64)
+    pts        = np.array(joints[:25], dtype=np.float64)   # reshape(25,3) — matches official
     retargeter = _right_retarget if is_right else _left_retarget
     indices    = _right_indices  if is_right else _left_indices
     to_hw      = _right_to_hw   if is_right else _left_to_hw
@@ -360,9 +365,9 @@ def main():
     receiver=HandReceiver(port=args.port)
     receiver.start()
 
-    from matplotlib.animation import FuncAnimation
-
     plt.style.use("dark_background")
+    plt.ion()   # interactive mode — draw() calls update the window immediately
+
     fig=plt.figure(figsize=(14,10),facecolor="#1a1a2e")
     fig.suptitle("AVP Hand Teleoperation  —  Real-time Visualization",
                  color="white",fontsize=13,y=0.99)
@@ -379,9 +384,12 @@ def main():
                          ha="center",color="#888888",fontsize=8)
 
     plt.tight_layout(rect=[0.03,0.02,1.0,0.97])
+    plt.show(block=False)
+    fig.canvas.draw()
+    fig.canvas.flush_events()
 
-    def update(_frame):
-        try:
+    try:
+        while plt.fignum_exists(fig.number):
             l,r,la,ra,hz=receiver.get()
 
             for ax in (ax_avp_l,ax_avp_r,ax_dex_l,ax_dex_r):
@@ -420,14 +428,11 @@ def main():
                 qr=" ".join(f"{v:+.2f}" for v in q_right)
                 status=f"Hz: {hz:.0f}  |  Tracking: {','.join(active) if active else 'none'}  |  L:[{ql}]  R:[{qr}]"
             status_text.set_text(status)
-        except Exception as e:
-            print(f"[update error] {e}", flush=True)
 
-    # Keep a strong reference so FuncAnimation is not garbage-collected
-    _ani = FuncAnimation(fig, update, interval=50, cache_frame_data=False)
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+            plt.pause(0.05)
 
-    try:
-        plt.show()   # blocks until window is closed; FuncAnimation timer fires within event loop
     except KeyboardInterrupt:
         pass
     finally:

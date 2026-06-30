@@ -12,7 +12,7 @@ Pipeline
   AVP (AVPHandStreamer visionOS app)
       │  WiFi UDP port 9870
       ▼
-  UDP receiver  →  27 joint positions per hand  (x,y,z meters, world frame)
+  UDP receiver  →  25 joint positions per hand  (x,y,z meters, world frame)
       │  retarget()
       ▼
   7 motor targets per hand  (radians)
@@ -20,43 +20,45 @@ Pipeline
       ▼
   G1 Dex3  rt/dex3/{left,right}/cmd
 
-AVP HandSkeleton joint order (27 joints, matches HandSkeleton.JointName.allCases):
+Hand joint order — WebXR XRHand spec (25 joints), same as TeleVuer/vuer:
+  Joint indices match the official unitreerobotics/xr_teleoperate exactly.
    0  wrist
-   1  thumbKnuckle
-   2  thumbIntermediateBase
-   3  thumbIntermediateTip
-   4  thumbTip
-   5  indexFingerMetacarpal
-   6  indexFingerKnuckle
-   7  indexFingerIntermediateBase
-   8  indexFingerIntermediateTip
-   9  indexFingerTip
-  10  middleFingerMetacarpal
-  11  middleFingerKnuckle
-  12  middleFingerIntermediateBase
-  13  middleFingerIntermediateTip
-  14  middleFingerTip
-  15  ringFingerMetacarpal
-  16  ringFingerKnuckle
-  17  ringFingerIntermediateBase
-  18  ringFingerIntermediateTip
-  19  ringFingerTip
-  20  littleFingerMetacarpal
-  21  littleFingerKnuckle
-  22  littleFingerIntermediateBase
-  23  littleFingerIntermediateTip
-  24  littleFingerTip
-  25  forearmWrist
-  26  forearmArm
+   1  thumb-metacarpal
+   2  thumb-phalanx-proximal
+   3  thumb-phalanx-distal
+   4  thumb-tip
+   5  index-finger-metacarpal
+   6  index-finger-phalanx-proximal
+   7  index-finger-phalanx-intermediate
+   8  index-finger-phalanx-distal
+   9  index-finger-tip
+  10  middle-finger-metacarpal
+  11  middle-finger-phalanx-proximal
+  12  middle-finger-phalanx-intermediate
+  13  middle-finger-phalanx-distal
+  14  middle-finger-tip
+  15  ring-finger-metacarpal
+  16  ring-finger-phalanx-proximal
+  17  ring-finger-phalanx-intermediate
+  18  ring-finger-phalanx-distal
+  19  ring-finger-tip
+  20  pinky-finger-metacarpal
+  21  pinky-finger-phalanx-proximal
+  22  pinky-finger-phalanx-intermediate
+  23  pinky-finger-phalanx-distal
+  24  pinky-finger-tip
 
-Dex3 motor map (7 motors per hand):
-   0  Thumb abduction
-   1  Thumb MCP flex
-   2  Thumb IP  flex
-   3  Index MCP flex
-   4  Index PIP flex
-   5  Middle MCP flex
-   6  Middle PIP flex
+  Note: AVP HandSkeleton.allCases has 27 joints (adds forearmWrist=25,
+  forearmArm=26). We use only the first 25 to match the official pipeline.
+
+Dex3 motor map (7 motors per hand, hardware order):
+   0  Thumb abduction (thumb_0)
+   1  Thumb MCP flex  (thumb_1)
+   2  Thumb IP  flex  (thumb_2)
+   3  Middle MCP flex (middle_0)
+   4  Middle PIP flex (middle_1)
+   5  Index MCP flex  (index_0)
+   6  Index PIP flex  (index_1)
 
 Usage
 -----
@@ -201,20 +203,22 @@ _R_AVP2ROBOT_LEFT  = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
 
 def retarget(joints: list, is_right: bool) -> np.ndarray:
     """
-    Pure DexPilot retargeting: AVP 27-joint -> Dex3 7-DOF motor targets.
+    Pure DexPilot retargeting: 25 hand joint positions -> Dex3 7-DOF motor targets.
 
     Exactly matches the official unitreerobotics/xr_teleoperate algorithm:
-      robot_hand_unitree.py Dex3_1_Controller.control_process()
-
+      hand_data = np.array(hand_array[:]).reshape(25, 3)
       ref_value = hand_data[indices[1,:]] - hand_data[indices[0,:]]
       q_target  = retargeting.retarget(ref_value)[dex_retargeting_to_hardware]
 
+    Uses only the first 25 joints (WebXR XRHand layout, same as TeleVuer/vuer).
+    AVP HandSkeleton sends 27; joints 25-26 (forearmWrist, forearmArm) are ignored.
+
     Output hardware order (both hands): [thumb_0, thumb_1, thumb_2, middle_0, middle_1, index_0, index_1]
     """
-    if len(joints) < 15:
+    if len(joints) < 25:
         return np.zeros(MOTOR_NUM)
 
-    pts        = np.array(joints, dtype=np.float64)
+    pts        = np.array(joints[:25], dtype=np.float64)  # reshape(25,3) — matches official
     retargeter = _right_retarget if is_right else _left_retarget
     indices    = _right_indices  if is_right else _left_indices
     to_hw      = _right_to_hw   if is_right else _left_to_hw
