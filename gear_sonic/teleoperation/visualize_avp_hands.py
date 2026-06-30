@@ -81,21 +81,20 @@ _ASSETS = _Path(__file__).parent / "assets"
 _RetargetingConfig.set_default_urdf_dir(str(_ASSETS))
 _cfg_yaml = _yaml.safe_load((_ASSETS / "unitree_hand/unitree_dex3.yml").read_text())
 
-def _make_vector_cfg(d):
-    """Build a clean 'vector' (Geometric) retargeting config dict."""
+def _make_dexpilot_cfg(d):
+    """Build a 'dexpilot' retargeting config dict (matches official xr_teleoperate)."""
     return {
-        "type": "vector",
+        "type": "dexpilot",
         "urdf_path": d["urdf_path"],
         "target_joint_names": d["target_joint_names"],
-        "target_origin_link_names": d["target_origin_link_names"],
-        "target_task_link_names": d["target_task_link_names"],
-        "target_link_human_indices": np.array(d["target_link_human_indices_vector"]),
-        "scaling_factor": d.get("scaling_factor", 1.0),
+        "wrist_link_name": d["wrist_link_name"],
+        "finger_tip_link_names": d["finger_tip_link_names"],
+        "target_link_human_indices": np.array(d["target_link_human_indices_dexpilot"]),
         "low_pass_alpha": d.get("low_pass_alpha", 0.2),
     }
 
-_left_retarget  = _RetargetingConfig.from_dict(_make_vector_cfg(_cfg_yaml["left"])).build()
-_right_retarget = _RetargetingConfig.from_dict(_make_vector_cfg(_cfg_yaml["right"])).build()
+_left_retarget  = _RetargetingConfig.from_dict(_make_dexpilot_cfg(_cfg_yaml["left"])).build()
+_right_retarget = _RetargetingConfig.from_dict(_make_dexpilot_cfg(_cfg_yaml["right"])).build()
 
 _LEFT_HW  = ["left_hand_thumb_0_joint","left_hand_thumb_1_joint","left_hand_thumb_2_joint",
              "left_hand_middle_0_joint","left_hand_middle_1_joint",
@@ -105,67 +104,55 @@ _RIGHT_HW = ["right_hand_thumb_0_joint","right_hand_thumb_1_joint","right_hand_t
              "right_hand_middle_0_joint","right_hand_middle_1_joint"]
 _left_to_hw  = [_left_retarget.joint_names.index(n)  for n in _LEFT_HW]
 _right_to_hw = [_right_retarget.joint_names.index(n) for n in _RIGHT_HW]
-_left_indices  = _left_retarget.optimizer.target_link_human_indices   # shape (2,3)
+_left_indices  = _left_retarget.optimizer.target_link_human_indices   # shape (2,6) for DexPilot
 _right_indices = _right_retarget.optimizer.target_link_human_indices
 
 # Coordinate transform: AVP visionOS (OpenXR) world frame → Unitree URDF hand frame.
 # Official pipeline from unitreerobotics/televuer tv_wrapper.py:
 #   Step 1: change basis OpenXR → Robot:  R_ROBOT_OPENXR = [[0,0,-1],[-1,0,0],[0,1,0]]
 #   Step 2: wrist-relative vectors (pts[tip]-pts[wrist] cancels translation)
-#   Step 3: change initial pose convention:  R_TO_UNITREE_HAND = [[0,0,1],[-1,0,0],[0,-1,0]]
-# Combined (step1 then step3): R = R_TO_UNITREE_HAND @ R_ROBOT_OPENXR = [[0,1,0],[0,0,1],[1,0,0]]
+#   Step 3: change initial pose convention:  T_TO_UNITREE_HAND_rot = [[0,0,1],[-1,0,0],[0,-1,0]]
+# Combined: R = T_TO_UNITREE_HAND_rot @ R_ROBOT_OPENXR = [[0,1,0],[0,0,1],[1,0,0]]
 # In OpenXR/visionOS:  +Y=up, +X=right, -Z=toward robot (finger extension direction)
 # In Unitree URDF:     +X=dorsal, -Y=distal (finger extension), ±Z=lateral
-# Mapping: (-Z in OpenXR) → (-Y in URDF)  ✓  (both hands use same transform)
+# Mapping: (-Z in OpenXR) → (-Y in URDF)  ✓  both hands use same transform (official)
 _R_AVP2ROBOT_RIGHT = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
-_R_AVP2ROBOT_LEFT  = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])  # same as right per official code
+_R_AVP2ROBOT_LEFT  = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
 
 
-def _thumb_angles_geometric(pts: np.ndarray, is_right: bool) -> np.ndarray:
-    """Compute Dex3 thumb joint angles directly from AVP joint positions.
+def _thumb_angles_geometric(pts: np.ndarray) -> np.ndarray:
+    """Frame-independent thumb angles from AVP joint positions.
 
-    Uses the opening angle between thumb and fingers for abduction, and the
-    thumb-tip ↔ index-tip distance for flexion.
-
-    Returns array [thumb_0_abd, thumb_1_mcp, thumb_2_ip] in radians.
+    Uses angular/distance relationships only (no frame assumptions).
+    Returns [thumb_0_abd, thumb_1_mcp, thumb_2_ip].
     """
     p_w   = pts[0]   # wrist
     p_th  = pts[4]   # thumb tip
     p_idx = pts[9]   # index tip
     p_mid = pts[14]  # middle tip
 
-    # Abduction: opening angle between (thumb_tip - wrist) and (index_tip - wrist)
-    v_th  = p_th  - p_w
+    # Abduction: angle between (thumb-wrist) and (index-wrist) directions
+    v_th  = p_th - p_w
     v_idx = p_idx - p_w
     cos_sep = np.clip(np.dot(v_th / (np.linalg.norm(v_th)+1e-8),
                              v_idx / (np.linalg.norm(v_idx)+1e-8)), -1., 1.)
-    sep_angle = np.arccos(cos_sep)   # 0..π
-    # Typical human max thumb–index angle ≈ 1.2 rad; robot thumb_0 max = 1.745
+    sep_angle = np.arccos(cos_sep)
     thumb_abd = float(np.clip(sep_angle * (1.745 / 1.2), 0., 1.745))
 
-    # Flexion: thumb-tip ↔ index-tip distance, normalised by wrist-to-middle-tip
-    # (middle-tip is a stable reference that doesn't change with thumb/pinch motion).
-    # Open:   ti_dist/wm_dist ≈ 0.65 → flex_t = 0
-    # Pinch:  ti_dist/wm_dist ≈ 0.05 → flex_t = 1
-    # Fist:   ti_dist/wm_dist ≈ 0.25 → flex_t = 0.6
-    p_mid     = pts[14]  # middle tip
-    ti_dist   = np.linalg.norm(p_th - p_idx)
-    wm_dist   = np.linalg.norm(p_mid - p_w) + 1e-8
-    ratio     = ti_dist / wm_dist
-    # Map: 0.65 (open) → 0,  0.0 (pinched) → 1
-    flex_t    = float(np.clip(1.0 - ratio / 0.65, 0., 1.))
-    thumb_mcp = flex_t * 1.2   # [0, 1.571]
-    thumb_ip  = flex_t * 1.4   # [0, 1.745]
-
-    return np.array([thumb_abd, thumb_mcp, thumb_ip])
+    # Flexion: thumb-tip↔index-tip distance normalised by wrist-to-middle-tip
+    ti_dist = np.linalg.norm(p_th - p_idx)
+    wm_dist = np.linalg.norm(p_mid - p_w) + 1e-8
+    ratio   = ti_dist / wm_dist
+    flex_t  = float(np.clip(1.0 - ratio / 0.65, 0., 1.))
+    return np.array([thumb_abd, flex_t * 1.2, flex_t * 1.4])
 
 
 def retarget(joints, is_right):
-    """Geometric (vector) retargeting: AVP 27-joint -> Dex3 7-DOF (hardware order).
+    """DexPilot retargeting: AVP 27-joint -> Dex3 7-DOF (hardware order).
 
-    Index/middle: vector optimizer minimises wrist→fingertip direction error
-    (with AVP→robot coordinate transform applied).
-    Thumb: direct geometric mapping from separation angle and pinch distance.
+    Matches the official unitreerobotics/xr_teleoperate algorithm:
+      • DexPilot optimizer for index/middle (6 inter-finger vectors in URDF frame).
+      • Geometric thumb override (frame-independent, uses distances/angles).
     """
     if len(joints) < 15:
         return np.zeros(MOTOR_NUM)
@@ -175,13 +162,14 @@ def retarget(joints, is_right):
     to_hw      = _right_to_hw   if is_right else _left_to_hw
     R          = _R_AVP2ROBOT_RIGHT if is_right else _R_AVP2ROBOT_LEFT
 
-    # Build index/middle vectors and rotate into robot frame
-    raw_ref = pts[indices[1]] - pts[indices[0]]   # shape (3,3)
-    ref     = (R @ raw_ref.T).T                   # shape (3,3) in robot frame
-    q       = retargeter.retarget(ref)[to_hw]     # hardware order
+    # Build 6 DexPilot vectors and rotate into Unitree URDF frame
+    raw_ref = pts[indices[1]] - pts[indices[0]]   # shape (6, 3)
+    ref     = (R @ raw_ref.T).T                   # shape (6, 3) in URDF frame
+    q       = retargeter.retarget(ref)[to_hw]
 
-    # Override thumb joints with geometric angles (vector solver gives poor thumb)
-    q[0], q[1], q[2] = _thumb_angles_geometric(pts, is_right)
+    # Thumb: DexPilot gives poor results without wrist rotation data;
+    # geometric method is frame-independent and more reliable.
+    q[0], q[1], q[2] = _thumb_angles_geometric(pts)
     return q
 
 # ---------------------------------------------------------------------------
@@ -441,11 +429,8 @@ def main():
     # Keep a strong reference so FuncAnimation is not garbage-collected
     _ani = FuncAnimation(fig, update, interval=50, cache_frame_data=False)
 
-    # On macOS, plt.show(block=False) can destroy the figure before get_fignums()
-    # runs. Use fignum_exists() and let plt.pause() implicitly show the window.
     try:
-        while plt.fignum_exists(fig.number):
-            plt.pause(0.05)
+        plt.show()   # blocks until window is closed; FuncAnimation timer fires within event loop
     except KeyboardInterrupt:
         pass
     finally:
