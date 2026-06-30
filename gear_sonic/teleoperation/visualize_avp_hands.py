@@ -248,7 +248,8 @@ def dex3_fk(angles, is_right):
     # Thumb  q[0]=abd, q[1]=MCP, q[2]=IP
     # right URDF: thumb_1 lower=-0.920 (negative=flex), thumb_2 lower=-1.745 (negative=flex)
     # left  URDF: thumb_1 upper=+0.920 (positive=flex), thumb_2 upper=+1.745 (positive=flex)
-    # flex_mcp = -sign*q[1]: right sign=+1 → -q[1]>0 for negative q[1]; left sign=-1 → q[1]>0 for positive q[1]
+    # flex_mcp = -q[1] works for both: right outputs negative q[1] for flex → -q[1]>0 ✓;
+    # left outputs positive q[1] but sign is handled by the abduction axis direction.
     thumb_cmc=np.array([sign*0.042, 0.010, 0.002])
     pts["thumb_cmc"]=thumb_cmc
     thumb_rest=np.array([sign*np.sin(np.pi/4), np.cos(np.pi/4), 0.0])
@@ -256,7 +257,7 @@ def dex3_fk(angles, is_right):
     abd_dir=R_abd@thumb_rest
     thumb_mcp=thumb_cmc + abd_dir*0.038
     pts["thumb_mcp"]=thumb_mcp
-    flex_mcp=-sign*q[1]
+    flex_mcp=-q[1]
     z_hat=np.array([0.0,0.0,1.0])
     flex_axis=np.cross(z_hat, abd_dir)
     fn=np.linalg.norm(flex_axis)
@@ -264,7 +265,7 @@ def dex3_fk(angles, is_right):
     mcp_dir=_rodrigues(abd_dir, flex_axis, flex_mcp)
     thumb_ip=thumb_mcp + mcp_dir*0.030
     pts["thumb_ip"]=thumb_ip
-    ip_dir=_rodrigues(mcp_dir/(np.linalg.norm(mcp_dir)+1e-8), flex_axis, -sign*q[2])
+    ip_dir=_rodrigues(mcp_dir/(np.linalg.norm(mcp_dir)+1e-8), flex_axis, -q[2])
     pts["thumb_tip"]=thumb_ip + ip_dir*0.025
 
     return pts
