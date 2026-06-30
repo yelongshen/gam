@@ -192,6 +192,40 @@ _R_AVP2ROBOT_RIGHT = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
 _R_AVP2ROBOT_LEFT  = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
 
 
+def _pts_to_wrist_frame(pts: np.ndarray) -> np.ndarray:
+    """Transform 25 joint positions into the estimated wrist-local frame.
+
+    The official xr_teleoperate pipeline (tv_wrapper.py) does this via
+    fast_mat_inv(wrist_pose) using the XR device's tracked SE(3) wrist pose.
+    Our UDP stream sends joint positions only, so we reconstruct the wrist
+    rotation from hand geometry using three stable palm landmarks:
+
+      origin : wrist (joint 0)
+      y-axis : wrist → middle metacarpal (joint 10) — distal direction
+      x-axis : index metacarpal (5) → pinky metacarpal (20), orth. to y — ulnar
+      z-axis : x × y — dorsal direction
+
+    After this transform, DexPilot vectors are invariant to wrist rotation
+    in world space (open hand + wrist rotation → same retargeted output).
+    """
+    origin = pts[0]
+    y = pts[10] - origin
+    yn = np.linalg.norm(y)
+    if yn < 1e-9:
+        return pts - origin
+    y /= yn
+    x = pts[20] - pts[5]
+    x -= np.dot(x, y) * y
+    xn = np.linalg.norm(x)
+    if xn < 1e-9:
+        return pts - origin
+    x /= xn
+    z = np.cross(x, y)
+    x = np.cross(y, z)
+    R_wrist = np.stack([x, y, z], axis=1)
+    return (pts - origin) @ R_wrist
+
+
 def retarget(joints: list, is_right: bool) -> np.ndarray:
     """
     Pure DexPilot retargeting: 25 hand joint positions -> Dex3 7-DOF motor targets.
@@ -209,16 +243,20 @@ def retarget(joints: list, is_right: bool) -> np.ndarray:
     if len(joints) < 25:
         return np.zeros(MOTOR_NUM)
 
-    pts        = np.array(joints[:25], dtype=np.float64)  # reshape(25,3) — matches official
+    pts        = np.array(joints[:25], dtype=np.float64)
     retargeter = _right_retarget if is_right else _left_retarget
     indices    = _right_indices  if is_right else _left_indices
     to_hw      = _right_to_hw   if is_right else _left_to_hw
     R          = _R_AVP2ROBOT_RIGHT if is_right else _R_AVP2ROBOT_LEFT
 
-    # Compute 6 DexPilot inter-finger vectors and rotate into Unitree URDF frame.
-    raw_ref = pts[indices[1]] - pts[indices[0]]   # shape (6, 3) in OpenXR frame
-    ref     = (R @ raw_ref.T).T                   # shape (6, 3) in URDF frame
-    return retargeter.retarget(ref)[to_hw]         # hardware order
+    # Step 1: wrist-local frame (replicates tv_wrapper fast_mat_inv(wrist_pose)).
+    # Makes retargeting invariant to wrist rotation in world space.
+    pts_local = _pts_to_wrist_frame(pts)
+    # Step 2: 6 DexPilot inter-finger vectors in wrist-local frame.
+    raw_ref = pts_local[indices[1]] - pts_local[indices[0]]  # (6, 3)
+    # Step 3: rotate into Unitree URDF frame.
+    ref = (R @ raw_ref.T).T                                  # (6, 3)
+    return retargeter.retarget(ref)[to_hw]
 
 
 # ── UDP receiver thread ───────────────────────────────────────────────────────
