@@ -188,93 +188,76 @@ def retarget(joints, is_right):
     return retargeter.retarget(ref)[to_hw]
 
 # ---------------------------------------------------------------------------
-# Dex3 forward kinematics
+# Dex3 forward kinematics — exact kinematics via pinocchio
 # ---------------------------------------------------------------------------
-# Frame: X=lateral(toward index), Y=distal(finger extension), Z=dorsal
+# Display coordinate frame (URDF → display via _R_URDF_TO_DISPLAY):
+#   FK_x = URDF_z  (lateral: right-hand index at −X, middle at +X; left mirrored)
+#   FK_y = −URDF_y (distal: fingers extend in +Y)
+#   FK_z = URDF_x  (palmar: thumb extends toward −Z at URDF zero; +Z = dorsal)
+#
+# Verified at URDF zero (pinocchio):
+#   right index_tip URDF=(0.0017,−0.1735,−0.0285) → FK=(−0.029, 0.174, 0.002) ✓
+#   right middle_tip URDF=(0.0018,−0.1735,+0.0285) → FK=(+0.029, 0.174, 0.002) ✓
+#   right thumb_tip URDF=(−0.115,−0.023,0.000) → FK=(0.000, 0.023, −0.115) (palmar)
 
-def _rx(a):
-    c,s=np.cos(a),np.sin(a)
-    return np.array([[1,0,0],[0,c,-s],[0,s,c]])
+import pinocchio as _pin
 
-def _rz(a):
-    c,s=np.cos(a),np.sin(a)
-    return np.array([[c,-s,0],[s,c,0],[0,0,1]])
+_pin_models: dict = {}
+_pin_datas:  dict = {}
+for _side in ('left', 'right'):
+    _m = _pin.buildModelFromUrdf(
+        str(_ASSETS / f'unitree_hand/unitree_dex3_{_side}.urdf'))
+    _pin_models[_side] = _m
+    _pin_datas[_side]  = _m.createData()
 
-def _rodrigues(vec, axis, angle):
-    c,s=np.cos(angle),np.sin(angle)
-    return vec*c + np.cross(axis,vec)*s + axis*np.dot(axis,vec)*(1-c)
+# Hardware order [th0,th1,th2,mid0,mid1,idx0,idx1] → pinocchio q-vector index
+# (same mapping for both hands per inspecting model joint order)
+_HW2PIN_IDX = [4, 5, 6, 2, 3, 0, 1]
+
+_R_URDF_TO_DISPLAY = np.array([[0., 0., 1.],
+                                [0.,-1., 0.],
+                                [1., 0., 0.]])
+
 
 def dex3_fk(angles, is_right):
-    """Forward kinematics for Dex3-1 visualization.
+    """Exact Dex3-1 FK via pinocchio URDF.
 
-    Input ordering matches official hardware order (both hands):
-      q[0]=thumb_0(abd)  q[1]=thumb_1(MCP)  q[2]=thumb_2(IP)
-      q[3]=middle_0(MCP) q[4]=middle_1(PIP)
-      q[5]=index_0(MCP)  q[6]=index_1(PIP)
-
-    DexPilot sign conventions (from URDF NLopt bounds):
-      index/middle: positive = flex  (range approx [0, 1.57/1.75])
-      thumb_2:      negative = flex  (range approx [-1.75, 0])
-      thumb_1:      negative = MCP flex (range approx [-0.92, 0.73])
+    Input: angles in hardware order [th0, th1, th2, mid0, mid1, idx0, idx1]
+    Output: dict of display-frame 3D positions for bone rendering.
     """
-    q=angles.copy()
-    sign=1.0 if is_right else -1.0
-    pts={}
-    pts["palm"]=np.zeros(3)
+    side  = 'right' if is_right else 'left'
+    model = _pin_models[side]
+    data  = _pin_datas[side]
+    pf    = 'right_hand_' if is_right else 'left_hand_'
 
-    # Middle  q[3]=MCP, q[4]=PIP
-    # Sign convention differs between URDF hands:
-    #   right URDF: lower=0  upper=+1.57 → positive = flexion
-    #   left  URDF: lower=-1.57 upper=0  → negative = flexion
-    # Using _rx(sign*q): right(sign=+1) q>0→+Z (flex), left(sign=-1) -q>0→+Z (flex)
-    # Both hands flex in the +Z direction visually (consistent camera view).
-    mid_meta=np.array([sign*0.012, 0.055, 0.0])
-    pts["mid_meta"]=mid_meta
-    R_mm=_rx(sign*q[3])
-    mid_pip=mid_meta + R_mm@np.array([0.0,0.042,0.0])
-    pts["mid_pip"]=mid_pip
-    mid_tip=mid_pip + R_mm@_rx(sign*q[4])@np.array([0.0,0.032,0.0])
-    pts["mid_tip"]=mid_tip
+    q = _pin.neutral(model)
+    for i, qi in enumerate(_HW2PIN_IDX):
+        q[qi] = float(angles[i])
 
-    # Index  q[5]=MCP, q[6]=PIP  — same sign convention as middle
-    idx_meta=np.array([-sign*0.015, 0.052, 0.0])
-    pts["idx_meta"]=idx_meta
-    R_im=_rx(sign*q[5])
-    idx_pip=idx_meta + R_im@np.array([0.0,0.038,0.0])
-    pts["idx_pip"]=idx_pip
-    idx_tip=idx_pip + R_im@_rx(sign*q[6])@np.array([0.0,0.030,0.0])
-    pts["idx_tip"]=idx_tip
+    _pin.forwardKinematics(model, data, q)
+    _pin.updateFramePlacements(model, data)
 
-    # Thumb  q[0]=abd, q[1]=MCP, q[2]=IP
-    # URDF sign conventions are MIRRORED between hands:
-    #   right thumb_1: lower=-0.920 (abducted), upper=+0.720 (flexed) → negative = abducted
-    #   left  thumb_1: lower=-0.724 (flexed),   upper=+0.920 (abducted)→ positive = abducted
-    # DexPilot outputs th1≈-0.921 for right open, +0.921 for left open.
-    # flex_mcp = sign*q[1]: right→-0.921, left→-0.921 → both produce dorsal (spread) direction ✓
-    # thumb_cmc must be on the RADIAL side (same as index = -sign*X):
-    #   index is at [-sign*0.015, ...] → thumb at [-sign*0.042, ...]
-    #   right: x=-0.042 (radial) ✓   left: x=+0.042 (radial) ✓
-    # thumb_rest: points from CMC in spread direction (-sign*X + Y)
-    #   right: [-sin(π/4), cos(π/4), 0]   left: [+sin(π/4), cos(π/4), 0]
-    thumb_cmc=np.array([-sign*0.042, 0.010, 0.002])
-    pts["thumb_cmc"]=thumb_cmc
-    thumb_rest=np.array([-sign*np.sin(np.pi/4), np.cos(np.pi/4), 0.0])
-    R_abd=_rz(sign*q[0])
-    abd_dir=R_abd@thumb_rest
-    thumb_mcp=thumb_cmc + abd_dir*0.038
-    pts["thumb_mcp"]=thumb_mcp
-    flex_mcp=sign*q[1]
-    z_hat=np.array([0.0,0.0,1.0])
-    flex_axis=np.cross(z_hat, abd_dir)
-    fn=np.linalg.norm(flex_axis)
-    flex_axis=flex_axis/fn if fn>1e-6 else np.array([1.0,0.0,0.0])
-    mcp_dir=_rodrigues(abd_dir, flex_axis, flex_mcp)
-    thumb_ip=thumb_mcp + mcp_dir*0.030
-    pts["thumb_ip"]=thumb_ip
-    ip_dir=_rodrigues(mcp_dir/(np.linalg.norm(mcp_dir)+1e-8), flex_axis, sign*q[2])
-    pts["thumb_tip"]=thumb_ip + ip_dir*0.025
+    R = _R_URDF_TO_DISPLAY
 
-    return pts
+    def jp(name):   # joint origin position in display frame
+        return R @ data.oMi[model.getJointId(name)].translation.copy()
+
+    def fp(name):   # body/frame position in display frame
+        return R @ data.oMf[model.getFrameId(name)].translation.copy()
+
+    return {
+        'palm':      np.zeros(3),
+        'thumb_cmc': jp(f'{pf}thumb_0_joint'),
+        'thumb_mcp': jp(f'{pf}thumb_1_joint'),
+        'thumb_ip':  jp(f'{pf}thumb_2_joint'),
+        'thumb_tip': fp('thumb_tip'),
+        'idx_meta':  jp(f'{pf}index_0_joint'),
+        'idx_pip':   jp(f'{pf}index_1_joint'),
+        'idx_tip':   fp('index_tip'),
+        'mid_meta':  jp(f'{pf}middle_0_joint'),
+        'mid_pip':   jp(f'{pf}middle_1_joint'),
+        'mid_tip':   fp('middle_tip'),
+    }
 
 DEX3_BONES = [
     ("palm","thumb_cmc","#FF6B6B"),
@@ -399,26 +382,31 @@ def _run_fk_test():
              thumb_2       [0, +1.750]        +1.750 = flexed
     """
     # Each pose: (label, q_right, q_left)
+    # Joint hardware order: [thumb_abd, thumb_mcp, thumb_ip, mid_mcp, mid_pip, idx_mcp, idx_pip]
+    # Right URDF limits: thumb_0=[-1.047,+1.047]  thumb_1=[-0.920,+0.720]  thumb_2=[-1.745,0]
+    #                    mid/idx_0=[0,+1.571]  mid/idx_1=[0,+1.745]
+    # Left  URDF limits: thumb_0=[-1.047,+1.047]  thumb_1=[-0.724,+0.920]  thumb_2=[0,+1.745]
+    #                    mid/idx_0=[-1.571,0]  mid/idx_1=[-1.745,0]
     POSES = [
         (
-            "zero\n(URDF rest)",
-            [0.0,  0.0,  0.0,    0.0,  0.0,   0.0,  0.0],   # right
-            [0.0,  0.0,  0.0,    0.0,  0.0,   0.0,  0.0],   # left
+            "zero\n(URDF q=0 rest)",
+            [ 0.0,  0.0,   0.0,    0.0,  0.0,   0.0,  0.0],   # right
+            [ 0.0,  0.0,   0.0,    0.0,  0.0,   0.0,  0.0],   # left
         ),
         (
-            "open\n(thumb abducted,\nfingers straight)",
-            [0.0, -0.92, 0.0,    0.0,  0.0,   0.0,  0.0],   # right: thumb_1=-0.92 = abducted
-            [0.0, +0.92, 0.0,    0.0,  0.0,   0.0,  0.0],   # left:  thumb_1=+0.92 = abducted
+            "open\n(thumb spread,\nfingers straight)",
+            [-1.047, -0.920,  0.0,    0.0,  0.0,   0.0,  0.0],  # right: th0/th1 at lower limit = spread
+            [-1.047, +0.920,  0.0,    0.0,  0.0,   0.0,  0.0],  # left:  th1 upper = spread
         ),
         (
-            "fist\n(thumb abducted,\nfingers full flex)",
-            [0.0, -0.92, -1.75,  1.57, 1.75,  1.57, 1.75],  # right: fingers positive
-            [0.0, +0.92, +1.75, -1.57,-1.75, -1.57,-1.75],  # left:  fingers negative
+            "fist\n(thumb spread,\nfingers full flex)",
+            [-1.047, -0.920, -1.745,  1.571, 1.745,  1.571, 1.745],  # right
+            [-1.047, +0.920, +1.745, -1.571,-1.745, -1.571,-1.745],  # left
         ),
         (
-            "pinch\n(thumb flex\ntoward index)",
-            [1.05, 0.72, -1.75,  0.0,  0.0,   0.0,  0.0],   # right: max abd + mcp/ip flex
-            [1.05,-0.72, +1.75,  0.0,  0.0,   0.0,  0.0],   # left
+            "pinch\n(tip-to-tip,\nindex flex)",
+            [-1.000,  0.400, -1.745,  0.0,  0.0,  1.571, 0.800],  # right: tip dist ~8 mm
+            [-1.000, -0.400, +1.745,  0.0,  0.0, -1.571,-0.800],  # left mirror
         ),
     ]
 
@@ -438,10 +426,10 @@ def _run_fk_test():
             ax.set_title(f"{side_label}: {pose_name}", color="white", fontsize=7, pad=2)
             _style_ax(ax)
             _draw_dex3(ax, np.array(q, dtype=float), active=True, is_right=is_right)
-            ax.set_xlim(-0.13, 0.13)
-            ax.set_ylim(-0.02, 0.18)
-            ax.set_zlim(-0.10, 0.10)
-            ax.view_init(elev=20, azim=-60)
+            ax.set_xlim(-0.14, 0.14)
+            ax.set_ylim(-0.04, 0.22)
+            ax.set_zlim(-0.18, 0.08)
+            ax.view_init(elev=20, azim=-45)
 
     plt.tight_layout(rect=[0.0, 0.0, 1.0, 0.96])
     plt.show()
@@ -524,10 +512,10 @@ def main():
             _draw_dex3(ax_dex_r,q_right,active=ra,is_right=True)
 
             for ax in (ax_dex_l,ax_dex_r):
-                ax.set_xlim(-0.10,0.10)
-                ax.set_ylim(-0.02,0.16)
-                ax.set_zlim(-0.08,0.08)
-                ax.view_init(elev=20,azim=-60)
+                ax.set_xlim(-0.12, 0.12)
+                ax.set_ylim(-0.03, 0.20)
+                ax.set_zlim(-0.16, 0.08)
+                ax.view_init(elev=20, azim=-60)
 
             if l is None and r is None:
                 status="Waiting for AVP data..."
