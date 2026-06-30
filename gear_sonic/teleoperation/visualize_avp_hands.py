@@ -222,27 +222,33 @@ def dex3_fk(angles, is_right):
     pts={}
     pts["palm"]=np.zeros(3)
 
-    # Middle  q[3]=MCP, q[4]=PIP  — DexPilot: positive = flex
-    # _rx(-q) rotates +Y toward -Z (palm) for positive q = flexion.
+    # Middle  q[3]=MCP, q[4]=PIP
+    # Sign convention differs between URDF hands:
+    #   right URDF: lower=0  upper=+1.57 → positive = flexion
+    #   left  URDF: lower=-1.57 upper=0  → negative = flexion
+    # Using _rx(sign*q): right(sign=+1) q>0→+Z (flex), left(sign=-1) -q>0→+Z (flex)
+    # Both hands flex in the +Z direction visually (consistent camera view).
     mid_meta=np.array([sign*0.012, 0.055, 0.0])
     pts["mid_meta"]=mid_meta
-    R_mm=_rx(-q[3])
+    R_mm=_rx(sign*q[3])
     mid_pip=mid_meta + R_mm@np.array([0.0,0.042,0.0])
     pts["mid_pip"]=mid_pip
-    mid_tip=mid_pip + R_mm@_rx(-q[4])@np.array([0.0,0.032,0.0])
+    mid_tip=mid_pip + R_mm@_rx(sign*q[4])@np.array([0.0,0.032,0.0])
     pts["mid_tip"]=mid_tip
 
-    # Index  q[5]=MCP, q[6]=PIP  — DexPilot: positive = flex
+    # Index  q[5]=MCP, q[6]=PIP  — same sign convention as middle
     idx_meta=np.array([-sign*0.015, 0.052, 0.0])
     pts["idx_meta"]=idx_meta
-    R_im=_rx(-q[5])
+    R_im=_rx(sign*q[5])
     idx_pip=idx_meta + R_im@np.array([0.0,0.038,0.0])
     pts["idx_pip"]=idx_pip
-    idx_tip=idx_pip + R_im@_rx(-q[6])@np.array([0.0,0.030,0.0])
+    idx_tip=idx_pip + R_im@_rx(sign*q[6])@np.array([0.0,0.030,0.0])
     pts["idx_tip"]=idx_tip
 
     # Thumb  q[0]=abd, q[1]=MCP, q[2]=IP
-    # DexPilot: thumb_1 negative = MCP flex; thumb_2 negative = IP flex
+    # right URDF: thumb_1 lower=-0.920 (negative=flex), thumb_2 lower=-1.745 (negative=flex)
+    # left  URDF: thumb_1 upper=+0.920 (positive=flex), thumb_2 upper=+1.745 (positive=flex)
+    # flex_mcp = -sign*q[1]: right sign=+1 → -q[1]>0 for negative q[1]; left sign=-1 → q[1]>0 for positive q[1]
     thumb_cmc=np.array([sign*0.042, 0.010, 0.002])
     pts["thumb_cmc"]=thumb_cmc
     thumb_rest=np.array([sign*np.sin(np.pi/4), np.cos(np.pi/4), 0.0])
@@ -250,8 +256,7 @@ def dex3_fk(angles, is_right):
     abd_dir=R_abd@thumb_rest
     thumb_mcp=thumb_cmc + abd_dir*0.038
     pts["thumb_mcp"]=thumb_mcp
-    # thumb_1 < 0 means MCP flex: -q[1] > 0 = positive flex amount
-    flex_mcp=-q[1]
+    flex_mcp=-sign*q[1]
     z_hat=np.array([0.0,0.0,1.0])
     flex_axis=np.cross(z_hat, abd_dir)
     fn=np.linalg.norm(flex_axis)
@@ -259,8 +264,7 @@ def dex3_fk(angles, is_right):
     mcp_dir=_rodrigues(abd_dir, flex_axis, flex_mcp)
     thumb_ip=thumb_mcp + mcp_dir*0.030
     pts["thumb_ip"]=thumb_ip
-    # thumb_2 < 0 means IP flex: -q[2] > 0 = positive flex amount
-    ip_dir=_rodrigues(mcp_dir/(np.linalg.norm(mcp_dir)+1e-8), flex_axis, -q[2])
+    ip_dir=_rodrigues(mcp_dir/(np.linalg.norm(mcp_dir)+1e-8), flex_axis, -sign*q[2])
     pts["thumb_tip"]=thumb_ip + ip_dir*0.025
 
     return pts
@@ -455,7 +459,7 @@ def main():
 
             fig.canvas.draw()
             fig.canvas.flush_events()
-            plt.pause(0.05)
+            plt.pause(0.02)
 
     except KeyboardInterrupt:
         pass
