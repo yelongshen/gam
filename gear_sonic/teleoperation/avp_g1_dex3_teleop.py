@@ -189,15 +189,17 @@ _right_to_hw = [_right_retarget.joint_names.index(n) for n in _RIGHT_HW_JOINTS]
 _left_indices  = _left_retarget.optimizer.target_link_human_indices   # shape (2,3)
 _right_indices = _right_retarget.optimizer.target_link_human_indices
 
-# Coordinate transform: AVP visionOS world frame → robot URDF base_link frame.
-# In visionOS (standing, palm facing forward toward robot):
-#   +X = right, +Y = up, +Z = toward viewer (away from robot = dorsal for palm-forward)
-# In robot URDF base_link frame:
-#   +X ≈ dorsal (back of hand), -Y = distal (finger extension), ±Z = lateral
-# Mapping: negate X and Y; keep Z.  det([[-1,0,0],[0,-1,0],[0,0,1]]) = +1
-# For LEFT hand the lateral direction (Z) is mirrored.
-_R_AVP2ROBOT_RIGHT = np.array([[-1.,0.,0.],[0.,-1.,0.],[0.,0., 1.]])
-_R_AVP2ROBOT_LEFT  = np.array([[-1.,0.,0.],[0.,-1.,0.],[0.,0.,-1.]])
+# Coordinate transform: AVP visionOS (OpenXR) world frame → Unitree URDF hand frame.
+# Official pipeline from unitreerobotics/televuer tv_wrapper.py:
+#   Step 1: change basis OpenXR → Robot:  R_ROBOT_OPENXR = [[0,0,-1],[-1,0,0],[0,1,0]]
+#   Step 2: wrist-relative vectors (pts[tip]-pts[wrist] cancels translation)
+#   Step 3: change initial pose convention:  R_TO_UNITREE_HAND = [[0,0,1],[-1,0,0],[0,-1,0]]
+# Combined: R = R_TO_UNITREE_HAND @ R_ROBOT_OPENXR = [[0,1,0],[0,0,1],[1,0,0]]
+# In OpenXR/visionOS: +Y=up, +X=right, -Z=toward robot (finger extension direction)
+# In Unitree URDF:    +X=dorsal, -Y=distal (finger extension), ±Z=lateral
+# Mapping: (-Z in OpenXR) → (-Y in URDF)  ✓  (both hands use same transform per official code)
+_R_AVP2ROBOT_RIGHT = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
+_R_AVP2ROBOT_LEFT  = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])  # same as right
 
 
 def _thumb_angles_geometric(pts: np.ndarray, is_right: bool) -> np.ndarray:
