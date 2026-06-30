@@ -246,10 +246,12 @@ def dex3_fk(angles, is_right):
     pts["idx_tip"]=idx_tip
 
     # Thumb  q[0]=abd, q[1]=MCP, q[2]=IP
-    # right URDF: thumb_1 lower=-0.920 (negative=flex), thumb_2 lower=-1.745 (negative=flex)
-    # left  URDF: thumb_1 upper=+0.920 (positive=flex), thumb_2 upper=+1.745 (positive=flex)
-    # flex_mcp = -q[1] works for both: right outputs negative q[1] for flex → -q[1]>0 ✓;
-    # left outputs positive q[1] but sign is handled by the abduction axis direction.
+    # URDF sign conventions are MIRRORED between hands:
+    #   right thumb_1: lower=-0.920 (abducted), upper=+0.720 (flexed) → negative = abducted
+    #   left  thumb_1: lower=-0.724 (flexed),   upper=+0.920 (abducted)→ positive = abducted
+    # DexPilot outputs th1≈-0.921 for right open, +0.921 for left open.
+    # flex_mcp = sign*q[1]: right→-0.921, left→-0.921 → both produce dorsal (spread) direction ✓
+    # flex_mcp = -q[1] (old):  right→+0.921 → palmar (wrong for right hand) ✗
     thumb_cmc=np.array([sign*0.042, 0.010, 0.002])
     pts["thumb_cmc"]=thumb_cmc
     thumb_rest=np.array([sign*np.sin(np.pi/4), np.cos(np.pi/4), 0.0])
@@ -257,7 +259,7 @@ def dex3_fk(angles, is_right):
     abd_dir=R_abd@thumb_rest
     thumb_mcp=thumb_cmc + abd_dir*0.038
     pts["thumb_mcp"]=thumb_mcp
-    flex_mcp=-q[1]
+    flex_mcp=sign*q[1]
     z_hat=np.array([0.0,0.0,1.0])
     flex_axis=np.cross(z_hat, abd_dir)
     fn=np.linalg.norm(flex_axis)
@@ -265,7 +267,7 @@ def dex3_fk(angles, is_right):
     mcp_dir=_rodrigues(abd_dir, flex_axis, flex_mcp)
     thumb_ip=thumb_mcp + mcp_dir*0.030
     pts["thumb_ip"]=thumb_ip
-    ip_dir=_rodrigues(mcp_dir/(np.linalg.norm(mcp_dir)+1e-8), flex_axis, -q[2])
+    ip_dir=_rodrigues(mcp_dir/(np.linalg.norm(mcp_dir)+1e-8), flex_axis, sign*q[2])
     pts["thumb_tip"]=thumb_ip + ip_dir*0.025
 
     return pts
