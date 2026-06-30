@@ -380,13 +380,87 @@ def _equal_3d(ax, pts, margin=0.12):
     ax.set_zlim(ctr[2]-half,ctr[2]+half)
 
 # ---------------------------------------------------------------------------
+# FK test mode  (--test flag, no UDP needed)
+# ---------------------------------------------------------------------------
+
+def _run_fk_test():
+    """Static FK pose grid for visual debugging.
+
+    Shows 4 reference poses × 2 hands (left top row, right bottom row).
+    Angles use URDF joint limits directly so each column is physically meaningful.
+    Joint order: [thumb_abd, thumb_mcp, thumb_ip, mid_mcp, mid_pip, idx_mcp, idx_pip]
+
+    URDF limits (for reference):
+      Right: index/middle  [0, +1.57/1.75]  positive = flex
+             thumb_1       [-0.920, +0.720]  -0.920 = abducted
+             thumb_2       [-1.750, 0]       -1.750 = flexed
+      Left:  index/middle  [-1.57/-1.75, 0]  negative = flex
+             thumb_1       [-0.724, +0.920]  +0.920 = abducted
+             thumb_2       [0, +1.750]        +1.750 = flexed
+    """
+    # Each pose: (label, q_right, q_left)
+    POSES = [
+        (
+            "zero\n(URDF rest)",
+            [0.0,  0.0,  0.0,    0.0,  0.0,   0.0,  0.0],   # right
+            [0.0,  0.0,  0.0,    0.0,  0.0,   0.0,  0.0],   # left
+        ),
+        (
+            "open\n(thumb abducted,\nfingers straight)",
+            [0.0, -0.92, 0.0,    0.0,  0.0,   0.0,  0.0],   # right: thumb_1=-0.92 = abducted
+            [0.0, +0.92, 0.0,    0.0,  0.0,   0.0,  0.0],   # left:  thumb_1=+0.92 = abducted
+        ),
+        (
+            "fist\n(thumb abducted,\nfingers full flex)",
+            [0.0, -0.92, -1.75,  1.57, 1.75,  1.57, 1.75],  # right: fingers positive
+            [0.0, +0.92, +1.75, -1.57,-1.75, -1.57,-1.75],  # left:  fingers negative
+        ),
+        (
+            "pinch\n(thumb flex\ntoward index)",
+            [1.05, 0.72, -1.75,  0.0,  0.0,   0.0,  0.0],   # right: max abd + mcp/ip flex
+            [1.05,-0.72, +1.75,  0.0,  0.0,   0.0,  0.0],   # left
+        ),
+    ]
+
+    plt.style.use("dark_background")
+    n = len(POSES)
+    fig = plt.figure(figsize=(4*n, 10), facecolor="#1a1a2e")
+    fig.suptitle("Dex3-1 FK Reference Poses  [--test mode]\n"
+                 "Top row = RIGHT hand   |   Bottom row = LEFT hand",
+                 color="white", fontsize=11, y=0.99)
+
+    for col, (pose_name, q_right, q_left) in enumerate(POSES):
+        for row, (q, is_right, side_label) in enumerate([
+            (q_right, True,  "RIGHT"),
+            (q_left,  False, "LEFT"),
+        ]):
+            ax = fig.add_subplot(2, n, row * n + col + 1, projection="3d")
+            ax.set_title(f"{side_label}: {pose_name}", color="white", fontsize=7, pad=2)
+            _style_ax(ax)
+            _draw_dex3(ax, np.array(q, dtype=float), active=True, is_right=is_right)
+            ax.set_xlim(-0.13, 0.13)
+            ax.set_ylim(-0.02, 0.18)
+            ax.set_zlim(-0.10, 0.10)
+            ax.view_init(elev=20, azim=-60)
+
+    plt.tight_layout(rect=[0.0, 0.0, 1.0, 0.96])
+    plt.show()
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--port",type=int,default=9870)
+    ap.add_argument("--test", action="store_true",
+                    help="Show static FK reference poses and exit (no AVP device needed)")
     args=ap.parse_args()
+
+    if args.test:
+        _run_fk_test()
+        return
 
     try:
         _s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
