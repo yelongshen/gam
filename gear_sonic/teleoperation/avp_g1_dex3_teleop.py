@@ -125,9 +125,11 @@ TIMEOUT_S  = 0.5      # stop sending if no AVP packet for this long
 KP = [2.0, 1.5, 1.5, 1.2, 1.2, 1.2, 1.2]
 KD = [0.1, 0.08, 0.08, 0.05, 0.05, 0.05, 0.05]
 
-# Dex3 joint limits [min, max] radians
-JOINT_MIN = np.array([-0.5, -1.50, 0.0,  -1.57, -1.75, -1.57, -1.75])
-JOINT_MAX = np.array([ 0.5,  0.0,  1.70,  0.0,   0.0,   0.0,   0.0 ])
+# JOINT_MIN/MAX per official NLopt bounds for DexPilot (both hands):
+# Order: [thumb_0, thumb_1, thumb_2, middle_0, middle_1, index_0, index_1]
+# DexPilot sign: index/middle positive=flex; thumb_2 negative=flex
+JOINT_MIN = np.array([-1.05, -0.92, -1.75, 0.0,  0.0,  0.0,  0.0 ])
+JOINT_MAX = np.array([ 1.05,  0.73,  0.0,  1.57, 1.75, 1.57, 1.75])
 
 # AVP joint indices
 J_WRIST        = 0
@@ -175,13 +177,14 @@ def _make_dexpilot_cfg(d: dict) -> dict:
 _left_retarget  = _RetargetingConfig.from_dict(_make_dexpilot_cfg(_cfg_yaml["left"])).build()
 _right_retarget = _RetargetingConfig.from_dict(_make_dexpilot_cfg(_cfg_yaml["right"])).build()
 
-# Hardware joint order (from Unitree hand_retargeting.py)
+# Hardware joint order from official Unitree hand_retargeting.py (both hands):
+#   dex3_api_joint_names = [thumb_0, thumb_1, thumb_2, middle_0, middle_1, index_0, index_1]
 _LEFT_HW_JOINTS  = ["left_hand_thumb_0_joint",  "left_hand_thumb_1_joint",  "left_hand_thumb_2_joint",
                     "left_hand_middle_0_joint",  "left_hand_middle_1_joint",
                     "left_hand_index_0_joint",   "left_hand_index_1_joint"]
 _RIGHT_HW_JOINTS = ["right_hand_thumb_0_joint", "right_hand_thumb_1_joint", "right_hand_thumb_2_joint",
-                    "right_hand_index_0_joint",  "right_hand_index_1_joint",
-                    "right_hand_middle_0_joint", "right_hand_middle_1_joint"]
+                    "right_hand_middle_0_joint", "right_hand_middle_1_joint",
+                    "right_hand_index_0_joint",  "right_hand_index_1_joint"]
 
 _left_to_hw  = [_left_retarget.joint_names.index(n)  for n in _LEFT_HW_JOINTS]
 _right_to_hw = [_right_retarget.joint_names.index(n) for n in _RIGHT_HW_JOINTS]
@@ -196,23 +199,17 @@ _R_AVP2ROBOT_RIGHT = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
 _R_AVP2ROBOT_LEFT  = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
 
 
-def _thumb_angles_geometric(pts: np.ndarray) -> np.ndarray:
-    """Frame-independent thumb angles from AVP joint positions."""
-    p_w   = pts[0]; p_th = pts[4]; p_idx = pts[9]; p_mid = pts[14]
-    v_th  = p_th - p_w; v_idx = p_idx - p_w
-    cos_sep = np.clip(np.dot(v_th/(np.linalg.norm(v_th)+1e-8),
-                             v_idx/(np.linalg.norm(v_idx)+1e-8)), -1., 1.)
-    thumb_abd = float(np.clip(np.arccos(cos_sep) * (1.745/1.2), 0., 1.745))
-    ti_dist = np.linalg.norm(p_th - p_idx)
-    wm_dist = np.linalg.norm(p_mid - p_w) + 1e-8
-    flex_t  = float(np.clip(1.0 - (ti_dist/wm_dist)/0.65, 0., 1.))
-    return np.array([thumb_abd, flex_t * 1.2, flex_t * 1.4])
-
-
 def retarget(joints: list, is_right: bool) -> np.ndarray:
     """
-    DexPilot retargeting: AVP 27-joint -> Dex3 7-DOF motor targets.
-    Official xr_teleoperate algorithm for index/middle, geometric thumb override.
+    Pure DexPilot retargeting: AVP 27-joint -> Dex3 7-DOF motor targets.
+
+    Exactly matches the official unitreerobotics/xr_teleoperate algorithm:
+      robot_hand_unitree.py Dex3_1_Controller.control_process()
+
+      ref_value = hand_data[indices[1,:]] - hand_data[indices[0,:]]
+      q_target  = retargeting.retarget(ref_value)[dex_retargeting_to_hardware]
+
+    Output hardware order (both hands): [thumb_0, thumb_1, thumb_2, middle_0, middle_1, index_0, index_1]
     """
     if len(joints) < 15:
         return np.zeros(MOTOR_NUM)
@@ -223,11 +220,10 @@ def retarget(joints: list, is_right: bool) -> np.ndarray:
     to_hw      = _right_to_hw   if is_right else _left_to_hw
     R          = _R_AVP2ROBOT_RIGHT if is_right else _R_AVP2ROBOT_LEFT
 
-    raw_ref = pts[indices[1]] - pts[indices[0]]   # shape (6, 3)
+    # Compute 6 DexPilot inter-finger vectors and rotate into Unitree URDF frame.
+    raw_ref = pts[indices[1]] - pts[indices[0]]   # shape (6, 3) in OpenXR frame
     ref     = (R @ raw_ref.T).T                   # shape (6, 3) in URDF frame
-    q       = retargeter.retarget(ref)[to_hw]
-    q[0], q[1], q[2] = _thumb_angles_geometric(pts)
-    return q
+    return retargeter.retarget(ref)[to_hw]         # hardware order
 
 
 # ── UDP receiver thread ───────────────────────────────────────────────────────
@@ -401,14 +397,14 @@ def main():
                 print(
                     f"  L({'ON ' if la else 'OFF'}): "
                     f"abd={ql[0]:+.2f} tmcp={ql[1]:+.2f} tip={ql[2]:+.2f} "
-                    f"imcp={ql[3]:+.2f} ipip={ql[4]:+.2f} "
-                    f"mmcp={ql[5]:+.2f} mpip={ql[6]:+.2f}"
+                    f"mmcp={ql[3]:+.2f} mpip={ql[4]:+.2f} "
+                    f"imcp={ql[5]:+.2f} ipip={ql[6]:+.2f}"
                 )
                 print(
                     f"  R({'ON ' if ra else 'OFF'}): "
                     f"abd={qr[0]:+.2f} tmcp={qr[1]:+.2f} tip={qr[2]:+.2f} "
-                    f"imcp={qr[3]:+.2f} ipip={qr[4]:+.2f} "
-                    f"mmcp={qr[5]:+.2f} mpip={qr[6]:+.2f}"
+                    f"mmcp={qr[3]:+.2f} mpip={qr[4]:+.2f} "
+                    f"imcp={qr[5]:+.2f} ipip={qr[6]:+.2f}"
                 )
                 time.sleep(0.1)
         except KeyboardInterrupt:

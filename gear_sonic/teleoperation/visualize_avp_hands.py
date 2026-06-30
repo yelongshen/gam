@@ -71,7 +71,9 @@ def _draw_avp(ax, joints, active, side):
 # ---------------------------------------------------------------------------
 
 MOTOR_NUM = 7
-MOTOR_NAMES = ["Thumb Abd","Thumb MCP","Thumb IP","Idx MCP","Idx PIP","Mid MCP","Mid PIP"]
+# Official hardware order from Unitree hand_retargeting.py (both hands):
+#   [thumb_0, thumb_1, thumb_2, middle_0, middle_1, index_0, index_1]
+MOTOR_NAMES = ["Thumb Abd","Thumb MCP","Thumb IP","Mid MCP","Mid PIP","Idx MCP","Idx PIP"]
 
 import yaml as _yaml
 from dex_retargeting.retargeting_config import RetargetingConfig as _RetargetingConfig
@@ -96,12 +98,17 @@ def _make_dexpilot_cfg(d):
 _left_retarget  = _RetargetingConfig.from_dict(_make_dexpilot_cfg(_cfg_yaml["left"])).build()
 _right_retarget = _RetargetingConfig.from_dict(_make_dexpilot_cfg(_cfg_yaml["right"])).build()
 
-_LEFT_HW  = ["left_hand_thumb_0_joint","left_hand_thumb_1_joint","left_hand_thumb_2_joint",
-             "left_hand_middle_0_joint","left_hand_middle_1_joint",
-             "left_hand_index_0_joint","left_hand_index_1_joint"]
-_RIGHT_HW = ["right_hand_thumb_0_joint","right_hand_thumb_1_joint","right_hand_thumb_2_joint",
-             "right_hand_index_0_joint","right_hand_index_1_joint",
-             "right_hand_middle_0_joint","right_hand_middle_1_joint"]
+# Hardware joint order from official Unitree hand_retargeting.py (both hands):
+#   [thumb_0, thumb_1, thumb_2, middle_0, middle_1, index_0, index_1]
+# Note: for the right hand the YAML target_joint_names has index before middle,
+# but the official dex3_api_joint_names (used for DDS mapping) has middle before
+# index. We follow the official DDS mapping here.
+_LEFT_HW  = ["left_hand_thumb_0_joint", "left_hand_thumb_1_joint", "left_hand_thumb_2_joint",
+             "left_hand_middle_0_joint", "left_hand_middle_1_joint",
+             "left_hand_index_0_joint",  "left_hand_index_1_joint"]
+_RIGHT_HW = ["right_hand_thumb_0_joint", "right_hand_thumb_1_joint", "right_hand_thumb_2_joint",
+             "right_hand_middle_0_joint", "right_hand_middle_1_joint",
+             "right_hand_index_0_joint",  "right_hand_index_1_joint"]
 _left_to_hw  = [_left_retarget.joint_names.index(n)  for n in _LEFT_HW]
 _right_to_hw = [_right_retarget.joint_names.index(n) for n in _RIGHT_HW]
 _left_indices  = _left_retarget.optimizer.target_link_human_indices   # shape (2,6) for DexPilot
@@ -120,39 +127,21 @@ _R_AVP2ROBOT_RIGHT = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
 _R_AVP2ROBOT_LEFT  = np.array([[0.,1.,0.],[0.,0.,1.],[1.,0.,0.]])
 
 
-def _thumb_angles_geometric(pts: np.ndarray) -> np.ndarray:
-    """Frame-independent thumb angles from AVP joint positions.
-
-    Uses angular/distance relationships only (no frame assumptions).
-    Returns [thumb_0_abd, thumb_1_mcp, thumb_2_ip].
-    """
-    p_w   = pts[0]   # wrist
-    p_th  = pts[4]   # thumb tip
-    p_idx = pts[9]   # index tip
-    p_mid = pts[14]  # middle tip
-
-    # Abduction: angle between (thumb-wrist) and (index-wrist) directions
-    v_th  = p_th - p_w
-    v_idx = p_idx - p_w
-    cos_sep = np.clip(np.dot(v_th / (np.linalg.norm(v_th)+1e-8),
-                             v_idx / (np.linalg.norm(v_idx)+1e-8)), -1., 1.)
-    sep_angle = np.arccos(cos_sep)
-    thumb_abd = float(np.clip(sep_angle * (1.745 / 1.2), 0., 1.745))
-
-    # Flexion: thumb-tip↔index-tip distance normalised by wrist-to-middle-tip
-    ti_dist = np.linalg.norm(p_th - p_idx)
-    wm_dist = np.linalg.norm(p_mid - p_w) + 1e-8
-    ratio   = ti_dist / wm_dist
-    flex_t  = float(np.clip(1.0 - ratio / 0.65, 0., 1.))
-    return np.array([thumb_abd, flex_t * 1.2, flex_t * 1.4])
-
-
 def retarget(joints, is_right):
-    """DexPilot retargeting: AVP 27-joint -> Dex3 7-DOF (hardware order).
+    """Pure DexPilot retargeting: AVP 27-joint -> Dex3 7-DOF (hardware order).
 
-    Matches the official unitreerobotics/xr_teleoperate algorithm:
-      • DexPilot optimizer for index/middle (6 inter-finger vectors in URDF frame).
-      • Geometric thumb override (frame-independent, uses distances/angles).
+    Exactly matches the official unitreerobotics/xr_teleoperate algorithm:
+      robot_hand_unitree.py Dex3_1_Controller.control_process()
+
+      ref_value = hand_data[indices[1,:]] - hand_data[indices[0,:]]
+      q_target  = retargeting.retarget(ref_value)[dex_retargeting_to_hardware]
+
+    DexPilot indices (from unitree_dex3.yml):
+      origins : [index_tip, middle_tip, middle_tip, wrist, wrist,  wrist ]
+      targets : [thumb_tip, thumb_tip,  index_tip,  thumb, index,  middle]
+
+    Output hardware order (both hands, from hand_retargeting.py dex3_api_joint_names):
+      [thumb_0, thumb_1, thumb_2, middle_0, middle_1, index_0, index_1]
     """
     if len(joints) < 15:
         return np.zeros(MOTOR_NUM)
@@ -162,15 +151,12 @@ def retarget(joints, is_right):
     to_hw      = _right_to_hw   if is_right else _left_to_hw
     R          = _R_AVP2ROBOT_RIGHT if is_right else _R_AVP2ROBOT_LEFT
 
-    # Build 6 DexPilot vectors and rotate into Unitree URDF frame
-    raw_ref = pts[indices[1]] - pts[indices[0]]   # shape (6, 3)
+    # Compute 6 DexPilot inter-finger vectors and rotate into Unitree URDF frame.
+    # Official code applies no explicit rotation because tv_wrapper already
+    # outputs positions in the URDF arm frame; we replicate with R matrix.
+    raw_ref = pts[indices[1]] - pts[indices[0]]   # shape (6, 3) in OpenXR frame
     ref     = (R @ raw_ref.T).T                   # shape (6, 3) in URDF frame
-    q       = retargeter.retarget(ref)[to_hw]
-
-    # Thumb: DexPilot gives poor results without wrist rotation data;
-    # geometric method is frame-independent and more reliable.
-    q[0], q[1], q[2] = _thumb_angles_geometric(pts)
-    return q
+    return retargeter.retarget(ref)[to_hw]         # hardware order
 
 # ---------------------------------------------------------------------------
 # Dex3 forward kinematics
@@ -190,31 +176,44 @@ def _rodrigues(vec, axis, angle):
     return vec*c + np.cross(axis,vec)*s + axis*np.dot(axis,vec)*(1-c)
 
 def dex3_fk(angles, is_right):
+    """Forward kinematics for Dex3-1 visualization.
+
+    Input ordering matches official hardware order (both hands):
+      q[0]=thumb_0(abd)  q[1]=thumb_1(MCP)  q[2]=thumb_2(IP)
+      q[3]=middle_0(MCP) q[4]=middle_1(PIP)
+      q[5]=index_0(MCP)  q[6]=index_1(PIP)
+
+    DexPilot sign conventions (from URDF NLopt bounds):
+      index/middle: positive = flex  (range approx [0, 1.57/1.75])
+      thumb_2:      negative = flex  (range approx [-1.75, 0])
+      thumb_1:      negative = MCP flex (range approx [-0.92, 0.73])
+    """
     q=angles.copy()
     sign=1.0 if is_right else -1.0
     pts={}
     pts["palm"]=np.zeros(3)
 
-    # Index  (q[3] MCP in [-1.57,0],  q[4] PIP in [-1.75,0]  — negative = flex toward palm)
-    # _rx(q) with negative angle rotates +Y toward -Z (palm), correct for flexion.
-    idx_meta=np.array([-sign*0.015, 0.052, 0.0])
-    pts["idx_meta"]=idx_meta
-    R_im=_rx(q[3])
-    idx_pip=idx_meta + R_im@np.array([0.0,0.038,0.0])
-    pts["idx_pip"]=idx_pip
-    idx_tip=idx_pip + R_im@_rx(q[4])@np.array([0.0,0.030,0.0])
-    pts["idx_tip"]=idx_tip
-
-    # Middle  (q[5] MCP in [-1.57,0],  q[6] PIP in [-1.75,0])
+    # Middle  q[3]=MCP, q[4]=PIP  — DexPilot: positive = flex
+    # _rx(-q) rotates +Y toward -Z (palm) for positive q = flexion.
     mid_meta=np.array([sign*0.012, 0.055, 0.0])
     pts["mid_meta"]=mid_meta
-    R_mm=_rx(q[5])
+    R_mm=_rx(-q[3])
     mid_pip=mid_meta + R_mm@np.array([0.0,0.042,0.0])
     pts["mid_pip"]=mid_pip
-    mid_tip=mid_pip + R_mm@_rx(q[6])@np.array([0.0,0.032,0.0])
+    mid_tip=mid_pip + R_mm@_rx(-q[4])@np.array([0.0,0.032,0.0])
     pts["mid_tip"]=mid_tip
 
-    # Thumb  (q[0] abd in [-0.5,0.5],  q[1] MCP in [-1.5,0],  q[2] IP in [0,1.7])
+    # Index  q[5]=MCP, q[6]=PIP  — DexPilot: positive = flex
+    idx_meta=np.array([-sign*0.015, 0.052, 0.0])
+    pts["idx_meta"]=idx_meta
+    R_im=_rx(-q[5])
+    idx_pip=idx_meta + R_im@np.array([0.0,0.038,0.0])
+    pts["idx_pip"]=idx_pip
+    idx_tip=idx_pip + R_im@_rx(-q[6])@np.array([0.0,0.030,0.0])
+    pts["idx_tip"]=idx_tip
+
+    # Thumb  q[0]=abd, q[1]=MCP, q[2]=IP
+    # DexPilot: thumb_1 negative = MCP flex; thumb_2 negative = IP flex
     thumb_cmc=np.array([sign*0.042, 0.010, 0.002])
     pts["thumb_cmc"]=thumb_cmc
     thumb_rest=np.array([sign*np.sin(np.pi/4), np.cos(np.pi/4), 0.0])
@@ -222,19 +221,17 @@ def dex3_fk(angles, is_right):
     abd_dir=R_abd@thumb_rest
     thumb_mcp=thumb_cmc + abd_dir*0.038
     pts["thumb_mcp"]=thumb_mcp
-    # flex_mcp > 0 when thumb is flexed (q[1] < 0)
+    # thumb_1 < 0 means MCP flex: -q[1] > 0 = positive flex amount
     flex_mcp=-q[1]
     z_hat=np.array([0.0,0.0,1.0])
-    # cross(z_hat, abd_dir) → positive flex_mcp rotates thumb tip toward -Z (palm). 
-    # cross(abd_dir, z_hat) was the bug — it rotated toward +Z (dorsal).
     flex_axis=np.cross(z_hat, abd_dir)
     fn=np.linalg.norm(flex_axis)
     flex_axis=flex_axis/fn if fn>1e-6 else np.array([1.0,0.0,0.0])
     mcp_dir=_rodrigues(abd_dir, flex_axis, flex_mcp)
     thumb_ip=thumb_mcp + mcp_dir*0.030
     pts["thumb_ip"]=thumb_ip
-    # q[2] > 0 = IP flex; same axis keeps curling in same direction
-    ip_dir=_rodrigues(mcp_dir/(np.linalg.norm(mcp_dir)+1e-8), flex_axis, q[2])
+    # thumb_2 < 0 means IP flex: -q[2] > 0 = positive flex amount
+    ip_dir=_rodrigues(mcp_dir/(np.linalg.norm(mcp_dir)+1e-8), flex_axis, -q[2])
     pts["thumb_tip"]=thumb_ip + ip_dir*0.025
 
     return pts
