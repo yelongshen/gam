@@ -164,20 +164,11 @@ _ASSETS = _Path(__file__).parent / "assets"
 _RetargetingConfig.set_default_urdf_dir(str(_ASSETS))
 _cfg_yaml = _yaml.safe_load((_ASSETS / "unitree_hand/unitree_dex3.yml").read_text())
 
-def _make_dexpilot_cfg(d: dict) -> dict:
-    """Build a 'dexpilot' retargeting config dict (matches official xr_teleoperate)."""
-    return {
-        "type": "dexpilot",
-        "urdf_path": d["urdf_path"],
-        "target_joint_names": d["target_joint_names"],
-        "wrist_link_name": d["wrist_link_name"],
-        "finger_tip_link_names": d["finger_tip_link_names"],
-        "target_link_human_indices": np.array(d["target_link_human_indices_dexpilot"]),
-        "low_pass_alpha": d.get("low_pass_alpha", 0.2),
-    }
-
-_left_retarget  = _RetargetingConfig.from_dict(_make_dexpilot_cfg(_cfg_yaml["left"])).build()
-_right_retarget = _RetargetingConfig.from_dict(_make_dexpilot_cfg(_cfg_yaml["right"])).build()
+# Official approach: pass YAML dict directly, matching hand_retargeting.py exactly:
+#   RetargetingConfig.from_dict(self.cfg['left'])
+# from_dict() handles np.array conversion for target_link_human_indices internally.
+_left_retarget  = _RetargetingConfig.from_dict(_cfg_yaml["left"]).build()
+_right_retarget = _RetargetingConfig.from_dict(_cfg_yaml["right"]).build()
 
 # Hardware joint order from official Unitree hand_retargeting.py (both hands):
 #   dex3_api_joint_names = [thumb_0, thumb_1, thumb_2, middle_0, middle_1, index_0, index_1]
