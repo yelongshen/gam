@@ -197,6 +197,7 @@ class Dex3Commander:
         with self._lock:
             return (self._q_cmd_left if is_left else self._q_cmd_right).copy()
 
+    def _current_q(self, is_left: bool) -> np.ndarray:
         with self._lock:
             q = self._q_state_left if is_left else self._q_state_right
         return q.copy() if q is not None else np.zeros(MOTOR_NUM)
