@@ -87,7 +87,11 @@ POSES: dict[str, tuple[np.ndarray, np.ndarray]] = {
     ),
 }
 
-POSE_NAMES = list(POSES.keys()) + ["stop"]
+POSE_NAMES = list(POSES.keys()) + ["stop", "recalibrate"]
+
+# How long to hold zero-torque (limp) before re-engaging during recalibration
+RECALIB_LIMP_S  = 2.0   # seconds motors stay limp — user straightens fingers
+RECALIB_RAMP_S  = 5.0   # seconds to ramp to open after re-engagement
 
 
 # ── DDS helpers ──────────────────────────────────────────────────────────────
@@ -209,6 +213,49 @@ class Dex3Commander:
                 pub.Write(_build_cmd(q, stop=is_stop))
             time.sleep(CTRL_DT)
 
+    def recalibrate(self, sides: list[str]) -> None:
+        """Reinitialize the Dex3 hand.
+
+        Step 1 — LIMP: send zero-torque (timeout=0x01, kp=kd=0) for
+                        RECALIB_LIMP_S seconds so joints go compliant.
+                        Manually straighten all fingers to rest position now.
+        Step 2 — RAMP: slowly re-engage position control and ramp to 'open'
+                        over RECALIB_RAMP_S seconds from wherever joints land.
+        """
+        side_str = "+".join(s.upper() for s in sides)
+
+        # ── Step 1: go limp ────────────────────────────────────────────────
+        limp_steps = int(round(RECALIB_LIMP_S * CTRL_HZ))
+        print(f"[Dex3] recalibrate ({side_str}) — step 1/{limp_steps*CTRL_DT:.0f}s: "
+              f"motors LIMP for {RECALIB_LIMP_S:.0f}s — straighten fingers now...")
+        for _ in range(limp_steps):
+            for side in sides:
+                pub = self._left_pub if side == "left" else self._right_pub
+                pub.Write(_build_cmd(np.zeros(MOTOR_NUM), stop=True))
+            time.sleep(CTRL_DT)
+
+        # ── Step 2: wait for state to settle, then ramp to open ────────────
+        time.sleep(0.1)   # let state subscriber update from new joint positions
+        q_open_r, q_open_l = POSES["open"]
+        q_start = {
+            "right": self._current_q(is_left=False),
+            "left":  self._current_q(is_left=True),
+        }
+        q_target = {"right": q_open_r, "left": q_open_l}
+
+        ramp_steps = max(1, int(round(RECALIB_RAMP_S * CTRL_HZ)))
+        print(f"[Dex3] recalibrate ({side_str}) — step 2: ramping to OPEN "
+              f"over {RECALIB_RAMP_S:.0f}s ({ramp_steps} steps)...")
+        for step in range(ramp_steps + 1):
+            alpha = step / ramp_steps
+            for side in sides:
+                q = (1.0 - alpha) * q_start[side] + alpha * q_target[side]
+                pub = self._left_pub if side == "left" else self._right_pub
+                pub.Write(_build_cmd(q, stop=False))
+            time.sleep(CTRL_DT)
+
+        print(f"[Dex3] recalibrate ({side_str}) — done.")
+
 
 # ── Entry point ──────────────────────────────────────────────────────────────
 
@@ -221,7 +268,7 @@ def main() -> None:
     ap.add_argument("--net",         default="enp36s0f1",
                     help="Network interface connected to G1 (default: enp36s0f1)")
     ap.add_argument("--pose",        choices=POSE_NAMES, default=None,
-                    help="Pose to send once, then exit")
+                    help="Pose to send once, then exit. Use 'recalibrate' to reinit the hand.")
     ap.add_argument("--side",        choices=["left", "right", "both"], default="both",
                     help="Which hand(s) to command (default: both)")
     ap.add_argument("--duration",    type=float, default=3.0,
@@ -250,7 +297,10 @@ def main() -> None:
     commander = Dex3Commander(network_interface=args.net)
 
     if args.pose:
-        commander.send(args.pose, sides, duration=args.duration)
+        if args.pose == "recalibrate":
+            commander.recalibrate(sides)
+        else:
+            commander.send(args.pose, sides, duration=args.duration)
         return
 
     # Interactive loop
@@ -268,7 +318,10 @@ def main() -> None:
             if raw not in POSE_NAMES:
                 print(f"  Unknown pose '{raw}'. Choose from: {', '.join(POSE_NAMES)}")
                 continue
-            commander.send(raw, sides, duration=args.duration)
+            if raw == "recalibrate":
+                commander.recalibrate(sides)
+            else:
+                commander.send(raw, sides, duration=args.duration)
     except KeyboardInterrupt:
         print("\n[Dex3] Sending stop before exit...")
         commander.send("stop", sides, duration=0.5)
