@@ -85,9 +85,19 @@ POSES: dict[str, tuple[np.ndarray, np.ndarray]] = {
         np.array([-1.000,  0.400, -1.745,  0.0,    0.0,    1.571, 0.800]),  # right — index meets thumb
         np.array([-1.000, -0.400, +1.745,  0.0,    0.0,   -1.571,-0.800]),  # left  — mirror
     ),
+    # thumb_wave: sweep through abd→mcp→ip to verify each thumb joint independently
+    # Fingers stay open; only thumb moves.
+    "thumb_open": (
+        np.array([-1.047, -0.920,  0.0,   0.0, 0.0, 0.0, 0.0]),   # right thumb fully spread
+        np.array([-1.047, +0.920,  0.0,   0.0, 0.0, 0.0, 0.0]),   # left  thumb fully spread
+    ),
+    "thumb_close": (
+        np.array([ 0.0,   -0.920, -1.745,  0.0, 0.0, 0.0, 0.0]),   # right thumb folded in
+        np.array([ 0.0,   +0.920, +1.745,  0.0, 0.0, 0.0, 0.0]),   # left  thumb folded in
+    ),
 }
 
-POSE_NAMES = list(POSES.keys()) + ["stop", "recalibrate"]
+POSE_NAMES = list(POSES.keys()) + ["stop", "recalibrate", "thumb_wave"]
 
 # How long to hold zero-torque (limp) before re-engaging during recalibration
 RECALIB_LIMP_S  = 2.0   # seconds motors stay limp — user straightens fingers
@@ -256,6 +266,19 @@ class Dex3Commander:
 
         print(f"[Dex3] recalibrate ({side_str}) — done.")
 
+    def thumb_wave(self, sides: list[str], duration: float = 3.0) -> None:
+        """Sweep each thumb joint in sequence to verify motion on hardware.
+
+        Sequence (fingers stay open throughout):
+          1. thumb_open  — spread thumb out
+          2. thumb_close — fold thumb in (abd→neutral, ip full flex)
+          3. thumb_open  — return to spread
+        """
+        side_str = "+".join(s.upper() for s in sides)
+        print(f"[Dex3] thumb_wave ({side_str}) — open → close → open, {duration:.1f}s each")
+        for pose in ("thumb_open", "thumb_close", "thumb_open"):
+            self.send(pose, sides, duration=duration)
+
 
 # ── Entry point ──────────────────────────────────────────────────────────────
 
@@ -273,6 +296,10 @@ def main() -> None:
                     help="Which hand(s) to command (default: both)")
     ap.add_argument("--duration",    type=float, default=3.0,
                     help="Transition duration in seconds (default: 3.0)")
+    ap.add_argument("--joint",       choices=MOTOR_NAMES, default=None,
+                    help="Test a single joint by name (use with --angle)")
+    ap.add_argument("--angle",       type=float, default=None,
+                    help="Target angle in radians for --joint test")
     ap.add_argument("--interactive", action="store_true",
                     help="Interactive loop: type pose names until Ctrl-C")
     ap.add_argument("--print-only",  action="store_true",
@@ -287,18 +314,43 @@ def main() -> None:
             if name == "stop":
                 print("\n  Pose: stop  (kp=kd=0, motors go limp)")
                 continue
+            if name in ("recalibrate", "thumb_wave"):
+                print(f"\n  Pose: {name}  (special command, no joint values)")
+                continue
             q_r, q_l = POSES[name]
             _print_pose(name, q_r, q_l, sides)
         return
 
-    if not args.interactive and args.pose is None:
-        ap.error("Specify --pose <name> or --interactive (or --print-only to dry-run)")
+    if not args.interactive and args.pose is None and args.joint is None:
+        ap.error("Specify --pose <name>, --joint <name> --angle <rad>, or --interactive")
 
     commander = Dex3Commander(network_interface=args.net)
+
+    # Single-joint test
+    if args.joint is not None:
+        if args.angle is None:
+            ap.error("--joint requires --angle <radians>")
+        j_idx = MOTOR_NAMES.index(args.joint)
+        for side in sides:
+            q_start = commander._current_q(is_left=(side == "left")).copy()
+            q_target = q_start.copy()
+            q_target[j_idx] = args.angle
+            steps = max(1, int(round(args.duration * CTRL_HZ)))
+            print(f"[Dex3] joint test: {side.upper()} {args.joint}[{j_idx}] "
+                  f"→ {args.angle:+.3f} rad  over {args.duration:.1f}s")
+            pub = commander._left_pub if side == "left" else commander._right_pub
+            for step in range(steps + 1):
+                alpha = step / steps
+                q = (1.0 - alpha) * q_start + alpha * q_target
+                pub.Write(_build_cmd(q))
+                time.sleep(CTRL_DT)
+        return
 
     if args.pose:
         if args.pose == "recalibrate":
             commander.recalibrate(sides)
+        elif args.pose == "thumb_wave":
+            commander.thumb_wave(sides, duration=args.duration)
         else:
             commander.send(args.pose, sides, duration=args.duration)
         return
@@ -320,6 +372,8 @@ def main() -> None:
                 continue
             if raw == "recalibrate":
                 commander.recalibrate(sides)
+            elif raw == "thumb_wave":
+                commander.thumb_wave(sides, duration=args.duration)
             else:
                 commander.send(raw, sides, duration=args.duration)
     except KeyboardInterrupt:
