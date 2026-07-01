@@ -171,6 +171,8 @@ class Dex3Commander:
         self._lock = threading.Lock()
         self._q_state_left  = None   # filled by state callback
         self._q_state_right = None
+        self._q_cmd_left    = np.zeros(MOTOR_NUM)  # last commanded q
+        self._q_cmd_right   = np.zeros(MOTOR_NUM)
 
         self._left_sub = ChannelSubscriber("rt/dex3/left/state",  HandState_)
         self._right_sub = ChannelSubscriber("rt/dex3/right/state", HandState_)
@@ -191,7 +193,10 @@ class Dex3Commander:
             else:
                 self._q_state_right = q
 
-    def _current_q(self, is_left: bool) -> np.ndarray:
+    def _current_cmd(self, is_left: bool) -> np.ndarray:
+        with self._lock:
+            return (self._q_cmd_left if is_left else self._q_cmd_right).copy()
+
         with self._lock:
             q = self._q_state_left if is_left else self._q_state_right
         return q.copy() if q is not None else np.zeros(MOTOR_NUM)
@@ -221,6 +226,11 @@ class Dex3Commander:
                 q = (1.0 - alpha) * q_start[side] + alpha * q_target[side]
                 pub = self._left_pub if side == "left" else self._right_pub
                 pub.Write(_build_cmd(q, stop=is_stop))
+                with self._lock:
+                    if side == "left":
+                        self._q_cmd_left = q.copy()
+                    else:
+                        self._q_cmd_right = q.copy()
             time.sleep(CTRL_DT)
 
     def recalibrate(self, sides: list[str]) -> None:
@@ -300,6 +310,8 @@ def main() -> None:
                     help="Test a single joint by name (use with --angle)")
     ap.add_argument("--angle",       type=float, default=None,
                     help="Target angle in radians for --joint test")
+    ap.add_argument("--kp-scale",    type=float, default=1.0,
+                    help="Scale all KP gains by this factor for --joint test (default: 1.0)")
     ap.add_argument("--interactive", action="store_true",
                     help="Interactive loop: type pose names until Ctrl-C")
     ap.add_argument("--print-only",  action="store_true",
@@ -329,30 +341,31 @@ def main() -> None:
 
     commander = Dex3Commander(network_interface=args.net)
 
-    # ── Monitor mode: print live state, send nothing ──────────────────────
+    # ── Monitor mode: print live state vs commanded ─────────────────────
     if args.monitor:
-        header = (f"{'joint':>10s}  " +
-                  "  ".join(f"{'L_q':>7s} {'L_vel':>7s}" if s == "left"
-                             else f"{'R_q':>7s} {'R_vel':>7s}" for s in sides))
-        print(f"\n[Monitor] Live state from rt/dex3/{{left,right}}/state  (Ctrl-C to stop)")
-        print(f"{'':>10s}  " + "  ".join(f"{'LEFT':>15s}" if s == "left"
-                                          else f"{'RIGHT':>15s}" for s in sides))
-        print("-" * (12 + 18 * len(sides)))
+        print(f"\n[Monitor] cmd vs state  (Ctrl-C to stop)")
+        print(f"{'joint':>10s}  " + "  ".join(
+            f"{'CMD':>7s} {'ACT':>7s} {'ERR':>7s}" for s in sides))
+        print(f"{'':>10s}  " + "  ".join(
+            f"{'--- ' + s.upper() + ' ---':>23s}" for s in sides))
+        print("-" * (12 + 26 * len(sides)))
         try:
             while True:
                 lines = []
                 for i, name in enumerate(MOTOR_NAMES):
                     row = f"{name:>10s}  "
                     for side in sides:
-                        q_state = commander._current_q(is_left=(side == "left"))
-                        row += f"{q_state[i]:+7.3f}  "
+                        q_act = commander._current_q(is_left=(side == "left"))
+                        q_cmd = commander._current_cmd(is_left=(side == "left"))
+                        err   = q_cmd[i] - q_act[i]
+                        flag  = " !!" if abs(err) > 0.1 else "   "
+                        row  += f"{q_cmd[i]:+7.3f} {q_act[i]:+7.3f} {err:+7.3f}{flag}  "
                     lines.append(row)
-                # Print mode byte sanity for joint 0
                 mode0 = _make_mode(0)
-                print(f"\r\033[{len(lines)+2}A", end="")  # move cursor up
+                print(f"\r\033[{len(lines)+3}A", end="")
                 for line in lines:
                     print(line)
-                print(f"  mode[0]=0x{mode0:02X}  (expect 0x10)   ", end="\r")
+                print(f"  mode[0]=0x{mode0:02X} (expect 0x10)  KP={KP}   ", end="\r")
                 time.sleep(0.1)
         except KeyboardInterrupt:
             print("\n[Monitor] stopped.")
@@ -362,20 +375,31 @@ def main() -> None:
     if args.joint is not None:
         if args.angle is None:
             ap.error("--joint requires --angle <radians>")
-        j_idx = MOTOR_NAMES.index(args.joint)
+        j_idx   = MOTOR_NAMES.index(args.joint)
+        kp_orig = KP[j_idx]
+        KP[j_idx] = kp_orig * args.kp_scale
+        if args.kp_scale != 1.0:
+            print(f"[Dex3] KP[{j_idx}] scaled {kp_orig:.2f} → {KP[j_idx]:.2f}")
         for side in sides:
             q_start = commander._current_q(is_left=(side == "left")).copy()
             q_target = q_start.copy()
             q_target[j_idx] = args.angle
             steps = max(1, int(round(args.duration * CTRL_HZ)))
             print(f"[Dex3] joint test: {side.upper()} {args.joint}[{j_idx}] "
-                  f"→ {args.angle:+.3f} rad  over {args.duration:.1f}s")
+                  f"→ {args.angle:+.3f} rad  over {args.duration:.1f}s  "
+                  f"KP={KP[j_idx]:.2f}")
             pub = commander._left_pub if side == "left" else commander._right_pub
             for step in range(steps + 1):
                 alpha = step / steps
                 q = (1.0 - alpha) * q_start + alpha * q_target
                 pub.Write(_build_cmd(q))
+                with commander._lock:
+                    if side == "left":
+                        commander._q_cmd_left = q.copy()
+                    else:
+                        commander._q_cmd_right = q.copy()
                 time.sleep(CTRL_DT)
+        KP[j_idx] = kp_orig  # restore
         return
 
     if args.pose:
