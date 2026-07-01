@@ -344,29 +344,23 @@ def main() -> None:
 
     # ── Monitor mode: print live state vs commanded ─────────────────────
     if args.monitor:
-        print(f"\n[Monitor] cmd vs state  (Ctrl-C to stop)")
-        print(f"{'joint':>10s}  " + "  ".join(
-            f"{'CMD':>7s} {'ACT':>7s} {'ERR':>7s}" for s in sides))
-        print(f"{'':>10s}  " + "  ".join(
-            f"{'--- ' + s.upper() + ' ---':>23s}" for s in sides))
-        print("-" * (12 + 26 * len(sides)))
+        header  = f"{'joint':>10s}  " + "  ".join(
+            f"{'ACT':>7s}" for _ in sides)
+        divider = "-" * (12 + 10 * len(sides))
+        side_label = "  ".join(f"{'--- '+s.upper()+' ---':>7s}" for s in sides)
+        print(f"\n[Monitor] live ACT state  (Ctrl-C to stop)\n")
         try:
             while True:
-                lines = []
+                rows = [header, f"{'':>10s}  {side_label}", divider]
                 for i, name in enumerate(MOTOR_NAMES):
                     row = f"{name:>10s}  "
                     for side in sides:
                         q_act = commander._current_q(is_left=(side == "left"))
-                        q_cmd = commander._current_cmd(is_left=(side == "left"))
-                        err   = q_cmd[i] - q_act[i]
-                        flag  = " !!" if abs(err) > 0.1 else "   "
-                        row  += f"{q_cmd[i]:+7.3f} {q_act[i]:+7.3f} {err:+7.3f}{flag}  "
-                    lines.append(row)
-                mode0 = _make_mode(0)
-                print(f"\r\033[{len(lines)+3}A", end="")
-                for line in lines:
-                    print(line)
-                print(f"  mode[0]=0x{mode0:02X} (expect 0x10)  KP={KP}   ", end="\r")
+                        row += f"{q_act[i]:+7.3f}  "
+                    rows.append(row)
+                # Clear and reprint block
+                print("\033[2K\r" + ("\033[A\033[2K\r" * (len(rows)-1)), end="")
+                print("\n".join(rows), flush=True)
                 time.sleep(0.1)
         except KeyboardInterrupt:
             print("\n[Monitor] stopped.")
