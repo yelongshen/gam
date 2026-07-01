@@ -35,6 +35,8 @@ Usage
   python dex3_hand_control.py --print-only --pose pinch
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
 import time
