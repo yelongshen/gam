@@ -171,10 +171,12 @@ class Dex3Commander:
         self._lock = threading.Lock()
         self._q_state_left    = None
         self._q_state_right   = None
-        self._tau_state_left  = None   # actual motor torque
+        self._tau_state_left  = None
         self._tau_state_right = None
         self._q_cmd_left    = np.zeros(MOTOR_NUM)
         self._q_cmd_right   = np.zeros(MOTOR_NUM)
+        self._q_bus_left    = None   # cmd as seen on DDS bus (from any publisher)
+        self._q_bus_right   = None
 
         self._left_sub = ChannelSubscriber("rt/dex3/left/state",  HandState_)
         self._right_sub = ChannelSubscriber("rt/dex3/right/state", HandState_)
@@ -182,6 +184,14 @@ class Dex3Commander:
             lambda msg: self._on_state(msg, is_left=True),  1)
         self._right_sub.Init(
             lambda msg: self._on_state(msg, is_left=False), 1)
+
+        # Subscribe to cmd topics to observe what any publisher sends
+        self._left_cmd_sub  = ChannelSubscriber("rt/dex3/left/cmd",  HandCmd_)
+        self._right_cmd_sub = ChannelSubscriber("rt/dex3/right/cmd", HandCmd_)
+        self._left_cmd_sub.Init(
+            lambda msg: self._on_cmd(msg, is_left=True),  1)
+        self._right_cmd_sub.Init(
+            lambda msg: self._on_cmd(msg, is_left=False), 1)
 
         print(f"[Dex3] DDS initialised on {network_interface}")
         # Brief wait for first state messages
@@ -198,7 +208,19 @@ class Dex3Commander:
                 self._q_state_right   = q
                 self._tau_state_right = tau
 
-    def _current_cmd(self, is_left: bool) -> np.ndarray:
+    def _on_cmd(self, msg, is_left: bool) -> None:
+        q = np.array([msg.motor_cmd[i].q for i in range(MOTOR_NUM)])
+        with self._lock:
+            if is_left:
+                self._q_bus_left  = q
+            else:
+                self._q_bus_right = q
+
+    def _current_bus_cmd(self, is_left: bool) -> np.ndarray:
+        with self._lock:
+            q = self._q_bus_left if is_left else self._q_bus_right
+        return q.copy() if q is not None else np.zeros(MOTOR_NUM)
+
         with self._lock:
             return (self._q_cmd_left if is_left else self._q_cmd_right).copy()
 
@@ -354,23 +376,25 @@ def main() -> None:
 
     # ── Monitor mode: print live state vs commanded ─────────────────────
     if args.monitor:
-        print(f"\n[Monitor] live state  (Ctrl-C to stop)")
-        print(f"  ACT=actual position  TAU=actual torque")
-        print(f"  If TAU≈0 after command → motor fault or competing publisher\n")
-        hdr = f"{'joint':>10s}  " + "  ".join(
-            f"{'ACT':>7s} {'TAU':>6s}" for _ in sides)
-        div = "-" * (12 + 16 * len(sides))
-        slbl = "  ".join(f"{'--- '+s.upper()+' ---':>14s}" for s in sides)
+        print(f"\n[Monitor] BUS cmd vs ACT state  (Ctrl-C to stop)")
+        print(f"  BUS=cmd on DDS bus (any publisher)  ACT=actual pos  TAU=torque")
+        print(f"  BUS != what you sent => another process is overriding\n")
+        hdr  = f"{'joint':>10s}  " + "  ".join(
+            f"{'BUS':>7s} {'ACT':>7s} {'ERR':>6s} {'TAU':>6s}" for _ in sides)
+        div  = "-" * (12 + 30 * len(sides))
+        slbl = "  ".join(f"{'--- '+s.upper()+' ---':>28s}" for s in sides)
         try:
             while True:
                 rows = [hdr, f"{'':>10s}  {slbl}", div]
                 for i, name in enumerate(MOTOR_NAMES):
                     row = f"{name:>10s}  "
                     for side in sides:
-                        q_act = commander._current_q(  is_left=(side=="left"))
-                        tau   = commander._current_tau(is_left=(side=="left"))
-                        flag  = "!" if abs(tau[i]) < 0.005 and i == 0 else " "
-                        row  += f"{q_act[i]:+7.3f} {tau[i]:+6.3f}{flag} "
+                        q_act = commander._current_q(      is_left=(side=="left"))
+                        q_bus = commander._current_bus_cmd(is_left=(side=="left"))
+                        tau   = commander._current_tau(    is_left=(side=="left"))
+                        err   = q_bus[i] - q_act[i]
+                        flag  = "!!" if abs(err) > 0.05 else "  "
+                        row  += f"{q_bus[i]:+7.3f} {q_act[i]:+7.3f} {err:+6.3f}{flag} {tau[i]:+6.3f}  "
                     rows.append(row)
                 print("\033[2K\r" + ("\033[A\033[2K\r" * (len(rows)-1)), end="")
                 print("\n".join(rows), flush=True)
