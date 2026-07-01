@@ -304,6 +304,8 @@ def main() -> None:
                     help="Interactive loop: type pose names until Ctrl-C")
     ap.add_argument("--print-only",  action="store_true",
                     help="Print joint targets only, do not connect to G1")
+    ap.add_argument("--monitor",     action="store_true",
+                    help="Print live joint state (no commands sent). Ctrl-C to stop.")
     args = ap.parse_args()
 
     sides = ["left", "right"] if args.side == "both" else [args.side]
@@ -321,10 +323,40 @@ def main() -> None:
             _print_pose(name, q_r, q_l, sides)
         return
 
-    if not args.interactive and args.pose is None and args.joint is None:
-        ap.error("Specify --pose <name>, --joint <name> --angle <rad>, or --interactive")
+    if not args.interactive and args.pose is None and args.joint is None \
+            and not args.monitor:
+        ap.error("Specify --pose, --joint --angle, --interactive, or --monitor")
 
     commander = Dex3Commander(network_interface=args.net)
+
+    # ── Monitor mode: print live state, send nothing ──────────────────────
+    if args.monitor:
+        header = (f"{'joint':>10s}  " +
+                  "  ".join(f"{'L_q':>7s} {'L_vel':>7s}" if s == "left"
+                             else f"{'R_q':>7s} {'R_vel':>7s}" for s in sides))
+        print(f"\n[Monitor] Live state from rt/dex3/{{left,right}}/state  (Ctrl-C to stop)")
+        print(f"{'':>10s}  " + "  ".join(f"{'LEFT':>15s}" if s == "left"
+                                          else f"{'RIGHT':>15s}" for s in sides))
+        print("-" * (12 + 18 * len(sides)))
+        try:
+            while True:
+                lines = []
+                for i, name in enumerate(MOTOR_NAMES):
+                    row = f"{name:>10s}  "
+                    for side in sides:
+                        q_state = commander._current_q(is_left=(side == "left"))
+                        row += f"{q_state[i]:+7.3f}  "
+                    lines.append(row)
+                # Print mode byte sanity for joint 0
+                mode0 = _make_mode(0)
+                print(f"\r\033[{len(lines)+2}A", end="")  # move cursor up
+                for line in lines:
+                    print(line)
+                print(f"  mode[0]=0x{mode0:02X}  (expect 0x10)   ", end="\r")
+                time.sleep(0.1)
+        except KeyboardInterrupt:
+            print("\n[Monitor] stopped.")
+        return
 
     # Single-joint test
     if args.joint is not None:
