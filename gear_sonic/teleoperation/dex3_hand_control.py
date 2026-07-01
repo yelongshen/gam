@@ -198,8 +198,8 @@ class Dex3Commander:
         time.sleep(0.3)
 
     def _on_state(self, msg, is_left: bool) -> None:
-        q   = np.array([msg.motor_state[i].q   for i in range(MOTOR_NUM)])
-        tau = np.array([msg.motor_state[i].tau  for i in range(MOTOR_NUM)])
+        q   = np.array([msg.motor_state[i].q        for i in range(MOTOR_NUM)])
+        tau = np.array([msg.motor_state[i].tau_est   for i in range(MOTOR_NUM)])
         with self._lock:
             if is_left:
                 self._q_state_left   = q
@@ -220,9 +220,6 @@ class Dex3Commander:
         with self._lock:
             q = self._q_bus_left if is_left else self._q_bus_right
         return q.copy() if q is not None else np.zeros(MOTOR_NUM)
-
-        with self._lock:
-            return (self._q_cmd_left if is_left else self._q_cmd_right).copy()
 
     def _current_q(self, is_left: bool) -> np.ndarray:
         with self._lock:
