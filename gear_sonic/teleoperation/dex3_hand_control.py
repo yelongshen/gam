@@ -169,9 +169,11 @@ class Dex3Commander:
         self._right_pub.Init()
 
         self._lock = threading.Lock()
-        self._q_state_left  = None   # filled by state callback
-        self._q_state_right = None
-        self._q_cmd_left    = np.zeros(MOTOR_NUM)  # last commanded q
+        self._q_state_left    = None
+        self._q_state_right   = None
+        self._tau_state_left  = None   # actual motor torque
+        self._tau_state_right = None
+        self._q_cmd_left    = np.zeros(MOTOR_NUM)
         self._q_cmd_right   = np.zeros(MOTOR_NUM)
 
         self._left_sub = ChannelSubscriber("rt/dex3/left/state",  HandState_)
@@ -186,12 +188,15 @@ class Dex3Commander:
         time.sleep(0.3)
 
     def _on_state(self, msg, is_left: bool) -> None:
-        q = np.array([msg.motor_state[i].q for i in range(MOTOR_NUM)])
+        q   = np.array([msg.motor_state[i].q   for i in range(MOTOR_NUM)])
+        tau = np.array([msg.motor_state[i].tau  for i in range(MOTOR_NUM)])
         with self._lock:
             if is_left:
-                self._q_state_left  = q
+                self._q_state_left   = q
+                self._tau_state_left = tau
             else:
-                self._q_state_right = q
+                self._q_state_right   = q
+                self._tau_state_right = tau
 
     def _current_cmd(self, is_left: bool) -> np.ndarray:
         with self._lock:
@@ -201,6 +206,11 @@ class Dex3Commander:
         with self._lock:
             q = self._q_state_left if is_left else self._q_state_right
         return q.copy() if q is not None else np.zeros(MOTOR_NUM)
+
+    def _current_tau(self, is_left: bool) -> np.ndarray:
+        with self._lock:
+            t = self._tau_state_left if is_left else self._tau_state_right
+        return t.copy() if t is not None else np.zeros(MOTOR_NUM)
 
     def send(self, pose_name: str, sides: list[str],
              duration: float = 2.0) -> None:
@@ -344,21 +354,24 @@ def main() -> None:
 
     # ── Monitor mode: print live state vs commanded ─────────────────────
     if args.monitor:
-        header  = f"{'joint':>10s}  " + "  ".join(
-            f"{'ACT':>7s}" for _ in sides)
-        divider = "-" * (12 + 10 * len(sides))
-        side_label = "  ".join(f"{'--- '+s.upper()+' ---':>7s}" for s in sides)
-        print(f"\n[Monitor] live ACT state  (Ctrl-C to stop)\n")
+        print(f"\n[Monitor] live state  (Ctrl-C to stop)")
+        print(f"  ACT=actual position  TAU=actual torque")
+        print(f"  If TAU≈0 after command → motor fault or competing publisher\n")
+        hdr = f"{'joint':>10s}  " + "  ".join(
+            f"{'ACT':>7s} {'TAU':>6s}" for _ in sides)
+        div = "-" * (12 + 16 * len(sides))
+        slbl = "  ".join(f"{'--- '+s.upper()+' ---':>14s}" for s in sides)
         try:
             while True:
-                rows = [header, f"{'':>10s}  {side_label}", divider]
+                rows = [hdr, f"{'':>10s}  {slbl}", div]
                 for i, name in enumerate(MOTOR_NAMES):
                     row = f"{name:>10s}  "
                     for side in sides:
-                        q_act = commander._current_q(is_left=(side == "left"))
-                        row += f"{q_act[i]:+7.3f}  "
+                        q_act = commander._current_q(  is_left=(side=="left"))
+                        tau   = commander._current_tau(is_left=(side=="left"))
+                        flag  = "!" if abs(tau[i]) < 0.005 and i == 0 else " "
+                        row  += f"{q_act[i]:+7.3f} {tau[i]:+6.3f}{flag} "
                     rows.append(row)
-                # Clear and reprint block
                 print("\033[2K\r" + ("\033[A\033[2K\r" * (len(rows)-1)), end="")
                 print("\n".join(rows), flush=True)
                 time.sleep(0.1)
