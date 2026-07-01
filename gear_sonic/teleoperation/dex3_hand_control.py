@@ -132,34 +132,82 @@ def _print_pose(name: str, q_right: np.ndarray, q_left: np.ndarray, sides: list[
 
 # ── Commander ────────────────────────────────────────────────────────────────
 
+CTRL_HZ = 50
+CTRL_DT = 1.0 / CTRL_HZ
+
+
 class Dex3Commander:
-    """Thin wrapper around unitree_sdk2py publishers for both hands."""
+    """Publishes interpolated pose transitions for both Dex3 hands."""
 
     def __init__(self, network_interface: str) -> None:
-        from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelPublisher
-        from unitree_sdk2py.idl.unitree_hg.msg.dds_ import HandCmd_
+        import threading
+        from unitree_sdk2py.core.channel import (
+            ChannelFactoryInitialize, ChannelPublisher, ChannelSubscriber)
+        from unitree_sdk2py.idl.unitree_hg.msg.dds_ import HandCmd_, HandState_
+        from unitree_sdk2py.idl.default import (
+            unitree_hg_msg_dds__HandState_ as HandState_default)
 
         ChannelFactoryInitialize(0, network_interface)
+
         self._left_pub  = ChannelPublisher("rt/dex3/left/cmd",  HandCmd_)
         self._right_pub = ChannelPublisher("rt/dex3/right/cmd", HandCmd_)
         self._left_pub.Init()
         self._right_pub.Init()
-        print(f"[Dex3] DDS publishers initialised on {network_interface}")
 
-    def send(self, pose_name: str, sides: list[str]) -> None:
+        self._lock = threading.Lock()
+        self._q_state_left  = None   # filled by state callback
+        self._q_state_right = None
+
+        self._left_sub = ChannelSubscriber("rt/dex3/left/state",  HandState_)
+        self._right_sub = ChannelSubscriber("rt/dex3/right/state", HandState_)
+        self._left_sub.Init(
+            lambda msg: self._on_state(msg, is_left=True),  1)
+        self._right_sub.Init(
+            lambda msg: self._on_state(msg, is_left=False), 1)
+
+        print(f"[Dex3] DDS initialised on {network_interface}")
+        # Brief wait for first state messages
+        time.sleep(0.3)
+
+    def _on_state(self, msg, is_left: bool) -> None:
+        q = np.array([msg.motor_state[i].q for i in range(MOTOR_NUM)])
+        with self._lock:
+            if is_left:
+                self._q_state_left  = q
+            else:
+                self._q_state_right = q
+
+    def _current_q(self, is_left: bool) -> np.ndarray:
+        with self._lock:
+            q = self._q_state_left if is_left else self._q_state_right
+        return q.copy() if q is not None else np.zeros(MOTOR_NUM)
+
+    def send(self, pose_name: str, sides: list[str],
+             duration: float = 2.0) -> None:
+        """Linearly interpolate from current state to target pose over `duration` seconds."""
         is_stop = (pose_name == "stop")
         if is_stop:
             q_right = q_left = np.zeros(MOTOR_NUM)
         else:
             q_right, q_left = POSES[pose_name]
 
-        if "right" in sides:
-            self._right_pub.Write(_build_cmd(q_right, stop=is_stop))
-        if "left" in sides:
-            self._left_pub.Write(_build_cmd(q_left,  stop=is_stop))
-
+        steps    = max(1, int(round(duration * CTRL_HZ)))
         side_str = "+".join(s.upper() for s in sides)
-        print(f"[Dex3] → {pose_name:8s}  ({side_str})")
+        print(f"[Dex3] → {pose_name:8s}  ({side_str})  {duration:.1f}s  ({steps} steps)")
+
+        q_start = {
+            "right": self._current_q(is_left=False),
+            "left":  self._current_q(is_left=True),
+        }
+        q_target = {"right": q_right, "left": q_left}
+
+        for step in range(steps + 1):
+            alpha = step / steps
+            for side in sides:
+                q = (1.0 - alpha) * q_start[side] + alpha * q_target[side]
+                pub = self._left_pub if side == "left" else self._right_pub
+                pub.Write(_build_cmd(q, stop=is_stop))
+            time.sleep(CTRL_DT)
 
 
 # ── Entry point ──────────────────────────────────────────────────────────────
@@ -176,6 +224,8 @@ def main() -> None:
                     help="Pose to send once, then exit")
     ap.add_argument("--side",        choices=["left", "right", "both"], default="both",
                     help="Which hand(s) to command (default: both)")
+    ap.add_argument("--duration",    type=float, default=2.0,
+                    help="Transition duration in seconds (default: 2.0)")
     ap.add_argument("--interactive", action="store_true",
                     help="Interactive loop: type pose names until Ctrl-C")
     ap.add_argument("--print-only",  action="store_true",
@@ -200,14 +250,12 @@ def main() -> None:
     commander = Dex3Commander(network_interface=args.net)
 
     if args.pose:
-        # Single-shot: send the pose a few times to ensure it lands, then exit
-        for _ in range(5):
-            commander.send(args.pose, sides)
-            time.sleep(0.02)
+        commander.send(args.pose, sides, duration=args.duration)
         return
 
     # Interactive loop
     print(f"\nAvailable poses: {', '.join(POSE_NAMES)}")
+    print(f"Duration: {args.duration}s   (change with --duration)")
     print("Type a pose name and press Enter. Ctrl-C to quit.\n")
     try:
         while True:
@@ -220,15 +268,10 @@ def main() -> None:
             if raw not in POSE_NAMES:
                 print(f"  Unknown pose '{raw}'. Choose from: {', '.join(POSE_NAMES)}")
                 continue
-            # Send 5× at 50 Hz for a smooth transition
-            for _ in range(5):
-                commander.send(raw, sides)
-                time.sleep(0.02)
+            commander.send(raw, sides, duration=args.duration)
     except KeyboardInterrupt:
         print("\n[Dex3] Sending stop before exit...")
-        for _ in range(5):
-            commander.send("stop", sides)
-            time.sleep(0.02)
+        commander.send("stop", sides, duration=0.5)
         print("[Dex3] Done.")
 
 
