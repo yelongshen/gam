@@ -224,8 +224,8 @@ def main() -> None:
                     help="Pose to send once, then exit")
     ap.add_argument("--side",        choices=["left", "right", "both"], default="both",
                     help="Which hand(s) to command (default: both)")
-    ap.add_argument("--duration",    type=float, default=2.0,
-                    help="Transition duration in seconds (default: 2.0)")
+    ap.add_argument("--duration",    type=float, default=3.0,
+                    help="Transition duration in seconds (default: 3.0)")
     ap.add_argument("--interactive", action="store_true",
                     help="Interactive loop: type pose names until Ctrl-C")
     ap.add_argument("--print-only",  action="store_true",
