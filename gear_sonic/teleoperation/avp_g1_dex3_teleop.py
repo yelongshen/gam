@@ -318,6 +318,8 @@ class AVPReceiver:
 # ── G1 Dex3 commander ────────────────────────────────────────────────────────
 
 class Dex3Commander:
+    RAMP_DURATION = 2.0   # seconds to ramp from current pose to first AVP target
+
     def __init__(self, network_interface: str, receiver: AVPReceiver):
         ChannelFactoryInitialize(0, network_interface)
 
@@ -331,6 +333,14 @@ class Dex3Commander:
         self._q_right = np.zeros(MOTOR_NUM)
         self._thread: RecurrentThread | None = None
         self._running = False
+
+        # Ramp-in state: interpolate from current pose to first target over RAMP_DURATION
+        self._ramp_steps     = max(1, int(round(self.RAMP_DURATION * CTRL_HZ)))
+        self._ramp_step      = 0          # counts up to _ramp_steps
+        self._ramp_start_l   = np.zeros(MOTOR_NUM)
+        self._ramp_start_r   = np.zeros(MOTOR_NUM)
+        self._ramp_target_l  = None       # set on first AVP packet
+        self._ramp_target_r  = None
 
     def _build_cmd(self, q: np.ndarray) -> HandCmd_:
         cmd = unitree_hg_msg_dds__HandCmd_()
@@ -349,10 +359,27 @@ class Dex3Commander:
         if not self._running:
             return
         l_joints, r_joints, l_active, r_active = self._receiver.get()
-        if l_active:
-            self._q_left  = retarget(l_joints, is_right=False)
-        if r_active:
-            self._q_right = retarget(r_joints, is_right=True)
+
+        q_target_l = retarget(l_joints, is_right=False) if l_active else self._q_left
+        q_target_r = retarget(r_joints, is_right=True)  if r_active else self._q_right
+
+        # Ramp-in: on first packet, record start pose and interpolate over RAMP_DURATION
+        if self._ramp_target_l is None and (l_active or r_active):
+            self._ramp_target_l = q_target_l.copy()
+            self._ramp_target_r = q_target_r.copy()
+            print(f"[Dex3] Ramping to first AVP target over {self.RAMP_DURATION:.1f}s ...")
+
+        if self._ramp_step < self._ramp_steps and self._ramp_target_l is not None:
+            alpha = self._ramp_step / self._ramp_steps
+            self._q_left  = (1.0 - alpha) * self._ramp_start_l + alpha * self._ramp_target_l
+            self._q_right = (1.0 - alpha) * self._ramp_start_r + alpha * self._ramp_target_r
+            self._ramp_step += 1
+        else:
+            if l_active:
+                self._q_left  = q_target_l
+            if r_active:
+                self._q_right = q_target_r
+
         self._left_pub.Write(self._build_cmd(self._q_left))
         self._right_pub.Write(self._build_cmd(self._q_right))
 
