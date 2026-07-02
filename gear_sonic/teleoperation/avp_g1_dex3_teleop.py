@@ -318,7 +318,7 @@ class AVPReceiver:
 # ── G1 Dex3 commander ────────────────────────────────────────────────────────
 
 class Dex3Commander:
-    RAMP_DURATION = 2.0   # seconds to ramp from current pose to first AVP target
+    RAMP_DURATION = 2.0   # seconds to ramp to target when hand comes ON
 
     def __init__(self, network_interface: str, receiver: AVPReceiver):
         ChannelFactoryInitialize(0, network_interface)
@@ -334,13 +334,18 @@ class Dex3Commander:
         self._thread: RecurrentThread | None = None
         self._running = False
 
-        # Ramp-in state: interpolate from current pose to first target over RAMP_DURATION
-        self._ramp_steps     = max(1, int(round(self.RAMP_DURATION * CTRL_HZ)))
-        self._ramp_step      = 0          # counts up to _ramp_steps
-        self._ramp_start_l   = np.zeros(MOTOR_NUM)
-        self._ramp_start_r   = np.zeros(MOTOR_NUM)
-        self._ramp_target_l  = None       # set on first AVP packet
-        self._ramp_target_r  = None
+        # Per-hand ramp state (reset every time hand goes OFF→ON)
+        self._ramp_steps  = max(1, int(round(self.RAMP_DURATION * CTRL_HZ)))
+        self._l_ramp_step = self._ramp_steps   # start "done" (no ramp until first packet)
+        self._r_ramp_step = self._ramp_steps
+        self._l_ramp_start = np.zeros(MOTOR_NUM)
+        self._r_ramp_start = np.zeros(MOTOR_NUM)
+        self._l_ramp_target = np.zeros(MOTOR_NUM)
+        self._r_ramp_target = np.zeros(MOTOR_NUM)
+
+        # Track previous active state to detect OFF→ON transitions
+        self._l_was_active = False
+        self._r_was_active = False
 
     def _build_cmd(self, q: np.ndarray) -> HandCmd_:
         cmd = unitree_hg_msg_dds__HandCmd_()
@@ -355,33 +360,73 @@ class Dex3Commander:
         # HandCmd_ does not use CRC (unlike LowCmd_) — per official Unitree examples
         return cmd
 
+    def _build_stop_cmd(self) -> HandCmd_:
+        """Build a zero-torque stop command (motors go limp)."""
+        cmd = unitree_hg_msg_dds__HandCmd_()
+        for i in range(MOTOR_NUM):
+            m = cmd.motor_cmd[i]
+            m.q    = 0.0
+            m.dq   = 0.0
+            m.tau  = 0.0
+            m.kp   = 0.0
+            m.kd   = 0.0
+            m.mode = (i & 0x0F) | (0x01 << 4) | (0x01 << 7)  # timeout=1
+        return cmd
+
     def _control_loop(self):
         if not self._running:
             return
         l_joints, r_joints, l_active, r_active = self._receiver.get()
 
-        q_target_l = retarget(l_joints, is_right=False) if l_active else self._q_left
-        q_target_r = retarget(r_joints, is_right=True)  if r_active else self._q_right
-
-        # Ramp-in: on first packet, record start pose and interpolate over RAMP_DURATION
-        if self._ramp_target_l is None and (l_active or r_active):
-            self._ramp_target_l = q_target_l.copy()
-            self._ramp_target_r = q_target_r.copy()
-            print(f"[Dex3] Ramping to first AVP target over {self.RAMP_DURATION:.1f}s ...")
-
-        if self._ramp_step < self._ramp_steps and self._ramp_target_l is not None:
-            alpha = self._ramp_step / self._ramp_steps
-            self._q_left  = (1.0 - alpha) * self._ramp_start_l + alpha * self._ramp_target_l
-            self._q_right = (1.0 - alpha) * self._ramp_start_r + alpha * self._ramp_target_r
-            self._ramp_step += 1
+        # ── Left hand ──────────────────────────────────────────────────────
+        if not l_active:
+            # Hand OFF: go limp
+            if self._l_was_active:
+                print("[Dex3] LEFT hand OFF → stop (limp)")
+            self._left_pub.Write(self._build_stop_cmd())
+            self._l_was_active = False
         else:
-            if l_active:
-                self._q_left  = q_target_l
-            if r_active:
-                self._q_right = q_target_r
+            q_target_l = retarget(l_joints, is_right=False)
+            if not self._l_was_active:
+                # OFF→ON transition: start ramp from current q to new target
+                self._l_ramp_start  = self._q_left.copy()
+                self._l_ramp_target = q_target_l.copy()
+                self._l_ramp_step   = 0
+                print(f"[Dex3] LEFT hand ON → ramping over {self.RAMP_DURATION:.1f}s ...")
+            self._l_was_active = True
 
-        self._left_pub.Write(self._build_cmd(self._q_left))
-        self._right_pub.Write(self._build_cmd(self._q_right))
+            if self._l_ramp_step < self._ramp_steps:
+                alpha = self._l_ramp_step / self._ramp_steps
+                self._q_left = ((1.0 - alpha) * self._l_ramp_start
+                                + alpha * self._l_ramp_target)
+                self._l_ramp_step += 1
+            else:
+                self._q_left = q_target_l
+            self._left_pub.Write(self._build_cmd(self._q_left))
+
+        # ── Right hand ─────────────────────────────────────────────────────
+        if not r_active:
+            if self._r_was_active:
+                print("[Dex3] RIGHT hand OFF → stop (limp)")
+            self._right_pub.Write(self._build_stop_cmd())
+            self._r_was_active = False
+        else:
+            q_target_r = retarget(r_joints, is_right=True)
+            if not self._r_was_active:
+                self._r_ramp_start  = self._q_right.copy()
+                self._r_ramp_target = q_target_r.copy()
+                self._r_ramp_step   = 0
+                print(f"[Dex3] RIGHT hand ON → ramping over {self.RAMP_DURATION:.1f}s ...")
+            self._r_was_active = True
+
+            if self._r_ramp_step < self._ramp_steps:
+                alpha = self._r_ramp_step / self._ramp_steps
+                self._q_right = ((1.0 - alpha) * self._r_ramp_start
+                                 + alpha * self._r_ramp_target)
+                self._r_ramp_step += 1
+            else:
+                self._q_right = q_target_r
+            self._right_pub.Write(self._build_cmd(self._q_right))
 
     def start(self):
         self._running = True
