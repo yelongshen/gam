@@ -153,6 +153,10 @@ cython_debug/
 .idea/
 .vscode/
 
+# Xcode user state
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+
 # log
 outputs/
 
