@@ -29,11 +29,15 @@ import subprocess
 import threading
 import time
 
-import msgpack
 import numpy as np
 from scipy.spatial.transform import Rotation as R, Rotation as sRot
 import torch
 import zmq
+
+try:
+    import msgpack
+except ImportError:
+    msgpack = None
 
 from gear_sonic.utils.teleop.zmq.zmq_poller import ZMQPoller
 from gear_sonic.trl.utils.rotation_conversion import decompose_rotation_aa
@@ -444,6 +448,171 @@ def run_vr3pt_realtime_visualizer(update_hz: int = 10):
         print("\nInterrupted by user")
     finally:
         visualizer.close()
+
+
+def run_xrt_diagnostics(duration_s: float = 10.0, start_service: bool = True) -> None:
+    """Print live XRoboToolkit connectivity, body pose, and tracker diagnostics."""
+    if xrt is None:
+        raise ImportError(
+            "XRoboToolkit SDK not available. Install xrobotoolkit_sdk in .venv_teleop."
+        )
+
+    if start_service:
+        service_script = "/opt/apps/roboticsservice/runService.sh"
+        if os.path.exists(service_script):
+            subprocess.Popen(["bash", service_script])
+            print(f"[XRT Diag] Started PC service: {service_script}")
+        else:
+            print(f"[XRT Diag] Service script not found: {service_script}")
+            print("[XRT Diag] Continuing; make sure XRoboToolkit PC Service is already running.")
+
+    xrt.init()
+    print("[XRT Diag] SDK initialized")
+    print(
+        "[XRT Diag] In the PICO app, confirm Status=WORKING and Tracking includes "
+        "Head, Controller, Full body."
+    )
+
+    start_t = time.time()
+    last_body_stamp = None
+    last_motion_stamp = None
+    try:
+        while time.time() - start_t < duration_s:
+            body_available = bool(xrt.is_body_data_available())
+            timestamp_ns = xrt.get_time_stamp_ns()
+
+            num_motion_data = None
+            motion_stamp = None
+            motion_serials = []
+            motion_shape = None
+            try:
+                num_motion_data = xrt.num_motion_data_available()
+                if num_motion_data > 0:
+                    motion_pose = np.array(xrt.get_motion_tracker_pose())
+                    motion_shape = motion_pose.shape
+                    motion_serials = list(xrt.get_motion_tracker_serial_numbers())
+                    motion_stamp = xrt.get_motion_timestamp_ns()
+            except AttributeError:
+                num_motion_data = "unsupported"
+            except Exception as exc:
+                print(f"[XRT Diag] Motion tracker read error: {exc}")
+
+            body_shape = None
+            body_stamp_changed = False
+            if body_available:
+                try:
+                    body_poses = np.array(xrt.get_body_joints_pose())
+                    body_shape = body_poses.shape
+                    body_stamp_changed = timestamp_ns != last_body_stamp
+                    last_body_stamp = timestamp_ns
+                except Exception as exc:
+                    print(f"[XRT Diag] Body pose read error: {exc}")
+
+            motion_stamp_changed = (
+                motion_stamp is not None and motion_stamp != last_motion_stamp
+            )
+            if motion_stamp is not None:
+                last_motion_stamp = motion_stamp
+
+            print(
+                "[XRT Diag] "
+                f"body_available={body_available} body_shape={body_shape} "
+                f"body_ts={timestamp_ns} body_ts_changed={body_stamp_changed} | "
+                f"motion_count={num_motion_data} motion_shape={motion_shape} "
+                f"motion_ts={motion_stamp} motion_ts_changed={motion_stamp_changed} "
+                f"serials={motion_serials}"
+            )
+            time.sleep(0.5)
+    finally:
+        if hasattr(xrt, "close"):
+            xrt.close()
+        print("[XRT Diag] Done")
+
+
+def _make_mock_smpl_joints(t: float) -> np.ndarray:
+    """Generate a simple animated 24-joint SMPL-like skeleton for local visualization."""
+    joints = np.array(
+        [
+            [0.0, 0.0, 0.95],      # 0 pelvis
+            [0.0, 0.10, 0.90],     # 1 left hip
+            [0.0, -0.10, 0.90],    # 2 right hip
+            [0.0, 0.0, 1.10],      # 3 spine1
+            [0.0, 0.10, 0.50],     # 4 left knee
+            [0.0, -0.10, 0.50],    # 5 right knee
+            [0.0, 0.0, 1.25],      # 6 spine2
+            [0.0, 0.10, 0.12],     # 7 left ankle
+            [0.0, -0.10, 0.12],    # 8 right ankle
+            [0.0, 0.0, 1.42],      # 9 spine3
+            [0.12, 0.10, 0.03],    # 10 left foot
+            [0.12, -0.10, 0.03],   # 11 right foot
+            [0.0, 0.0, 1.55],      # 12 neck
+            [0.0, 0.18, 1.50],     # 13 left collar
+            [0.0, -0.18, 1.50],    # 14 right collar
+            [0.0, 0.0, 1.75],      # 15 head
+            [0.0, 0.28, 1.45],     # 16 left shoulder
+            [0.0, -0.28, 1.45],    # 17 right shoulder
+            [0.0, 0.45, 1.10],     # 18 left elbow
+            [0.0, -0.45, 1.10],    # 19 right elbow
+            [0.0, 0.48, 0.78],     # 20 left wrist
+            [0.0, -0.48, 0.78],    # 21 right wrist
+            [0.05, 0.50, 0.68],    # 22 left hand
+            [0.05, -0.50, 0.68],   # 23 right hand
+        ],
+        dtype=np.float64,
+    )
+
+    phase = 2.0 * np.pi * 0.65 * t
+    sway = 0.03 * np.sin(phase)
+    bob = 0.025 * np.sin(phase * 2.0)
+    arm_swing = 0.22 * np.sin(phase)
+    leg_swing = 0.12 * np.sin(phase)
+
+    joints[:, 0] += 0.06 * np.sin(0.35 * phase)
+    joints[:, 2] += bob
+    joints[[0, 3, 6, 9, 12, 15], 1] += sway
+
+    joints[[18, 20, 22], 0] += arm_swing
+    joints[[19, 21, 23], 0] -= arm_swing
+    joints[[4, 7, 10], 0] -= leg_swing
+    joints[[5, 8, 11], 0] += leg_swing
+    joints[[18, 19], 2] += 0.06 * np.cos(phase)
+    joints[[20, 21, 22, 23], 2] += 0.10 * np.cos(phase)
+    return joints
+
+
+def run_mock_smpl_visualizer(duration_s: float = 12.0, fps: int = 30) -> None:
+    """Run a local PyVista visualization with mock SMPL joints and VR 3-point markers."""
+    if VR3PtPoseVisualizer is None:
+        raise ImportError("VR3PtPoseVisualizer unavailable. Install pyvista/vtk first.")
+
+    visualizer = VR3PtPoseVisualizer(
+        with_g1_robot=False,
+        enable_smpl_vis=True,
+        smpl_root_position=np.array([0.0, 0.0, 0.0]),
+    )
+    visualizer.create_realtime_plotter(interactive=True, with_reference_frames=True)
+    print(f"[Mock SMPL] Running local visualization for {duration_s:.1f}s at {fps} FPS")
+
+    identity_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)
+    start_t = time.time()
+    try:
+        while visualizer.is_open and time.time() - start_t < duration_s:
+            t = time.time() - start_t
+            joints = _make_mock_smpl_joints(t)
+            vr_3pt_pose = np.vstack(
+                [
+                    np.concatenate([joints[22], identity_quat]),
+                    np.concatenate([joints[23], identity_quat]),
+                    np.concatenate([joints[12], identity_quat]),
+                ]
+            )
+            visualizer.update_smpl_joints(joints)
+            visualizer.update_from_vr_pose(vr_3pt_pose)
+            visualizer.render()
+            time.sleep(1.0 / max(1, fps))
+    finally:
+        visualizer.close()
+        print("[Mock SMPL] Done")
 
 
 def process_smpl_joints(body_pose, global_orient, transl):
@@ -1589,6 +1758,9 @@ class FeedbackReader:
             print("[PlannerLoop] No feedback data received")
             return None, None, None, None
 
+        if msgpack is None:
+            raise ImportError("msgpack is required for manager feedback. Install gear_sonic[teleop].")
+
         unpacked = msgpack.unpackb(data, raw=False)
         full_body_q = None
         if "body_q_measured" in unpacked:
@@ -2136,9 +2308,58 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable SMPL body joint visualization (24 joint spheres) in the VR3pt viewer",
     )
+    parser.add_argument(
+        "--xrt_diag",
+        action="store_true",
+        help="Run XRoboToolkit body/tracker diagnostics and exit",
+    )
+    parser.add_argument(
+        "--xrt_diag_seconds",
+        type=float,
+        default=10.0,
+        help="Duration for --xrt_diag in seconds (default: 10)",
+    )
+    parser.add_argument(
+        "--no_xrt_service",
+        action="store_true",
+        help="Do not start /opt/apps/roboticsservice/runService.sh before XRT diagnostics",
+    )
+    parser.add_argument(
+        "--mock_smpl_vis",
+        action="store_true",
+        help="Run local mock SMPL streaming visualization without Pico/XRoboToolkit",
+    )
+    parser.add_argument(
+        "--mock_smpl_seconds",
+        type=float,
+        default=12.0,
+        help="Duration for --mock_smpl_vis in seconds (default: 12)",
+    )
+    parser.add_argument(
+        "--mock_smpl_fps",
+        type=int,
+        default=30,
+        help="Frame rate for --mock_smpl_vis (default: 30)",
+    )
     args = parser.parse_args()
 
     # Standalone VR3Pt test modes (exit after finishing)
+    if args.mock_smpl_vis:
+        print("Running local mock SMPL visualization...")
+        run_mock_smpl_visualizer(
+            duration_s=args.mock_smpl_seconds,
+            fps=args.mock_smpl_fps,
+        )
+        exit(0)
+
+    if args.xrt_diag:
+        print("Running XRoboToolkit diagnostics...")
+        run_xrt_diagnostics(
+            duration_s=args.xrt_diag_seconds,
+            start_service=not args.no_xrt_service,
+        )
+        exit(0)
+
     if args.vr3pt_test:
         print("Running VR 3-point pose visualizer test...")
         run_vr3pt_visualizer_test()
