@@ -529,7 +529,7 @@ def run_xrt_diagnostics(duration_s: float = 10.0, start_service: bool = True) ->
         print("[XRT Diag] Done")
 
 
-def _make_mock_smpl_joints(t: float) -> np.ndarray:
+def _make_mock_smpl_joints(t: float, scale: float = 0.6) -> np.ndarray:
     """Generate a simple animated 24-joint SMPL-like skeleton for local visualization."""
     joints = np.array(
         [
@@ -577,28 +577,43 @@ def _make_mock_smpl_joints(t: float) -> np.ndarray:
     joints[[5, 8, 11], 0] += leg_swing
     joints[[18, 19], 2] += 0.06 * np.cos(phase)
     joints[[20, 21, 22, 23], 2] += 0.10 * np.cos(phase)
+    root = joints[0].copy()
+    joints = root + (joints - root) * scale
     return joints
 
 
-def run_mock_smpl_visualizer(duration_s: float = 12.0, fps: int = 30) -> None:
+def run_mock_smpl_visualizer(
+    duration_s: float = 12.0,
+    fps: int = 30,
+    window_size: tuple[int, int] = (1800, 1100),
+    smpl_scale: float = 0.5,
+) -> None:
     """Run a local PyVista visualization with mock SMPL joints and VR 3-point markers."""
     if VR3PtPoseVisualizer is None:
         raise ImportError("VR3PtPoseVisualizer unavailable. Install pyvista/vtk first.")
 
+    root_anchor_z = (0.95 - 0.03) * smpl_scale
     visualizer = VR3PtPoseVisualizer(
         with_g1_robot=False,
         enable_smpl_vis=True,
-        smpl_root_position=np.array([0.0, 0.0, 0.0]),
+        smpl_root_position=np.array([0.0, 0.0, root_anchor_z]),
     )
-    visualizer.create_realtime_plotter(interactive=True, with_reference_frames=True)
-    print(f"[Mock SMPL] Running local visualization for {duration_s:.1f}s at {fps} FPS")
+    visualizer.create_realtime_plotter(
+        interactive=True,
+        window_size=window_size,
+        with_reference_frames=True,
+    )
+    print(
+        f"[Mock SMPL] Running local visualization for {duration_s:.1f}s at {fps} FPS "
+        f"({window_size[0]}x{window_size[1]}), SMPL scale={smpl_scale:.2f}"
+    )
 
     identity_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)
     start_t = time.time()
     try:
         while visualizer.is_open and time.time() - start_t < duration_s:
             t = time.time() - start_t
-            joints = _make_mock_smpl_joints(t)
+            joints = _make_mock_smpl_joints(t, scale=smpl_scale)
             vr_3pt_pose = np.vstack(
                 [
                     np.concatenate([joints[22], identity_quat]),
@@ -2341,6 +2356,24 @@ if __name__ == "__main__":
         default=30,
         help="Frame rate for --mock_smpl_vis (default: 30)",
     )
+    parser.add_argument(
+        "--mock_smpl_width",
+        type=int,
+        default=1800,
+        help="Window width for --mock_smpl_vis (default: 1800)",
+    )
+    parser.add_argument(
+        "--mock_smpl_height",
+        type=int,
+        default=1100,
+        help="Window height for --mock_smpl_vis (default: 1100)",
+    )
+    parser.add_argument(
+        "--mock_smpl_scale",
+        type=float,
+        default=0.5,
+        help="Scale factor for mock SMPL skeleton size (default: 0.5)",
+    )
     args = parser.parse_args()
 
     # Standalone VR3Pt test modes (exit after finishing)
@@ -2349,6 +2382,8 @@ if __name__ == "__main__":
         run_mock_smpl_visualizer(
             duration_s=args.mock_smpl_seconds,
             fps=args.mock_smpl_fps,
+            window_size=(args.mock_smpl_width, args.mock_smpl_height),
+            smpl_scale=args.mock_smpl_scale,
         )
         exit(0)
 
