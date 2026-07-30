@@ -1737,6 +1737,8 @@ class G1Deploy {
               {"motion_joint_positions_lowerbody_10frame_step1", 120, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointPositionsMultiFrame(buf, offset, 10, 1, lower_body_joint_mujoco_order_in_isaaclab_index); }},
               {"motion_joint_velocities_lowerbody_10frame_step1", 120, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointVelocitiesMultiFrame(buf, offset, 10, 1, lower_body_joint_mujoco_order_in_isaaclab_index); }},
               {"motion_joint_positions_wrists_10frame_step1", 60, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointPositionsMultiFrame(buf, offset, 10, 1, wrist_joint_isaaclab_order_in_isaaclab_index); }},
+              // Low-latency SONIC release: 4-frame wrist lookahead (smpl encoder)
+              {"motion_joint_positions_wrists_4frame_step1", 24, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointPositionsMultiFrame(buf, offset, 4, 1, wrist_joint_isaaclab_order_in_isaaclab_index); }},
               {"motion_joint_positions_wrists_2frame_step1", 12, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointPositionsMultiFrame(buf, offset, 2, 1, wrist_joint_isaaclab_order_in_isaaclab_index); }},
               {"motion_joint_velocities_wrists_10frame_step1", 60, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointVelocitiesMultiFrame(buf, offset, 10, 1, wrist_joint_isaaclab_order_in_isaaclab_index); }},
               {"motion_joint_positions_5frame_step5", 145, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointPositionsMultiFrame(buf, offset, 5, 5); }},
@@ -1746,6 +1748,8 @@ class G1Deploy {
               {"smpl_joints_5frame_step5", 360, [this](std::vector<double>& buf, size_t offset) { return GatherMotionSmplJointsMultiFrame(buf, offset, 5, 5); }},  // 24*3*5
               {"smpl_joints_10frame_step5", 720, [this](std::vector<double>& buf, size_t offset) { return GatherMotionSmplJointsMultiFrame(buf, offset, 10, 5); }},  // 24*3*10
               {"smpl_joints_10frame_step1", 720, [this](std::vector<double>& buf, size_t offset) { return GatherMotionSmplJointsMultiFrame(buf, offset, 10, 1); }},  // 24*3*10
+              // Low-latency SONIC release: 4-frame SMPL joint lookahead
+              {"smpl_joints_4frame_step1", 288, [this](std::vector<double>& buf, size_t offset) { return GatherMotionSmplJointsMultiFrame(buf, offset, 4, 1); }},  // 24*3*4
               {"smpl_joints_lower_10frame_step1", 270, [this](std::vector<double>& buf, size_t offset) {return GatherMotionSmplJointsMultiFrame(buf, offset, 10, 1, {0,1,2,4,5,7,8,10,11}); }},  // 9*3*10 lower body joints
               {"smpl_joints_2frame_step1", 144, [this](std::vector<double>& buf, size_t offset) { return GatherMotionSmplJointsMultiFrame(buf, offset, 2, 1); }},  // 24*3*10
               {"smpl_pose", 63, [this](std::vector<double>& buf, size_t offset) { return GatherMotionSmplPosesMultiFrame(buf, offset, 1, 1); }},  // 21*3
@@ -1755,6 +1759,8 @@ class G1Deploy {
               {"smpl_elbow_wrist_poses_10frame_step1", 120, [this](std::vector<double>& buf, size_t offset) { return GatherMotionSmplPosesMultiFrame(buf, offset, 10, 1, {17, 18, 19, 20}); }},  // 4*3*10
               {"smpl_root_z_10frame_step1", 10, [this](std::vector<double>& buf, size_t offset) { return GatherMotionRootZPositionMultiFrame(buf, offset, 10, 1); }},
               {"smpl_anchor_orientation_10frame_step1", 60, [this](std::vector<double>& buf, size_t offset) { return GatherMotionAnchorOrientationMutiFrame(buf, offset, 10, 1); }},
+              // Low-latency SONIC release: 4-frame SMPL root orientation lookahead
+              {"smpl_anchor_orientation_4frame_step1", 24, [this](std::vector<double>& buf, size_t offset) { return GatherMotionAnchorOrientationMutiFrame(buf, offset, 4, 1); }},
               {"smpl_anchor_orientation_2frame_step1", 12, [this](std::vector<double>& buf, size_t offset) { return GatherMotionAnchorOrientationMutiFrame(buf, offset, 2, 1); }},
               // SMPL heading-only variants (mode=1, matches Python smpl_root_ori_heading_multi_future)
               {"smpl_anchor_orientation_heading_10frame_step1", 60, [this](std::vector<double>& buf, size_t offset) { return GatherMotionAnchorOrientationMutiFrame(buf, offset, 10, 1, 1); }},
@@ -3370,10 +3376,10 @@ class G1Deploy {
       // Update motion frame playback for non-planner motion
       bool use_planner_motion = (current_motion_ && current_motion_ == planner_motion_);
       if (!use_planner_motion && current_motion_ && current_motion_->timesteps > 0 && operator_state.play) {
-        // Update display motion current frame
-        current_frame_++;
-        // Check if motion completed (reached the end)
         if (current_motion_->name != "streamed") {
+          // Update display motion current frame
+          current_frame_++;
+          // Check if motion completed (reached the end)
           if (current_frame_ >= current_motion_->timesteps) {
             operator_state.play = false;
             if (current_motion_ ->name != "temporary_motion") {
@@ -3389,9 +3395,39 @@ class G1Deploy {
             std::cout << "Reset to frame 0." << std::endl;
           }
         } else {
-          if (current_frame_ >= current_motion_->timesteps - saved_frame_for_observation_window_) {
-            current_frame_ = current_frame_ - 1;
-            std::cout << "Motion " << current_motion_->name << " completed and waiting following motion" << std::endl;                    
+          // Adaptive catch-up for streamed (ZMQ/PICO) motion.
+          //
+          // The control loop is fixed at 50Hz, but the incoming SMPL stream
+          // can be produced at a higher rate (e.g. --target_fps 100 in
+          // pico_manager_thread_server.py). If we only ever advance
+          // current_frame_ by 1 per tick, the playback cursor falls further
+          // and further behind the live buffered window whenever the
+          // producer FPS exceeds the 50Hz consumption rate — this shows up
+          // as StreamedMotionMerger's buffered `timesteps` growing without
+          // bound and `global_playback_frame` barely moving, which feels
+          // like unresponsive/laggy whole-body control even though nothing
+          // is failing.
+          //
+          // To support higher producer FPS while keeping the fixed 50Hz
+          // control tick, advance by more than 1 frame per tick whenever
+          // there is more buffered lookahead than a small safety cushion
+          // (kCatchupCushion). This keeps the tracked pose close to the
+          // most recent operator motion instead of accumulating latency,
+          // while still leaving enough buffer for smooth interpolation.
+          constexpr int kCatchupCushion = 3;  // frames to keep buffered ahead of cursor
+          constexpr int kMaxCatchupStep = 4;  // max frames to advance in a single 50Hz tick
+          const int last_valid_frame = current_motion_->timesteps - saved_frame_for_observation_window_;
+          const int available_ahead = last_valid_frame - current_frame_;
+
+          int step = 1;
+          if (available_ahead > kCatchupCushion) {
+            step = std::min(kMaxCatchupStep, available_ahead - kCatchupCushion + 1);
+          }
+          current_frame_ += step;
+
+          if (current_frame_ >= last_valid_frame) {
+            current_frame_ = std::max(0, last_valid_frame - 1);
+            std::cout << "Motion " << current_motion_->name << " completed and waiting following motion" << std::endl;
           }
         }
       }

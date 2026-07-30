@@ -3,14 +3,18 @@
 """
 
 # Recommended Command Line Arguments:
-    # With VR3 PT visualization (by --vis_vr3pt) and optional SMPL body visualization (by --vis_smpl)
-    # If you want to enable waist tracking in the VR3 PT visualization, please add --waist_tracking
-    python pico_manager_thread_server.py --manager \
-        --vis_vr3pt --vis_smpl \
-        --waist_tracking
+    # Visualization (VR 3-point + SMPL body) is ENABLED BY DEFAULT.
+    # Start streaming immediately with no VR controller input required:
+    python pico_manager_thread_server.py --manager --auto_pose
+
+    # If you want to enable waist tracking in the VR3 PT visualization, add --waist_tracking
+    python pico_manager_thread_server.py --manager --auto_pose --waist_tracking
 
     # VR3 PT visualization only (without SMPL body) — lower latency
-    python pico_manager_thread_server.py --manager --vis_vr3pt
+    python pico_manager_thread_server.py --manager --no_vis_smpl
+
+    # Disable ALL visualization — maximum streaming performance
+    python pico_manager_thread_server.py --manager --auto_pose --no_vis
 
 # DEBUG VR3 PT VISUALIZATION:
     # A standalone test mode that captures one live frame and visualizes it.
@@ -2044,12 +2048,16 @@ def run_pico_manager(
     with_g1_robot: bool = True,
     enable_waist_tracking: bool = False,
     enable_smpl_vis: bool = False,
+    auto_pose: bool = False,
 ):
     """
     Manager: creates shared PUB socket and runs pose/planner streamers based on current mode.
     Controller input:
       A+X: Toggle between planner and pose mode
       A+B+X+Y: Toggle policy start/stop
+
+    If auto_pose is True, the manager starts directly in POSE mode (streaming +
+    visualization active immediately) without requiring any VR controller input.
     """
     if xrt is None:
         raise ImportError(
@@ -2125,6 +2133,35 @@ def run_pico_manager(
     #
     print("Manager controls: A+X=toggle mode, A+B+X+Y=start/stop policy")
     current_mode = StreamMode.OFF
+
+    # Optionally bypass the controller-driven state machine and start streaming
+    # immediately in POSE mode. This performs the same calibration that the
+    # OFF -> PLANNER transition normally does (operator should be standing in
+    # the zero-reference pose at startup), then jumps straight to POSE so that
+    # pose_streamer.run_once() -- and therefore the SMPL / VR3pt visualization
+    # updates inside process_smpl_pose() -- run from the very first iteration.
+    if auto_pose:
+        print("[Manager] --auto_pose: starting directly in POSE mode (no controller input needed)")
+        print("[Manager] Calibrating from current pose — stand in the zero-reference pose now...")
+        calib_sample = None
+        for _ in range(50):  # wait up to ~5s for a valid SMPL frame
+            calib_sample = reader.get_latest()
+            if calib_sample is not None:
+                break
+            time.sleep(0.1)
+        if calib_sample is not None:
+            three_point.calibrate_now(calib_sample["body_poses_np"])
+        else:
+            print("[Manager] WARNING: No SMPL data available for calibration")
+        pose_streamer.reset_yaw()
+        current_mode = StreamMode.POSE
+        # Tell the downstream consumer (g1_deploy_onnx_ref) to start, matching
+        # what the normal OFF -> PLANNER -> POSE transition would have sent.
+        try:
+            socket.send(build_command_message(start=True, stop=False, planner=False))
+        except Exception as e:
+            print(f"[Manager] WARNING: failed to send start command: {e}")
+
     # Track which mode VR_3PT was entered from, so left_axis_click returns to it.
     # Will be either PLANNER or PLANNER_FROZEN_UPPER_BODY.
     vr3pt_parent_mode = StreamMode.PLANNER
@@ -2343,7 +2380,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--vis_vr3pt",
         action="store_true",
-        help="Enable inline VR 3-point pose visualization in pose streaming mode",
+        default=True,
+        help="Enable inline VR 3-point pose visualization in pose streaming mode (ON by default; disable with --no_vis_vr3pt)",
+    )
+    parser.add_argument(
+        "--no_vis_vr3pt",
+        dest="vis_vr3pt",
+        action="store_false",
+        help="Disable the inline VR 3-point pose visualization",
     )
     parser.add_argument(
         "--vr3pt_hz",
@@ -2364,7 +2408,28 @@ if __name__ == "__main__":
     parser.add_argument(
         "--vis_smpl",
         action="store_true",
-        help="Enable SMPL body joint visualization (24 joint spheres) in the VR3pt viewer",
+        default=True,
+        help="Enable SMPL body joint visualization (24 joint spheres) in the VR3pt viewer (ON by default; disable with --no_vis_smpl)",
+    )
+    parser.add_argument(
+        "--no_vis_smpl",
+        dest="vis_smpl",
+        action="store_false",
+        help="Disable the SMPL body joint visualization",
+    )
+    parser.add_argument(
+        "--no_vis",
+        action="store_true",
+        help="Disable ALL visualization (both VR 3-point and SMPL body) for maximum performance",
+    )
+    parser.add_argument(
+        "--auto_pose",
+        action="store_true",
+        help=(
+            "Start the manager directly in POSE mode (streaming + visualization active "
+            "immediately) without requiring any VR controller button presses. "
+            "Calibration is taken from the operator's pose at startup."
+        ),
     )
     parser.add_argument(
         "--xrt_diag",
@@ -2460,6 +2525,24 @@ if __name__ == "__main__":
     # G1 robot visualization is enabled by default when vis_vr3pt is used
     with_g1_robot = not args.no_g1
 
+    # Master kill-switch: --no_vis disables every visualization at once.
+    # Visualization (VR 3-point + SMPL body) is ON by default; use --no_vis for
+    # maximum streaming performance, or --no_vis_vr3pt / --no_vis_smpl for
+    # fine-grained control.
+    if args.no_vis:
+        args.vis_vr3pt = False
+        args.vis_smpl = False
+
+    if args.vis_vr3pt or args.vis_smpl:
+        parts = []
+        if args.vis_vr3pt:
+            parts.append("VR 3-point")
+        if args.vis_smpl:
+            parts.append("SMPL body")
+        print(f"[Vis] Visualization enabled: {' + '.join(parts)} (disable with --no_vis)")
+    else:
+        print("[Vis] Visualization disabled")
+
     if args.manager:
         run_pico_manager(
             port=args.port,
@@ -2475,6 +2558,7 @@ if __name__ == "__main__":
             with_g1_robot=with_g1_robot,
             enable_waist_tracking=args.waist_tracking,
             enable_smpl_vis=args.vis_smpl,
+            auto_pose=args.auto_pose,
         )
     else:
         # Run legacy single-thread pose streaming
