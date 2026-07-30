@@ -195,4 +195,4 @@ uv.lock
 # XRoboToolkit-PC-Service-Pybind
 xrobotoolkit_sdk.cpython-*-*-*.so
 teleop_vids/
-*.code-workspace
+*.code-workspaceexternal_dependencies/XRoboToolkit-PC-Service-Pybind_X86_and_ARM64/tmp/

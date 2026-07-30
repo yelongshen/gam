@@ -901,8 +901,13 @@ def _quat_lerp_normalized(q0: np.ndarray, q1: np.ndarray, alpha: float) -> np.nd
         q1 = -q1
     q = (1.0 - alpha) * q0 + alpha * q1
     norm = np.linalg.norm(q)
-    if norm > 0:
-        q = q / norm
+    # Guard against (near-)zero-norm results, which can occur in rare edge
+    # cases (e.g. antipodal quaternions with alpha ~= 0.5) and would otherwise
+    # crash downstream scipy Rotation.from_quat() calls with a ValueError.
+    # Fall back to the endpoint quaternion closest to the requested alpha.
+    if norm < 1e-8:
+        return (q0 if alpha < 0.5 else q1).copy()
+    q = q / norm
     return q
 
 
@@ -1136,6 +1141,16 @@ class ThreePointPose:
         # Override robot q for FK during recalibration (e.g. measured joints for VR 3PT)
         self._override_robot_q: np.ndarray | None = None
 
+        # Render-rate throttling: decouple expensive PyVista rendering (often
+        # VSync-locked to the monitor's refresh rate, e.g. 60Hz) from the
+        # ZMQ pose send rate (--target_fps), so a high --target_fps (e.g. 100)
+        # is not silently capped by render() blocking on vsync every call.
+        # Data (joint/pose) updates still happen every call; only the actual
+        # render() draw call is rate-limited.
+        self._vis_render_hz = 30.0
+        self._vis_min_render_interval = 1.0 / self._vis_render_hz
+        self._vis_last_render_time = 0.0
+
     @property
     def is_pending(self) -> bool:
         """Check if calibration is pending."""
@@ -1178,7 +1193,14 @@ class ThreePointPose:
             self.vr3pt_visualizer.update_from_vr_pose(vr_3pt_pose, waist_scale=1.0)
             if smpl_joints_local is not None:
                 self.vr3pt_visualizer.update_smpl_joints(smpl_joints_local)
-            self.vr3pt_visualizer.render()
+            # Throttle the actual render() draw call independently of how often
+            # process_smpl_pose() itself is invoked (which runs at --target_fps).
+            # This prevents a VSync-locked render() from silently capping the
+            # ZMQ pose send rate down to the monitor's refresh rate.
+            now = time.time()
+            if now - self._vis_last_render_time >= self._vis_min_render_interval:
+                self.vr3pt_visualizer.render()
+                self._vis_last_render_time = now
 
         return vr_3pt_pose
 
@@ -1503,27 +1525,48 @@ class PoseStreamer:
             self.prev_body_quat_np = body_quat_np
             self.next_target_ns = curr_stamp_ns
             return
-        if curr_stamp_ns <= self.prev_stamp_ns:
-            return
+        # NOTE: PICO's native body-tracking update rate (~50-60Hz) is often lower
+        # than the requested --target_fps. Previously, this method would return
+        # early (skip sending) whenever no *new* PICO timestamp had arrived yet,
+        # which silently capped the outgoing message rate at PICO's native rate
+        # regardless of --target_fps. To actually honor --target_fps, when no
+        # new real sample is available we now hold (zero-order-hold) the last
+        # known real pose and still send a message on schedule, instead of
+        # skipping. When a genuinely new sample HAS arrived, we keep the
+        # original sub-sample interpolation behavior for smoothness.
+        has_new_real_sample = curr_stamp_ns > self.prev_stamp_ns
         if self.next_target_ns is None:
             self.next_target_ns = self.prev_stamp_ns + step_ns
         if self.next_target_ns < self.prev_stamp_ns:
             self.next_target_ns = self.prev_stamp_ns
-        if self.next_target_ns > curr_stamp_ns:
-            return
-        denom = float(curr_stamp_ns - self.prev_stamp_ns)
-        alpha = float(self.next_target_ns - self.prev_stamp_ns) / denom if denom > 0.0 else 1.0
-        if alpha < 0.0:
-            alpha = 0.0
-        elif alpha > 1.0:
-            alpha = 1.0
-        use_joints = (1.0 - alpha) * self.prev_smpl_joints_np + alpha * smpl_joints_np
-        use_pose = _interp_pose_axis_angle(self.prev_smpl_pose_np, smpl_pose_np, alpha).astype(
-            np.float32
-        )
-        use_body_quat = _quat_lerp_normalized(self.prev_body_quat_np, body_quat_np, alpha).astype(
-            np.float32
-        )
+
+        if has_new_real_sample:
+            if self.next_target_ns > curr_stamp_ns:
+                # Not yet time for the next scheduled frame relative to the
+                # newest real sample; nothing to send this call.
+                return
+            denom = float(curr_stamp_ns - self.prev_stamp_ns)
+            alpha = (
+                float(self.next_target_ns - self.prev_stamp_ns) / denom if denom > 0.0 else 1.0
+            )
+            if alpha < 0.0:
+                alpha = 0.0
+            elif alpha > 1.0:
+                alpha = 1.0
+            use_joints = (1.0 - alpha) * self.prev_smpl_joints_np + alpha * smpl_joints_np
+            use_pose = _interp_pose_axis_angle(
+                self.prev_smpl_pose_np, smpl_pose_np, alpha
+            ).astype(np.float32)
+            use_body_quat = _quat_lerp_normalized(
+                self.prev_body_quat_np, body_quat_np, alpha
+            ).astype(np.float32)
+        else:
+            # No new real PICO sample yet: hold the last known real pose so we
+            # can still emit a message at the requested --target_fps cadence
+            # instead of stalling at PICO's native update rate.
+            use_joints = self.prev_smpl_joints_np
+            use_pose = self.prev_smpl_pose_np
+            use_body_quat = self.prev_body_quat_np
         N = len(self.frame_buffer["frame_index"])
 
         ##### From @Jiefeng for directly setting the joint position ######

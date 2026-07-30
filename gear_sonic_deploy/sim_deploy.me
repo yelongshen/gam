@@ -1,0 +1,820 @@
+0.977141, [StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24512, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24512, incoming_frame_end: 24515, stream_window_start_: 24511, stream_window_end: 24514, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 4
+-0.007930, 0.197410, 0.078492
+Reset delta heading to 0
+Reset init reference data root rotation to current frame: -0.602163, 0.154732, -0.162322, -0.766231
+**********************************************************
+Reference motion name: streamed
+**********************************************************
+Motion streamed completed and waiting following motion
+[StreamedMotionMerger] Copying old data: global [24511..24511] → new_motion[0..0]
+[StreamedMotionMerger] Merged motion: 5 frames (copied: 1 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4737, -0.0937, 0.1117, | 0.4128, -0.2781, 0.0995, | 0.1551, -0.0741, 0.4770]
+  Orientation [L|R|H]: [-0.8549, -0.4150, 0.1097, 0.2915, | -0.9374, 0.3474, -0.0064, -0.0240, | 0.9289, 0.0986, 0.3510, -0.0651]
+[ZMQEndpointInterface] Decode interval: 20 ms, decode time: 3 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 5 current-rate frames, window [24511..24515] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4737, -0.0937, 0.1117,  | 0.4128, -0.2781, 0.0995,  | 0.1551, -0.0741, 0.4770]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8549, -0.4150, 0.1097, 0.2915,  | -0.9374, 0.3474, -0.0064, -0.0240,  | 0.9289, 0.0986, 0.3510, -0.0651]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24513 to 24516, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24513) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602221, 0.154701, -0.162314, -0.766193)], smpl_joints: [(-0.312558, 0.075713, -0.142185)], smpl_pose: [(-0.646554, 0.187199, -0.159320)]
+  Frame[1] (idx=24514) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602247, 0.154688, -0.162311, -0.766175)], smpl_joints: [(-0.312566, 0.075692, -0.142179)], smpl_pose: [(-0.646520, 0.187237, -0.159306)]
+  Frame[2] (idx=24515) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602322, 0.154663, -0.162307, -0.766123)], smpl_joints: [(-0.312587, 0.075629, -0.142168)], smpl_pose: [(-0.646253, 0.187320, -0.159484)]
+  Frame[3] (idx=24516) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602404, 0.154635, -0.162303, -0.766065)], smpl_joints: [(-0.312609, 0.075560, -0.142156)], smpl_pose: [(-0.645957, 0.187411, -0.159681)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24513, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24513, incoming_frame_end: 24516, stream_window_start_: 24511, stream_window_end: 24515, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 5
+[StreamedMotionMerger] Copying old data: global [24511..24512] → new_motion[0..1]
+[StreamedMotionMerger] Merged motion: 6 frames (copied: 2 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4737, -0.0937, 0.1117, | 0.4128, -0.2781, 0.0995, | 0.1551, -0.0741, 0.4770]
+  Orientation [L|R|H]: [-0.8549, -0.4150, 0.1097, 0.2915, | -0.9374, 0.3474, -0.0064, -0.0240, | 0.9289, 0.0986, 0.3510, -0.0651]
+[ZMQEndpointInterface] Decode interval: 10 ms, decode time: 3 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 6 current-rate frames, window [24511..24516] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4737, -0.0937, 0.1117,  | 0.4128, -0.2781, 0.0995,  | 0.1551, -0.0741, 0.4770]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8549, -0.4150, 0.1097, 0.2915,  | -0.9374, 0.3474, -0.0064, -0.0240,  | 0.9289, 0.0986, 0.3510, -0.0651]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24514 to 24517, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24514) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602247, 0.154688, -0.162311, -0.766175)], smpl_joints: [(-0.312566, 0.075692, -0.142179)], smpl_pose: [(-0.646520, 0.187237, -0.159306)]
+  Frame[1] (idx=24515) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602322, 0.154663, -0.162307, -0.766123)], smpl_joints: [(-0.312587, 0.075629, -0.142168)], smpl_pose: [(-0.646253, 0.187320, -0.159484)]
+  Frame[2] (idx=24516) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602404, 0.154635, -0.162303, -0.766065)], smpl_joints: [(-0.312609, 0.075560, -0.142156)], smpl_pose: [(-0.645957, 0.187411, -0.159681)]
+  Frame[3] (idx=24517) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602404, 0.154635, -0.162303, -0.766065)], smpl_joints: [(-0.312609, 0.075560, -0.142156)], smpl_pose: [(-0.645957, 0.187411, -0.159681)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24514, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24514, incoming_frame_end: 24517, stream_window_start_: 24511, stream_window_end: 24516, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 6
+Motion streamed completed and waiting following motion
+[StreamedMotionMerger] Copying old data: global [24511..24513] → new_motion[0..2]
+[StreamedMotionMerger] Merged motion: 7 frames (copied: 3 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4737, -0.0937, 0.1117, | 0.4128, -0.2781, 0.0995, | 0.1551, -0.0741, 0.4770]
+  Orientation [L|R|H]: [-0.8549, -0.4150, 0.1097, 0.2915, | -0.9374, 0.3474, -0.0064, -0.0240, | 0.9289, 0.0986, 0.3510, -0.0651]
+[ZMQEndpointInterface] Decode interval: 9 ms, decode time: 2 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 7 current-rate frames, window [24511..24517] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4736, -0.0936, 0.1117,  | 0.4128, -0.2780, 0.0995,  | 0.1550, -0.0742, 0.4770]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8549, -0.4149, 0.1097, 0.2914,  | -0.9374, 0.3475, -0.0064, -0.0241,  | 0.9290, 0.0987, 0.3507, -0.0650]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24515 to 24518, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24515) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602322, 0.154663, -0.162307, -0.766123)], smpl_joints: [(-0.312587, 0.075629, -0.142168)], smpl_pose: [(-0.646253, 0.187320, -0.159484)]
+  Frame[1] (idx=24516) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602404, 0.154635, -0.162303, -0.766065)], smpl_joints: [(-0.312609, 0.075560, -0.142156)], smpl_pose: [(-0.645957, 0.187411, -0.159681)]
+  Frame[2] (idx=24517) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602404, 0.154635, -0.162303, -0.766065)], smpl_joints: [(-0.312609, 0.075560, -0.142156)], smpl_pose: [(-0.645957, 0.187411, -0.159681)]
+  Frame[3] (idx=24518) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602475, 0.154654, -0.162330, -0.766000)], smpl_joints: [(-0.312614, 0.075494, -0.142179)], smpl_pose: [(-0.646112, 0.187653, -0.159676)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24515, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24515, incoming_frame_end: 24518, stream_window_start_: 24511, stream_window_end: 24517, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 7
+[StreamedMotionMerger] Copying old data: global [24511..24514] → new_motion[0..3]
+[StreamedMotionMerger] Merged motion: 8 frames (copied: 4 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4736, -0.0936, 0.1117, | 0.4128, -0.2780, 0.0995, | 0.1550, -0.0742, 0.4770]
+  Orientation [L|R|H]: [-0.8549, -0.4149, 0.1097, 0.2914, | -0.9374, 0.3475, -0.0064, -0.0241, | 0.9290, 0.0987, 0.3507, -0.0650]
+[ZMQEndpointInterface] Decode interval: 9 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 8 current-rate frames, window [24511..24518] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4735, -0.0936, 0.1118,  | 0.4128, -0.2780, 0.0996,  | 0.1549, -0.0742, 0.4771]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8550, -0.4149, 0.1097, 0.2913,  | -0.9373, 0.3475, -0.0063, -0.0242,  | 0.9291, 0.0988, 0.3505, -0.0650]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24517 to 24520, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24517) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602404, 0.154635, -0.162303, -0.766065)], smpl_joints: [(-0.312609, 0.075560, -0.142156)], smpl_pose: [(-0.645957, 0.187411, -0.159681)]
+  Frame[1] (idx=24518) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602475, 0.154654, -0.162330, -0.766000)], smpl_joints: [(-0.312614, 0.075494, -0.142179)], smpl_pose: [(-0.646112, 0.187653, -0.159676)]
+  Frame[2] (idx=24519) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602515, 0.154665, -0.162346, -0.765962)], smpl_joints: [(-0.312618, 0.075455, -0.142192)], smpl_pose: [(-0.646201, 0.187792, -0.159672)]
+  Frame[3] (idx=24520) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602565, 0.154677, -0.162369, -0.765916)], smpl_joints: [(-0.312621, 0.075408, -0.142210)], smpl_pose: [(-0.646358, 0.187977, -0.159635)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24517, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24517, incoming_frame_end: 24520, stream_window_start_: 24511, stream_window_end: 24518, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 8
+Motion streamed completed and waiting following motion
+[StreamedMotionMerger] Copying old data: global [24511..24516] → new_motion[0..5]
+[StreamedMotionMerger] Merged motion: 10 frames (copied: 6 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4735, -0.0936, 0.1118, | 0.4128, -0.2780, 0.0996, | 0.1549, -0.0742, 0.4771]
+  Orientation [L|R|H]: [-0.8550, -0.4149, 0.1097, 0.2913, | -0.9373, 0.3475, -0.0063, -0.0242, | 0.9291, 0.0988, 0.3505, -0.0650]
+[ZMQEndpointInterface] Decode interval: 10 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 10 current-rate frames, window [24511..24520] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4735, -0.0936, 0.1118,  | 0.4128, -0.2780, 0.0996,  | 0.1549, -0.0742, 0.4771]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8550, -0.4149, 0.1097, 0.2913,  | -0.9373, 0.3475, -0.0063, -0.0242,  | 0.9291, 0.0988, 0.3505, -0.0650]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24518 to 24521, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24518) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602475, 0.154654, -0.162330, -0.766000)], smpl_joints: [(-0.312614, 0.075494, -0.142179)], smpl_pose: [(-0.646112, 0.187653, -0.159676)]
+  Frame[1] (idx=24519) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602515, 0.154665, -0.162346, -0.765962)], smpl_joints: [(-0.312618, 0.075455, -0.142192)], smpl_pose: [(-0.646201, 0.187792, -0.159672)]
+  Frame[2] (idx=24520) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602565, 0.154677, -0.162369, -0.765916)], smpl_joints: [(-0.312621, 0.075408, -0.142210)], smpl_pose: [(-0.646358, 0.187977, -0.159635)]
+  Frame[3] (idx=24521) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602593, 0.154684, -0.162382, -0.765890)], smpl_joints: [(-0.312623, 0.075381, -0.142220)], smpl_pose: [(-0.646453, 0.188083, -0.159609)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24518, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24518, incoming_frame_end: 24521, stream_window_start_: 24511, stream_window_end: 24520, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 10
+[StreamedMotionMerger] Copying old data: global [24511..24517] → new_motion[0..6]
+[StreamedMotionMerger] Merged motion: 11 frames (copied: 7 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4735, -0.0936, 0.1118, | 0.4128, -0.2780, 0.0996, | 0.1549, -0.0742, 0.4771]
+  Orientation [L|R|H]: [-0.8550, -0.4149, 0.1097, 0.2913, | -0.9373, 0.3475, -0.0063, -0.0242, | 0.9291, 0.0988, 0.3505, -0.0650]
+[ZMQEndpointInterface] Decode interval: 10 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 11 current-rate frames, window [24511..24521] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+Motion streamed completed and waiting following motion
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4735, -0.0936, 0.1118,  | 0.4128, -0.2780, 0.0996,  | 0.1549, -0.0742, 0.4770]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8550, -0.4149, 0.1097, 0.2912,  | -0.9373, 0.3476, -0.0063, -0.0242,  | 0.9291, 0.0988, 0.3505, -0.0650]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24519 to 24522, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24519) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602515, 0.154665, -0.162346, -0.765962)], smpl_joints: [(-0.312618, 0.075455, -0.142192)], smpl_pose: [(-0.646201, 0.187792, -0.159672)]
+  Frame[1] (idx=24520) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602565, 0.154677, -0.162369, -0.765916)], smpl_joints: [(-0.312621, 0.075408, -0.142210)], smpl_pose: [(-0.646358, 0.187977, -0.159635)]
+  Frame[2] (idx=24521) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602593, 0.154684, -0.162382, -0.765890)], smpl_joints: [(-0.312623, 0.075381, -0.142220)], smpl_pose: [(-0.646453, 0.188083, -0.159609)]
+  Frame[3] (idx=24522) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602619, 0.154691, -0.162397, -0.765865)], smpl_joints: [(-0.312624, 0.075356, -0.142231)], smpl_pose: [(-0.646579, 0.188195, -0.159561)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24519, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24519, incoming_frame_end: 24522, stream_window_start_: 24511, stream_window_end: 24521, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 11
+[StreamedMotionMerger] Copying old data: global [24511..24518] → new_motion[0..7]
+[StreamedMotionMerger] Merged motion: 12 frames (copied: 8 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4735, -0.0936, 0.1118, | 0.4128, -0.2780, 0.0996, | 0.1549, -0.0742, 0.4770]
+  Orientation [L|R|H]: [-0.8550, -0.4149, 0.1097, 0.2912, | -0.9373, 0.3476, -0.0063, -0.0242, | 0.9291, 0.0988, 0.3505, -0.0650]
+[ZMQEndpointInterface] Decode interval: 20 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 12 current-rate frames, window [24511..24522] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4735, -0.0936, 0.1118,  | 0.4128, -0.2780, 0.0996,  | 0.1549, -0.0742, 0.4770]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8550, -0.4149, 0.1097, 0.2912,  | -0.9373, 0.3476, -0.0063, -0.0242,  | 0.9291, 0.0988, 0.3505, -0.0650]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24520 to 24523, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24520) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602565, 0.154677, -0.162369, -0.765916)], smpl_joints: [(-0.312621, 0.075408, -0.142210)], smpl_pose: [(-0.646358, 0.187977, -0.159635)]
+  Frame[1] (idx=24521) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602593, 0.154684, -0.162382, -0.765890)], smpl_joints: [(-0.312623, 0.075381, -0.142220)], smpl_pose: [(-0.646453, 0.188083, -0.159609)]
+  Frame[2] (idx=24522) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602619, 0.154691, -0.162397, -0.765865)], smpl_joints: [(-0.312624, 0.075356, -0.142231)], smpl_pose: [(-0.646579, 0.188195, -0.159561)]
+  Frame[3] (idx=24523) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602630, 0.154693, -0.162403, -0.765854)], smpl_joints: [(-0.312625, 0.075344, -0.142236)], smpl_pose: [(-0.646635, 0.188245, -0.159539)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24520, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24520, incoming_frame_end: 24523, stream_window_start_: 24511, stream_window_end: 24522, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 12
+[StreamedMotionMerger] Copying old data: global [24511..24519] → new_motion[0..8]
+[StreamedMotionMerger] Merged motion: 13 frames (copied: 9 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4735, -0.0936, 0.1118, | 0.4128, -0.2780, 0.0996, | 0.1549, -0.0742, 0.4770]
+  Orientation [L|R|H]: [-0.8550, -0.4149, 0.1097, 0.2912, | -0.9373, 0.3476, -0.0063, -0.0242, | 0.9291, 0.0988, 0.3505, -0.0650]
+[ZMQEndpointInterface] Decode interval: 10 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 13 current-rate frames, window [24511..24523] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4735, -0.0936, 0.1118,  | 0.4128, -0.2780, 0.0996,  | 0.1550, -0.0742, 0.4770]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8550, -0.4149, 0.1097, 0.2911,  | -0.9373, 0.3476, -0.0062, -0.0243,  | 0.9290, 0.0988, 0.3506, -0.0650]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24522 to 24525, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24522) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602619, 0.154691, -0.162397, -0.765865)], smpl_joints: [(-0.312624, 0.075356, -0.142231)], smpl_pose: [(-0.646579, 0.188195, -0.159561)]
+  Frame[1] (idx=24523) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602630, 0.154693, -0.162403, -0.765854)], smpl_joints: [(-0.312625, 0.075344, -0.142236)], smpl_pose: [(-0.646635, 0.188245, -0.159539)]
+  Frame[2] (idx=24524) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602671, 0.154706, -0.162425, -0.765814)], smpl_joints: [(-0.312626, 0.075305, -0.142252)], smpl_pose: [(-0.646783, 0.188411, -0.159478)]
+  Frame[3] (idx=24525) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24522, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24522, incoming_frame_end: 24525, stream_window_start_: 24511, stream_window_end: 24523, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 13
+[StreamedMotionMerger] Copying old data: global [24511..24521] → new_motion[0..10]
+[StreamedMotionMerger] Merged motion: 15 frames (copied: 11 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4735, -0.0936, 0.1118, | 0.4128, -0.2780, 0.0996, | 0.1550, -0.0742, 0.4770]
+  Orientation [L|R|H]: [-0.8550, -0.4149, 0.1097, 0.2911, | -0.9373, 0.3476, -0.0062, -0.0243, | 0.9290, 0.0988, 0.3506, -0.0650]
+[ZMQEndpointInterface] Decode interval: 10 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 15 current-rate frames, window [24511..24525] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4735, -0.0936, 0.1118,  | 0.4128, -0.2780, 0.0996,  | 0.1550, -0.0742, 0.4770]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8550, -0.4149, 0.1097, 0.2911,  | -0.9373, 0.3476, -0.0062, -0.0243,  | 0.9290, 0.0988, 0.3506, -0.0650]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24523 to 24526, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24523) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602630, 0.154693, -0.162403, -0.765854)], smpl_joints: [(-0.312625, 0.075344, -0.142236)], smpl_pose: [(-0.646635, 0.188245, -0.159539)]
+  Frame[1] (idx=24524) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602671, 0.154706, -0.162425, -0.765814)], smpl_joints: [(-0.312626, 0.075305, -0.142252)], smpl_pose: [(-0.646783, 0.188411, -0.159478)]
+  Frame[2] (idx=24525) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[3] (idx=24526) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24523, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24523, incoming_frame_end: 24526, stream_window_start_: 24511, stream_window_end: 24525, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 15
+[StreamedMotionMerger] Copying old data: global [24511..24522] → new_motion[0..11]
+[StreamedMotionMerger] Merged motion: 16 frames (copied: 12 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4735, -0.0936, 0.1118, | 0.4128, -0.2780, 0.0996, | 0.1550, -0.0742, 0.4770]
+  Orientation [L|R|H]: [-0.8550, -0.4149, 0.1097, 0.2911, | -0.9373, 0.3476, -0.0062, -0.0243, | 0.9290, 0.0988, 0.3506, -0.0650]
+[ZMQEndpointInterface] Decode interval: 10 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 16 current-rate frames, window [24511..24526] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4735, -0.0936, 0.1118,  | 0.4128, -0.2780, 0.0996,  | 0.1550, -0.0742, 0.4770]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8550, -0.4149, 0.1097, 0.2911,  | -0.9373, 0.3476, -0.0062, -0.0243,  | 0.9290, 0.0988, 0.3506, -0.0650]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24524 to 24527, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24524) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602671, 0.154706, -0.162425, -0.765814)], smpl_joints: [(-0.312626, 0.075305, -0.142252)], smpl_pose: [(-0.646783, 0.188411, -0.159478)]
+  Frame[1] (idx=24525) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[2] (idx=24526) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[3] (idx=24527) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24524, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24524, incoming_frame_end: 24527, stream_window_start_: 24511, stream_window_end: 24526, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 16
+[StreamedMotionMerger] Copying old data: global [24511..24523] → new_motion[0..12]
+[StreamedMotionMerger] Merged motion: 17 frames (copied: 13 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4735, -0.0936, 0.1118, | 0.4128, -0.2780, 0.0996, | 0.1550, -0.0742, 0.4770]
+  Orientation [L|R|H]: [-0.8550, -0.4149, 0.1097, 0.2911, | -0.9373, 0.3476, -0.0062, -0.0243, | 0.9290, 0.0988, 0.3506, -0.0650]
+[ZMQEndpointInterface] Decode interval: 10 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 17 current-rate frames, window [24511..24527] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4735, -0.0936, 0.1118,  | 0.4128, -0.2780, 0.0996,  | 0.1550, -0.0742, 0.4770]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8550, -0.4149, 0.1097, 0.2911,  | -0.9373, 0.3476, -0.0062, -0.0243,  | 0.9290, 0.0988, 0.3506, -0.0650]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24525 to 24528, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24525) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[1] (idx=24526) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[2] (idx=24527) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[3] (idx=24528) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24525, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24525, incoming_frame_end: 24528, stream_window_start_: 24511, stream_window_end: 24527, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 17
+[StreamedMotionMerger] Copying old data: global [24511..24524] → new_motion[0..13]
+[StreamedMotionMerger] Merged motion: 18 frames (copied: 14 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4735, -0.0936, 0.1118, | 0.4128, -0.2780, 0.0996, | 0.1550, -0.0742, 0.4770]
+  Orientation [L|R|H]: [-0.8550, -0.4149, 0.1097, 0.2911, | -0.9373, 0.3476, -0.0062, -0.0243, | 0.9290, 0.0988, 0.3506, -0.0650]
+[ZMQEndpointInterface] Decode interval: 10 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 18 current-rate frames, window [24511..24528] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4734, -0.0935, 0.1117,  | 0.4128, -0.2779, 0.0995,  | 0.1547, -0.0741, 0.4772]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4149, 0.1096, 0.2909,  | -0.9373, 0.3476, -0.0061, -0.0245,  | 0.9291, 0.0987, 0.3505, -0.0647]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24526 to 24529, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24526) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[1] (idx=24527) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[2] (idx=24528) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[3] (idx=24529) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602857, 0.154764, -0.162432, -0.765655)], smpl_joints: [(-0.312651, 0.075143, -0.142284)], smpl_pose: [(-0.645947, 0.188841, -0.159442)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24526, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24526, incoming_frame_end: 24529, stream_window_start_: 24511, stream_window_end: 24528, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 18
+[StreamedMotionMerger] Copying old data: global [24511..24525] → new_motion[0..14]
+[StreamedMotionMerger] Merged motion: 19 frames (copied: 15 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4734, -0.0935, 0.1117, | 0.4128, -0.2779, 0.0995, | 0.1547, -0.0741, 0.4772]
+  Orientation [L|R|H]: [-0.8551, -0.4149, 0.1096, 0.2909, | -0.9373, 0.3476, -0.0061, -0.0245, | 0.9291, 0.0987, 0.3505, -0.0647]
+[ZMQEndpointInterface] Decode interval: 10 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 19 current-rate frames, window [24511..24529] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4734, -0.0935, 0.1117,  | 0.4128, -0.2779, 0.0995,  | 0.1547, -0.0741, 0.4772]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4149, 0.1096, 0.2909,  | -0.9373, 0.3476, -0.0061, -0.0245,  | 0.9291, 0.0987, 0.3505, -0.0647]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24527 to 24530, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24527) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[1] (idx=24528) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[2] (idx=24529) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602857, 0.154764, -0.162432, -0.765655)], smpl_joints: [(-0.312651, 0.075143, -0.142284)], smpl_pose: [(-0.645947, 0.188841, -0.159442)]
+  Frame[3] (idx=24530) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602870, 0.154768, -0.162431, -0.765644)], smpl_joints: [(-0.312653, 0.075132, -0.142285)], smpl_pose: [(-0.645868, 0.188866, -0.159443)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24527, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24527, incoming_frame_end: 24530, stream_window_start_: 24511, stream_window_end: 24529, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 19
+[StreamedMotionMerger] Copying old data: global [24511..24526] → new_motion[0..15]
+[StreamedMotionMerger] Merged motion: 20 frames (copied: 16 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4734, -0.0935, 0.1117, | 0.4128, -0.2779, 0.0995, | 0.1547, -0.0741, 0.4772]
+  Orientation [L|R|H]: [-0.8551, -0.4149, 0.1096, 0.2909, | -0.9373, 0.3476, -0.0061, -0.0245, | 0.9291, 0.0987, 0.3505, -0.0647]
+[ZMQEndpointInterface] Decode interval: 10 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 20 current-rate frames, window [24511..24530] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4732, -0.0935, 0.1118,  | 0.4126, -0.2779, 0.0996,  | 0.1545, -0.0742, 0.4772]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4149, 0.1096, 0.2908,  | -0.9373, 0.3476, -0.0060, -0.0246,  | 0.9292, 0.0987, 0.3503, -0.0647]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24528 to 24531, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24528) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602703, 0.154715, -0.162441, -0.765784)], smpl_joints: [(-0.312628, 0.075274, -0.142265)], smpl_pose: [(-0.646896, 0.188539, -0.159432)]
+  Frame[1] (idx=24529) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602857, 0.154764, -0.162432, -0.765655)], smpl_joints: [(-0.312651, 0.075143, -0.142284)], smpl_pose: [(-0.645947, 0.188841, -0.159442)]
+  Frame[2] (idx=24530) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602870, 0.154768, -0.162431, -0.765644)], smpl_joints: [(-0.312653, 0.075132, -0.142285)], smpl_pose: [(-0.645868, 0.188866, -0.159443)]
+  Frame[3] (idx=24531) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602910, 0.154791, -0.162453, -0.765603)], smpl_joints: [(-0.312653, 0.075093, -0.142306)], smpl_pose: [(-0.645676, 0.189080, -0.159434)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24528, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24528, incoming_frame_end: 24531, stream_window_start_: 24511, stream_window_end: 24530, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 20
+[StreamedMotionMerger] Copying old data: global [24511..24527] → new_motion[0..16]
+[StreamedMotionMerger] Merged motion: 21 frames (copied: 17 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4732, -0.0935, 0.1118, | 0.4126, -0.2779, 0.0996, | 0.1545, -0.0742, 0.4772]
+  Orientation [L|R|H]: [-0.8551, -0.4149, 0.1096, 0.2908, | -0.9373, 0.3476, -0.0060, -0.0246, | 0.9292, 0.0987, 0.3503, -0.0647]
+[ZMQEndpointInterface] Decode interval: 20 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 21 current-rate frames, window [24511..24531] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4732, -0.0935, 0.1118,  | 0.4126, -0.2779, 0.0996,  | 0.1545, -0.0742, 0.4772]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4149, 0.1096, 0.2908,  | -0.9373, 0.3476, -0.0060, -0.0246,  | 0.9292, 0.0987, 0.3503, -0.0647]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24529 to 24532, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24529) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602857, 0.154764, -0.162432, -0.765655)], smpl_joints: [(-0.312651, 0.075143, -0.142284)], smpl_pose: [(-0.645947, 0.188841, -0.159442)]
+  Frame[1] (idx=24530) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602870, 0.154768, -0.162431, -0.765644)], smpl_joints: [(-0.312653, 0.075132, -0.142285)], smpl_pose: [(-0.645868, 0.188866, -0.159443)]
+  Frame[2] (idx=24531) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602910, 0.154791, -0.162453, -0.765603)], smpl_joints: [(-0.312653, 0.075093, -0.142306)], smpl_pose: [(-0.645676, 0.189080, -0.159434)]
+  Frame[3] (idx=24532) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602924, 0.154799, -0.162461, -0.765589)], smpl_joints: [(-0.312653, 0.075080, -0.142314)], smpl_pose: [(-0.645608, 0.189155, -0.159431)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24529, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24529, incoming_frame_end: 24532, stream_window_start_: 24511, stream_window_end: 24531, frame_step: 1, global_playback_frame: 24511, streamed_motion_->timesteps: 21
+[StreamedMotionMerger] Copying old data: global [24511..24528] → new_motion[0..17]
+[StreamedMotionMerger] Merged motion: 22 frames (copied: 18 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4732, -0.0935, 0.1118, | 0.4126, -0.2779, 0.0996, | 0.1545, -0.0742, 0.4772]
+  Orientation [L|R|H]: [-0.8551, -0.4149, 0.1096, 0.2908, | -0.9373, 0.3476, -0.0060, -0.0246, | 0.9292, 0.0987, 0.3503, -0.0647]
+[ZMQEndpointInterface] Decode interval: 11 ms, decode time: 2 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 22 current-rate frames, window [24511..24532] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4728, -0.0940, 0.1118,  | 0.4123, -0.2785, 0.0996,  | 0.1545, -0.0748, 0.4771]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8552, -0.4149, 0.1096, 0.2907,  | -0.9373, 0.3476, -0.0060, -0.0247,  | 0.9290, 0.0994, 0.3505, -0.0646]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24531 to 24534, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24531) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602910, 0.154791, -0.162453, -0.765603)], smpl_joints: [(-0.312653, 0.075093, -0.142306)], smpl_pose: [(-0.645676, 0.189080, -0.159434)]
+  Frame[1] (idx=24532) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602924, 0.154799, -0.162461, -0.765589)], smpl_joints: [(-0.312653, 0.075080, -0.142314)], smpl_pose: [(-0.645608, 0.189155, -0.159431)]
+  Frame[2] (idx=24533) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602957, 0.154821, -0.162488, -0.765553)], smpl_joints: [(-0.312650, 0.075045, -0.142338)], smpl_pose: [(-0.645598, 0.189380, -0.159380)]
+  Frame[3] (idx=24534) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602979, 0.154832, -0.162498, -0.765531)], smpl_joints: [(-0.312651, 0.075023, -0.142348)], smpl_pose: [(-0.645595, 0.189497, -0.159329)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24531, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24531, incoming_frame_end: 24534, stream_window_start_: 24511, stream_window_end: 24532, frame_step: 1, global_playback_frame: 24512, streamed_motion_->timesteps: 22
+[StreamedMotionMerger] Copying old data: global [24512..24530] → new_motion[0..18]
+[StreamedMotionMerger] Merged motion: 23 frames (copied: 19 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4728, -0.0940, 0.1118, | 0.4123, -0.2785, 0.0996, | 0.1545, -0.0748, 0.4771]
+  Orientation [L|R|H]: [-0.8552, -0.4149, 0.1096, 0.2907, | -0.9373, 0.3476, -0.0060, -0.0247, | 0.9290, 0.0994, 0.3505, -0.0646]
+[ZMQEndpointInterface] Decode interval: 29 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 23 current-rate frames, window [24512..24534] (message-index), frame_step=1, frame_offset_adjustment=1, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4728, -0.0941, 0.1117,  | 0.4123, -0.2785, 0.0996,  | 0.1545, -0.0748, 0.4771]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4150, 0.1096, 0.2907,  | -0.9373, 0.3476, -0.0060, -0.0246,  | 0.9291, 0.0994, 0.3504, -0.0645]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24532 to 24535, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24532) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602924, 0.154799, -0.162461, -0.765589)], smpl_joints: [(-0.312653, 0.075080, -0.142314)], smpl_pose: [(-0.645608, 0.189155, -0.159431)]
+  Frame[1] (idx=24533) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602957, 0.154821, -0.162488, -0.765553)], smpl_joints: [(-0.312650, 0.075045, -0.142338)], smpl_pose: [(-0.645598, 0.189380, -0.159380)]
+  Frame[2] (idx=24534) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602979, 0.154832, -0.162498, -0.765531)], smpl_joints: [(-0.312651, 0.075023, -0.142348)], smpl_pose: [(-0.645595, 0.189497, -0.159329)]
+  Frame[3] (idx=24535) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603014, 0.154813, -0.162445, -0.765519)], smpl_joints: [(-0.312671, 0.075005, -0.142313)], smpl_pose: [(-0.645629, 0.189392, -0.159106)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24532, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24532, incoming_frame_end: 24535, stream_window_start_: 24512, stream_window_end: 24534, frame_step: 1, global_playback_frame: 24513, streamed_motion_->timesteps: 23
+[StreamedMotionMerger] Copying old data: global [24513..24531] → new_motion[0..18]
+[StreamedMotionMerger] Merged motion: 23 frames (copied: 19 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4728, -0.0941, 0.1117, | 0.4123, -0.2785, 0.0996, | 0.1545, -0.0748, 0.4771]
+  Orientation [L|R|H]: [-0.8551, -0.4150, 0.1096, 0.2907, | -0.9373, 0.3476, -0.0060, -0.0246, | 0.9291, 0.0994, 0.3504, -0.0645]
+[ZMQEndpointInterface] Decode interval: 11 ms, decode time: 2 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 23 current-rate frames, window [24513..24535] (message-index), frame_step=1, frame_offset_adjustment=1, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4728, -0.0941, 0.1117,  | 0.4123, -0.2785, 0.0996,  | 0.1545, -0.0748, 0.4771]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4150, 0.1096, 0.2907,  | -0.9373, 0.3476, -0.0060, -0.0246,  | 0.9291, 0.0994, 0.3504, -0.0645]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24533 to 24536, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24533) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602957, 0.154821, -0.162488, -0.765553)], smpl_joints: [(-0.312650, 0.075045, -0.142338)], smpl_pose: [(-0.645598, 0.189380, -0.159380)]
+  Frame[1] (idx=24534) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602979, 0.154832, -0.162498, -0.765531)], smpl_joints: [(-0.312651, 0.075023, -0.142348)], smpl_pose: [(-0.645595, 0.189497, -0.159329)]
+  Frame[2] (idx=24535) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603014, 0.154813, -0.162445, -0.765519)], smpl_joints: [(-0.312671, 0.075005, -0.142313)], smpl_pose: [(-0.645629, 0.189392, -0.159106)]
+  Frame[3] (idx=24536) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603002, 0.154826, -0.162443, -0.765526)], smpl_joints: [(-0.312666, 0.075016, -0.142317)], smpl_pose: [(-0.645804, 0.189397, -0.159233)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24533, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24533, incoming_frame_end: 24536, stream_window_start_: 24513, stream_window_end: 24535, frame_step: 1, global_playback_frame: 24513, streamed_motion_->timesteps: 23
+[StreamedMotionMerger] Copying old data: global [24513..24532] → new_motion[0..19]
+[StreamedMotionMerger] Merged motion: 24 frames (copied: 20 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4728, -0.0941, 0.1117, | 0.4123, -0.2785, 0.0996, | 0.1545, -0.0748, 0.4771]
+  Orientation [L|R|H]: [-0.8551, -0.4150, 0.1096, 0.2907, | -0.9373, 0.3476, -0.0060, -0.0246, | 0.9291, 0.0994, 0.3504, -0.0645]
+[ZMQEndpointInterface] Decode interval: 9 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 24 current-rate frames, window [24513..24536] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4727, -0.0944, 0.1117,  | 0.4121, -0.2788, 0.0995,  | 0.1544, -0.0749, 0.4771]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4150, 0.1096, 0.2908,  | -0.9373, 0.3476, -0.0060, -0.0246,  | 0.9291, 0.0996, 0.3503, -0.0645]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24534 to 24537, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24534) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602979, 0.154832, -0.162498, -0.765531)], smpl_joints: [(-0.312651, 0.075023, -0.142348)], smpl_pose: [(-0.645595, 0.189497, -0.159329)]
+  Frame[1] (idx=24535) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603014, 0.154813, -0.162445, -0.765519)], smpl_joints: [(-0.312671, 0.075005, -0.142313)], smpl_pose: [(-0.645629, 0.189392, -0.159106)]
+  Frame[2] (idx=24536) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603002, 0.154826, -0.162443, -0.765526)], smpl_joints: [(-0.312666, 0.075016, -0.142317)], smpl_pose: [(-0.645804, 0.189397, -0.159233)]
+  Frame[3] (idx=24537) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603002, 0.154826, -0.162443, -0.765526)], smpl_joints: [(-0.312666, 0.075016, -0.142317)], smpl_pose: [(-0.645804, 0.189397, -0.159233)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24534, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24534, incoming_frame_end: 24537, stream_window_start_: 24513, stream_window_end: 24536, frame_step: 1, global_playback_frame: 24514, streamed_motion_->timesteps: 24
+[StreamedMotionMerger] Copying old data: global [24514..24533] → new_motion[0..19]
+[StreamedMotionMerger] Merged motion: 24 frames (copied: 20 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4727, -0.0944, 0.1117, | 0.4121, -0.2788, 0.0995, | 0.1544, -0.0749, 0.4771]
+  Orientation [L|R|H]: [-0.8551, -0.4150, 0.1096, 0.2908, | -0.9373, 0.3476, -0.0060, -0.0246, | 0.9291, 0.0996, 0.3503, -0.0645]
+[ZMQEndpointInterface] Decode interval: 11 ms, decode time: 2 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 24 current-rate frames, window [24514..24537] (message-index), frame_step=1, frame_offset_adjustment=1, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4727, -0.0944, 0.1117,  | 0.4121, -0.2788, 0.0995,  | 0.1544, -0.0749, 0.4771]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4150, 0.1096, 0.2908,  | -0.9373, 0.3476, -0.0060, -0.0246,  | 0.9291, 0.0996, 0.3503, -0.0645]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24535 to 24538, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24535) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603014, 0.154813, -0.162445, -0.765519)], smpl_joints: [(-0.312671, 0.075005, -0.142313)], smpl_pose: [(-0.645629, 0.189392, -0.159106)]
+  Frame[1] (idx=24536) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603002, 0.154826, -0.162443, -0.765526)], smpl_joints: [(-0.312666, 0.075016, -0.142317)], smpl_pose: [(-0.645804, 0.189397, -0.159233)]
+  Frame[2] (idx=24537) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603002, 0.154826, -0.162443, -0.765526)], smpl_joints: [(-0.312666, 0.075016, -0.142317)], smpl_pose: [(-0.645804, 0.189397, -0.159233)]
+  Frame[3] (idx=24538) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602959, 0.154869, -0.162437, -0.765552)], smpl_joints: [(-0.312651, 0.075053, -0.142331)], smpl_pose: [(-0.646392, 0.189412, -0.159660)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24535, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24535, incoming_frame_end: 24538, stream_window_start_: 24514, stream_window_end: 24537, frame_step: 1, global_playback_frame: 24514, streamed_motion_->timesteps: 24
+[StreamedMotionMerger] Copying old data: global [24514..24534] → new_motion[0..20]
+[StreamedMotionMerger] Merged motion: 25 frames (copied: 21 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4727, -0.0944, 0.1117, | 0.4121, -0.2788, 0.0995, | 0.1544, -0.0749, 0.4771]
+  Orientation [L|R|H]: [-0.8551, -0.4150, 0.1096, 0.2908, | -0.9373, 0.3476, -0.0060, -0.0246, | 0.9291, 0.0996, 0.3503, -0.0645]
+[ZMQEndpointInterface] Decode interval: 9 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 25 current-rate frames, window [24514..24538] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4727, -0.0944, 0.1117,  | 0.4121, -0.2788, 0.0995,  | 0.1544, -0.0749, 0.4771]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4150, 0.1096, 0.2908,  | -0.9373, 0.3476, -0.0060, -0.0246,  | 0.9291, 0.0996, 0.3503, -0.0645]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24536 to 24539, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24536) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603002, 0.154826, -0.162443, -0.765526)], smpl_joints: [(-0.312666, 0.075016, -0.142317)], smpl_pose: [(-0.645804, 0.189397, -0.159233)]
+  Frame[1] (idx=24537) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603002, 0.154826, -0.162443, -0.765526)], smpl_joints: [(-0.312666, 0.075016, -0.142317)], smpl_pose: [(-0.645804, 0.189397, -0.159233)]
+  Frame[2] (idx=24538) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602959, 0.154869, -0.162437, -0.765552)], smpl_joints: [(-0.312651, 0.075053, -0.142331)], smpl_pose: [(-0.646392, 0.189412, -0.159660)]
+  Frame[3] (idx=24539) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602959, 0.154869, -0.162437, -0.765552)], smpl_joints: [(-0.312651, 0.075053, -0.142331)], smpl_pose: [(-0.646392, 0.189412, -0.159660)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24536, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24536, incoming_frame_end: 24539, stream_window_start_: 24514, stream_window_end: 24538, frame_step: 1, global_playback_frame: 24515, streamed_motion_->timesteps: 25
+[StreamedMotionMerger] Copying old data: global [24515..24535] → new_motion[0..20]
+[StreamedMotionMerger] Merged motion: 25 frames (copied: 21 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4727, -0.0944, 0.1117, | 0.4121, -0.2788, 0.0995, | 0.1544, -0.0749, 0.4771]
+  Orientation [L|R|H]: [-0.8551, -0.4150, 0.1096, 0.2908, | -0.9373, 0.3476, -0.0060, -0.0246, | 0.9291, 0.0996, 0.3503, -0.0645]
+[ZMQEndpointInterface] Decode interval: 11 ms, decode time: 2 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 25 current-rate frames, window [24515..24539] (message-index), frame_step=1, frame_offset_adjustment=1, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4726, -0.0945, 0.1117,  | 0.4121, -0.2789, 0.0995,  | 0.1543, -0.0749, 0.4772]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4150, 0.1096, 0.2908,  | -0.9373, 0.3476, -0.0060, -0.0246,  | 0.9291, 0.0996, 0.3502, -0.0643]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24537 to 24540, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24537) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.603002, 0.154826, -0.162443, -0.765526)], smpl_joints: [(-0.312666, 0.075016, -0.142317)], smpl_pose: [(-0.645804, 0.189397, -0.159233)]
+  Frame[1] (idx=24538) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602959, 0.154869, -0.162437, -0.765552)], smpl_joints: [(-0.312651, 0.075053, -0.142331)], smpl_pose: [(-0.646392, 0.189412, -0.159660)]
+  Frame[2] (idx=24539) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602959, 0.154869, -0.162437, -0.765552)], smpl_joints: [(-0.312651, 0.075053, -0.142331)], smpl_pose: [(-0.646392, 0.189412, -0.159660)]
+  Frame[3] (idx=24540) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602948, 0.154885, -0.162426, -0.765560)], smpl_joints: [(-0.312648, 0.075065, -0.142332)], smpl_pose: [(-0.646556, 0.189382, -0.159713)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24537, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24537, incoming_frame_end: 24540, stream_window_start_: 24515, stream_window_end: 24539, frame_step: 1, global_playback_frame: 24515, streamed_motion_->timesteps: 25
+[StreamedMotionMerger] Copying old data: global [24515..24536] → new_motion[0..21]
+[StreamedMotionMerger] Merged motion: 26 frames (copied: 22 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4726, -0.0945, 0.1117, | 0.4121, -0.2789, 0.0995, | 0.1543, -0.0749, 0.4772]
+  Orientation [L|R|H]: [-0.8551, -0.4150, 0.1096, 0.2908, | -0.9373, 0.3476, -0.0060, -0.0246, | 0.9291, 0.0996, 0.3502, -0.0643]
+[ZMQEndpointInterface] Decode interval: 9 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 26 current-rate frames, window [24515..24540] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4725, -0.0944, 0.1117,  | 0.4119, -0.2789, 0.0994,  | 0.1541, -0.0747, 0.4773]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4151, 0.1096, 0.2908,  | -0.9373, 0.3475, -0.0059, -0.0246,  | 0.9293, 0.0994, 0.3500, -0.0640]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24538 to 24541, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24538) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602959, 0.154869, -0.162437, -0.765552)], smpl_joints: [(-0.312651, 0.075053, -0.142331)], smpl_pose: [(-0.646392, 0.189412, -0.159660)]
+  Frame[1] (idx=24539) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602959, 0.154869, -0.162437, -0.765552)], smpl_joints: [(-0.312651, 0.075053, -0.142331)], smpl_pose: [(-0.646392, 0.189412, -0.159660)]
+  Frame[2] (idx=24540) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602948, 0.154885, -0.162426, -0.765560)], smpl_joints: [(-0.312648, 0.075065, -0.142332)], smpl_pose: [(-0.646556, 0.189382, -0.159713)]
+  Frame[3] (idx=24541) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602938, 0.154922, -0.162382, -0.765570)], smpl_joints: [(-0.312647, 0.075082, -0.142324)], smpl_pose: [(-0.646759, 0.189225, -0.159549)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24538, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24538, incoming_frame_end: 24541, stream_window_start_: 24515, stream_window_end: 24540, frame_step: 1, global_playback_frame: 24516, streamed_motion_->timesteps: 26
+[StreamedMotionMerger] Copying old data: global [24516..24537] → new_motion[0..21]
+[StreamedMotionMerger] Merged motion: 26 frames (copied: 22 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4725, -0.0944, 0.1117, | 0.4119, -0.2789, 0.0994, | 0.1541, -0.0747, 0.4773]
+  Orientation [L|R|H]: [-0.8551, -0.4151, 0.1096, 0.2908, | -0.9373, 0.3475, -0.0059, -0.0246, | 0.9293, 0.0994, 0.3500, -0.0640]
+[ZMQEndpointInterface] Decode interval: 11 ms, decode time: 2 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 26 current-rate frames, window [24516..24541] (message-index), frame_step=1, frame_offset_adjustment=1, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3, num_fields: 21, total_size: 21 buffers
+[ZMQEndpointInterface] *** Starting ZMQ processing ***
+[ZMQEndpointInterface] Protocol version: 3
+[ZMQEndpointInterface] Decoded body quaternions: 1 bodies per frame
+[ZMQEndpointInterface] Decoded smpl_joints: 4 frames, 24 joints
+[ZMQEndpointInterface] Decoded smpl_pose: 4 frames, 21 poses
+[ZMQEndpointInterface] Decoded left_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded right_hand_joints: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Decoded vr_position: [0.4723, -0.0943, 0.1117,  | 0.4117, -0.2788, 0.0995,  | 0.1540, -0.0746, 0.4774]
+[ZMQEndpointInterface] Decoded vr_orientation: [-0.8551, -0.4151, 0.1096, 0.2908,  | -0.9374, 0.3474, -0.0059, -0.0246,  | 0.9293, 0.0993, 0.3499, -0.0638]
+[ZMQEndpointInterface] Raw message field 'frame_index' (dtype=i64, size=32 bytes)
+[ZMQEndpointInterface] Protocol v3: Received SMPL action (chunk) - frames: 24539 to 24542, chunk_size: 4
+[ZMQEndpointInterface] catch_up field not present, using default: true
+[ZMQEndpointInterface] Decoded data (Version 3, first 4 frames, 29 joints, 24 smpl_joints, 21 smpl_pose):
+  Frame[0] (idx=24539) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602959, 0.154869, -0.162437, -0.765552)], smpl_joints: [(-0.312651, 0.075053, -0.142331)], smpl_pose: [(-0.646392, 0.189412, -0.159660)]
+  Frame[1] (idx=24540) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602948, 0.154885, -0.162426, -0.765560)], smpl_joints: [(-0.312648, 0.075065, -0.142332)], smpl_pose: [(-0.646556, 0.189382, -0.159713)]
+  Frame[2] (idx=24541) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602938, 0.154922, -0.162382, -0.765570)], smpl_joints: [(-0.312647, 0.075082, -0.142324)], smpl_pose: [(-0.646759, 0.189225, -0.159549)]
+  Frame[3] (idx=24542) joint_pos: [0.000000, 0.000000], joint_vel: [0.000000, 0.000000], body_quat: [(-0.602932, 0.154950, -0.162345, -0.765577)], smpl_joints: [(-0.312648, 0.075095, -0.142317)], smpl_pose: [(-0.646893, 0.189096, -0.159393)]
+[StreamedMotionMerger] Processing 4 frames, incoming_frame_start=24539, frame_step=1
+[StreamedMotionMerger] incoming_frame_start: 24539, incoming_frame_end: 24542, stream_window_start_: 24516, stream_window_end: 24541, frame_step: 1, global_playback_frame: 24516, streamed_motion_->timesteps: 26
+[StreamedMotionMerger] Copying old data: global [24516..24538] → new_motion[0..22]
+[StreamedMotionMerger] Merged motion: 27 frames (copied: 23 + incoming: 4)
+[ZMQEndpointInterface] Left hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] Right hand joints set: [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+[ZMQEndpointInterface] VR 3-point tracking ENABLED:
+  Position [L|R|H]: [0.4723, -0.0943, 0.1117, | 0.4117, -0.2788, 0.0995, | 0.1540, -0.0746, 0.4774]
+  Orientation [L|R|H]: [-0.8551, -0.4151, 0.1096, 0.2908, | -0.9374, 0.3474, -0.0059, -0.0246, | 0.9293, 0.0993, 0.3499, -0.0638]
+[ZMQEndpointInterface] Decode interval: 9 ms, decode time: 1 ms
+[ZMQEndpointInterface] active_protocol_version_=3
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+[ZMQEndpointInterface] motion name: streamed
+[ZMQEndpointInterface] Merged streamed data: 27 current-rate frames, window [24516..24542] (message-index), frame_step=1, frame_offset_adjustment=0, did_catchup=0
+[ZMQEndpointInterface] *** End of ZMQ decoding processing ***
