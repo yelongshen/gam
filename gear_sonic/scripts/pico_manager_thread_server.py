@@ -1085,6 +1085,7 @@ class ThreePointPose:
         enable_smpl_vis: bool = False,
         log_prefix: str = "ThreePointPose",
         robot_model=None,
+        vis_render_hz: float = 20.0,
     ):
         """
         Initialize 3-point pose processor.
@@ -1113,27 +1114,45 @@ class ThreePointPose:
             self._robot_model = instantiate_g1_robot_model()
             print(f"[{log_prefix}] Robot model loaded for FK calibration")
 
-        # Optional visualization (requires display + PyVista)
+        # Optional visualization (requires display + PyVista).
+        #
+        # The SMPL body view is rendered by the *same* VR3PtPoseVisualizer as the
+        # VR 3-point markers, so the visualizer is created whenever EITHER view
+        # is requested. `enable_vis_vr3pt` then only controls whether the VR
+        # 3-point actors (arrows/balls/head-chain) and the G1 robot are drawn and
+        # updated — allowing "SMPL body only" for a much cheaper render.
+        self.enable_vis_vr3pt = enable_vis_vr3pt
         self.vr3pt_visualizer = None
-        if enable_vis_vr3pt:
+        if enable_vis_vr3pt or enable_smpl_vis:
             if VR3PtPoseVisualizer is None:
                 raise ImportError(
-                    "VR3PtPoseVisualizer could not be imported but --vis_vr3pt was requested. "
+                    "VR3PtPoseVisualizer could not be imported but visualization was requested. "
                     "Ensure pyvista is installed: pip install pyvista"
                 )
+            # Without the VR 3-point view there is nothing to attach the G1 robot
+            # or waist tracking to, so force them off for the SMPL-only case.
+            show_g1 = with_g1_robot and enable_vis_vr3pt
+            show_waist = enable_waist_tracking and enable_vis_vr3pt
             self.vr3pt_visualizer = VR3PtPoseVisualizer(
                 axis_length=0.08,
                 ball_radius=0.015,
-                with_g1_robot=with_g1_robot,
+                with_g1_robot=show_g1,
                 robot_model=self._robot_model,
-                enable_waist_tracking=enable_waist_tracking,
+                enable_waist_tracking=show_waist,
                 enable_smpl_vis=enable_smpl_vis,
             )
-            self.vr3pt_visualizer.create_realtime_plotter(interactive=True)
-            g1_str = " with G1 robot" if with_g1_robot else ""
-            waist_str = " + waist tracking" if enable_waist_tracking else ""
-            smpl_str = " + SMPL body" if enable_smpl_vis else ""
-            print(f"[{log_prefix}] VR 3pt pose visualization enabled{g1_str}{waist_str}{smpl_str}")
+            self.vr3pt_visualizer.create_realtime_plotter(
+                interactive=True, with_vr_pose_actors=enable_vis_vr3pt
+            )
+            if enable_vis_vr3pt:
+                g1_str = " with G1 robot" if show_g1 else ""
+                waist_str = " + waist tracking" if show_waist else ""
+                smpl_str = " + SMPL body" if enable_smpl_vis else ""
+                print(
+                    f"[{log_prefix}] VR 3pt pose visualization enabled{g1_str}{waist_str}{smpl_str}"
+                )
+            else:
+                print(f"[{log_prefix}] SMPL body visualization enabled (VR 3-point view disabled)")
 
         # Calibration state — triggered explicitly by calibrate_now() or reset_with_measured_q()
         self._calibration_pending = False
@@ -1151,8 +1170,17 @@ class ThreePointPose:
         # is not silently capped by render() blocking on vsync every call.
         # Data (joint/pose) updates still happen every call; only the actual
         # render() draw call is rate-limited.
-        self._vis_render_hz = 30.0
-        self._vis_min_render_interval = 1.0 / self._vis_render_hz
+        #
+        # NOTE: render() runs on the SAME thread as the pose streaming loop, so
+        # every draw call directly stalls pose publishing. Measured cost is
+        # ~2.4ms typical but spikes to ~16.7ms whenever it lands on a 60Hz vsync
+        # boundary. Lower --vis_render_hz (or disable vsync via
+        # __GL_SYNC_TO_VBLANK=0 / vblank_mode=0) if the pose loop can't hold
+        # --target_fps.
+        self._vis_render_hz = float(vis_render_hz)
+        self._vis_min_render_interval = (
+            1.0 / self._vis_render_hz if self._vis_render_hz > 0 else float("inf")
+        )
         self._vis_last_render_time = 0.0
 
     @property
@@ -2049,6 +2077,7 @@ def run_pico_manager(
     enable_waist_tracking: bool = False,
     enable_smpl_vis: bool = False,
     auto_pose: bool = False,
+    vis_render_hz: float = 20.0,
 ):
     """
     Manager: creates shared PUB socket and runs pose/planner streamers based on current mode.
@@ -2094,6 +2123,7 @@ def run_pico_manager(
         enable_waist_tracking=enable_waist_tracking,
         enable_smpl_vis=enable_smpl_vis,
         log_prefix="PoseLoop",
+        vis_render_hz=vis_render_hz,
     )
 
     pose_streamer = PoseStreamer(
@@ -2423,6 +2453,17 @@ if __name__ == "__main__":
         help="Disable ALL visualization (both VR 3-point and SMPL body) for maximum performance",
     )
     parser.add_argument(
+        "--vis_render_hz",
+        type=float,
+        default=20.0,
+        help=(
+            "Rate limit for the PyVista draw call (default: 20 Hz). render() runs on the "
+            "pose-streaming thread and blocks on VSync (~16.7ms on a 60Hz display), so a high "
+            "value directly reduces --target_fps. Lower this (e.g. 10) if the pose loop cannot "
+            "hold --target_fps. Set 0 to never render."
+        ),
+    )
+    parser.add_argument(
         "--auto_pose",
         action="store_true",
         help=(
@@ -2559,6 +2600,7 @@ if __name__ == "__main__":
             enable_waist_tracking=args.waist_tracking,
             enable_smpl_vis=args.vis_smpl,
             auto_pose=args.auto_pose,
+            vis_render_hz=args.vis_render_hz,
         )
     else:
         # Run legacy single-thread pose streaming

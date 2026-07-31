@@ -253,7 +253,45 @@ cmake --build . --target g1_deploy_onnx_ref -j"$(nproc)"
 
 ---
 
+## 10b. Real Robot Deployment (two machines)
+
+On the real G1 the pipeline is **split across two machines**:
+
+| Program | Runs on | Why |
+|---------|---------|-----|
+| `g1_deploy_onnx_ref` (`deploy.sh ... real`) | **Robot** (onboard Jetson) | Needs DDS on the robot's `192.168.123.x` network to drive motors at 500 Hz + CUDA/TensorRT |
+| `pico_manager_thread_server.py` | **Teleop PC** | Needs XRoboToolkit PC Service (`127.0.0.1:60061`) paired with the PICO headset, plus a display for visualization |
+
+The ZMQ link is no longer loopback — the robot subscribes across the network.
+
+**Terminal 1 — on the ROBOT:**
+```bash
+cd ~/gam/gear_sonic_deploy
+bash deploy.sh --input-type zmq \
+  --zmq-host <TELEOP_PC_IP> \
+  --zmq-port 5556 \
+  --zmq-topic pose \
+  real
+```
+
+**Terminal 2 — on the TELEOP PC:**
+```bash
+cd ~/gam
+.venv_teleop/bin/python -u gear_sonic/scripts/pico_manager_thread_server.py \
+    --manager --auto_pose
+```
+
+> `deploy.sh real` auto-detects the `192.168.123.x` interface and does **not**
+> pass `--disable-crc-check` (that flag is simulation-only).
+
+> ⚠️ **Start conservatively on hardware.** Use `--target_fps 50 --num_frames_to_send 2`
+> for the first runs: that matches the 50 Hz control rate exactly so the adaptive
+> catch-up path (§11b) never activates.
+
+---
+
 ## 11. Troubleshooting
+
 
 | Symptom | Cause / Fix |
 |---------|-------------|
@@ -267,7 +305,111 @@ cmake --build . --target g1_deploy_onnx_ref -j"$(nproc)"
 
 ---
 
+## 11b. Debugging the ZMQ Link (robot ⇄ teleop PC)
+
+The stream is **PUB (teleop PC, binds `0.0.0.0:5556`) → SUB (robot, connects out)**.
+Debug it in layers — stop at the first one that fails.
+
+### Layer 1 — Is the publisher actually publishing?
+
+**On the TELEOP PC:**
+```bash
+# Is the process alive and is 5556 bound (0.0.0.0, not 127.0.0.1)?
+pgrep -fl pico_manager_thread_server
+ss -ltnp | grep 5556
+
+# Is real data flowing on loopback?
+.venv_teleop/bin/python gear_sonic/scripts/verify_pose_stream.py --seconds 10
+```
+
+Expect `✅ Receiving pose data at ~N msg/s` and an advancing `frame_index`.
+
+- No data → the manager is idling in `OFF` mode. Use `--auto_pose`.
+- `frame_index` not advancing → body tracking is stale; see §9 (`--xrt_diag`).
+
+### Layer 2 — Is the network path open?
+
+**On the ROBOT:**
+```bash
+ping -c 3 <TELEOP_PC_IP>
+nc -vz <TELEOP_PC_IP> 5556        # must report "succeeded"/"open"
+```
+
+If ping works but the port doesn't, it's a firewall on the **publisher**:
+```bash
+# On the TELEOP PC
+sudo ufw allow 5556/tcp
+```
+
+Confirm both machines are on the robot subnet:
+```bash
+ip -4 addr show | grep 192.168.123
+```
+
+### Layer 3 — Does ZMQ data cross the network?
+
+**On the ROBOT** (independent of the deploy binary — this is the decisive test):
+```bash
+python gear_sonic/scripts/verify_pose_stream.py \
+    --host <TELEOP_PC_IP> --seconds 15
+```
+
+| Result | Meaning |
+|--------|---------|
+| `✅ Receiving pose data` | Link is healthy — problem is inside the deploy binary (Layer 4) |
+| `❌ NO DATA RECEIVED` | Network/firewall issue — go back to Layer 2 |
+| `⚠️ messages ARRIVE but NONE parsed` | Version mismatch between publisher and subscriber code |
+| Large `p95`/`max` intervals | Wi-Fi jitter — prefer wired, and see the catch-up note below |
+
+### Layer 4 — Is the deploy binary consuming it?
+
+In the robot's deploy terminal, look for:
+
+```
+[ZMQEndpointInterface] Received ZMQ message - topic: 'pose', protocol_version: 3
+[ZMQEndpointInterface] Decode interval: ~10 ms, decode time: ~1-2 ms
+[ZMQEndpointInterface] ... did_catchup=0
+[ZMQEndpointInterface] result.motion->GetEncodeMode()=2
+```
+
+| Symptom | Cause |
+|---------|-------|
+| No `Received ZMQ message` lines at all | Wrong `--zmq-host` / `--zmq-port` / `--zmq-topic` (topic must be exactly `pose`) |
+| Messages received, robot doesn't move | Policy not started — check the operator start signal and `Streaming data mean delay` |
+| `did_catchup=1` repeatedly | Stream stalling badly; check Layer 3 jitter |
+| `timesteps` growing without bound | Producer FPS > consumption rate (see §11b note below) |
+
+Also watch the ~1 Hz timing line:
+```
+Loop timing - ... Streaming data mean delay: <N>ms, Policy: <N>us
+```
+`Streaming data mean delay` is your end-to-end network+pipeline latency.
+
+### Quick one-liner triage
+
+```bash
+# ON ROBOT — is the publisher reachable and streaming?
+nc -vz <TELEOP_PC_IP> 5556 && \
+python gear_sonic/scripts/verify_pose_stream.py --host <TELEOP_PC_IP> --seconds 10
+```
+
+### Note on the adaptive catch-up
+
+The playback cursor advances up to `kMaxCatchupStep` (4) frames per 50 Hz tick when
+buffered lookahead exceeds `kCatchupCushion` (3) — see `CurrentFrameAdvancement()`
+in `g1_deploy_onnx_ref.cpp`.
+
+- At `--target_fps 100`, equilibrium is `step=2` = exactly 1.0× real-time (correct).
+- Draining a backlog can transiently reach `step=4` = **2× real-time playback**.
+
+On a jittery wireless link this transient fast-forward happens more often. For real
+hardware, either rate-match the producer (`--target_fps 50 --num_frames_to_send 2`,
+which keeps `step=1`) or lower `kMaxCatchupStep` to 3 (caps overspeed at 1.5×).
+
+---
+
 ## 12. Quick Copy-Paste: Full Pipeline
+
 
 Three separate terminals:
 

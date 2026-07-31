@@ -1432,6 +1432,7 @@ class VR3PtPoseVisualizer:
         window_size: tuple = (1400, 900),
         with_reference_frames: bool = True,
         robot_q: np.ndarray = None,
+        with_vr_pose_actors: bool = True,
     ):
         """
         Create a plotter for real-time visualization with pre-created actors.
@@ -1444,6 +1445,12 @@ class VR3PtPoseVisualizer:
             window_size: Window size as (width, height)
             with_reference_frames: Whether to add static reference frames
             robot_q: Optional initial joint configuration for G1 robot.
+            with_vr_pose_actors: Whether to create the VR 3-point marker actors
+                (arrows/balls for L-Wrist, R-Wrist, Head) and the head→torso
+                kinematic-chain line. Set False for a cheaper "SMPL body only"
+                view — this skips 12 actors (3 arrows + 1 ball per point) plus
+                2 more for the head link, reducing per-frame render cost when
+                only ``enable_smpl_vis`` is needed.
 
         Returns:
             The PyVista plotter object
@@ -1490,80 +1497,88 @@ class VR3PtPoseVisualizer:
 
         # Pre-create VR pose actors with pre-allocated VTK transforms
         # (3 poses × (3 arrows + 1 ball) = 12 actors, 9 transforms + 9 matrices + 3 ball transforms)
+        # Skipped entirely when with_vr_pose_actors=False (e.g. SMPL-body-only mode)
+        # -- update_vr_poses() already no-ops safely when len(self.vr_actors) != 3.
         self.vr_actors = []
         self._vr_arrow_transforms = []
         self._vr_arrow_matrices = []
         self._vr_ball_transforms = []
+        self.head_link_actor = None
 
-        for i in range(3):
-            pose_actors = {"arrows": [], "ball": None}
-            arrow_transforms_i = []
-            arrow_matrices_i = []
+        if with_vr_pose_actors:
+            for i in range(3):
+                pose_actors = {"arrows": [], "ball": None}
+                arrow_transforms_i = []
+                arrow_matrices_i = []
 
-            # Create low-overhead arrows for each axis
-            for j, color in enumerate(self.AXIS_COLORS):
-                arrow = pv.Arrow(
-                    start=(0, 0, 0),
-                    direction=(1, 0, 0),
-                    scale=0.08,
-                    tip_length=0.3,
-                    tip_radius=0.15,
-                    shaft_radius=0.05,
-                    tip_resolution=6,
-                    shaft_resolution=6,
+                # Create low-overhead arrows for each axis
+                for j, color in enumerate(self.AXIS_COLORS):
+                    arrow = pv.Arrow(
+                        start=(0, 0, 0),
+                        direction=(1, 0, 0),
+                        scale=0.08,
+                        tip_length=0.3,
+                        tip_radius=0.15,
+                        shaft_radius=0.05,
+                        tip_resolution=6,
+                        shaft_resolution=6,
+                    )
+                    actor = self.plotter.add_mesh(arrow, color=color, smooth_shading=True)
+
+                    # Pre-allocate transform + matrix and bind once
+                    t = vtk.vtkTransform()
+                    m = vtk.vtkMatrix4x4()
+                    actor.SetUserTransform(t)
+
+                    pose_actors["arrows"].append(actor)
+                    arrow_transforms_i.append(t)
+                    arrow_matrices_i.append(m)
+
+                # Low-res ball
+                ball = pv.Sphere(
+                    radius=0.015, center=(0, 0, 0), theta_resolution=8, phi_resolution=8
                 )
-                actor = self.plotter.add_mesh(arrow, color=color, smooth_shading=True)
+                ball_actor = self.plotter.add_mesh(
+                    ball, color=self.VR_BALL_COLORS[i], smooth_shading=True
+                )
+                bt = vtk.vtkTransform()
+                ball_actor.SetUserTransform(bt)
+                pose_actors["ball"] = ball_actor
 
-                # Pre-allocate transform + matrix and bind once
-                t = vtk.vtkTransform()
-                m = vtk.vtkMatrix4x4()
-                actor.SetUserTransform(t)
-
-                pose_actors["arrows"].append(actor)
-                arrow_transforms_i.append(t)
-                arrow_matrices_i.append(m)
-
-            # Low-res ball
-            ball = pv.Sphere(
-                radius=0.015, center=(0, 0, 0), theta_resolution=8, phi_resolution=8
-            )
-            ball_actor = self.plotter.add_mesh(
-                ball, color=self.VR_BALL_COLORS[i], smooth_shading=True
-            )
-            bt = vtk.vtkTransform()
-            ball_actor.SetUserTransform(bt)
-            pose_actors["ball"] = ball_actor
-
-            self.vr_actors.append(pose_actors)
-            self._vr_arrow_transforms.append(arrow_transforms_i)
-            self._vr_arrow_matrices.append(arrow_matrices_i)
-            self._vr_ball_transforms.append(bt)
+                self.vr_actors.append(pose_actors)
+                self._vr_arrow_transforms.append(arrow_transforms_i)
+                self._vr_arrow_matrices.append(arrow_matrices_i)
+                self._vr_ball_transforms.append(bt)
 
         # Pre-create SMPL body joint spheres + bone PolyData (if enabled)
         if self.enable_smpl_vis:
             self._create_smpl_joint_actors()
 
-        # Pre-create head kinematic chain actors (origin → torso_link → head)
-        # These will be updated dynamically as head position changes
-        origin = np.array([0.0, 0.0, 0.0])
-        torso_link_pos = np.array([0.0, 0.0, self.TORSO_LINK_OFFSET_Z])
-        initial_head_pos = np.array([0.0, 0.0, self.TORSO_LINK_OFFSET_Z + self.HEAD_LINK_LENGTH])
+        # Pre-create head kinematic chain actors (origin → torso_link → head).
+        # These visualize the VR head pose, so only needed alongside the VR
+        # 3-point markers above.
+        if with_vr_pose_actors:
+            origin = np.array([0.0, 0.0, 0.0])
+            torso_link_pos = np.array([0.0, 0.0, self.TORSO_LINK_OFFSET_Z])
+            initial_head_pos = np.array(
+                [0.0, 0.0, self.TORSO_LINK_OFFSET_Z + self.HEAD_LINK_LENGTH]
+            )
 
-        # Link 1: origin → torso_link (static, doesn't change)
-        line1 = pv.Line(origin, torso_link_pos)
-        self.plotter.add_mesh(line1, color=self.TORSO_LINK_COLOR, line_width=3.0)
+            # Link 1: origin → torso_link (static, doesn't change)
+            line1 = pv.Line(origin, torso_link_pos)
+            self.plotter.add_mesh(line1, color=self.TORSO_LINK_COLOR, line_width=3.0)
 
-        # Torso link ball (static)
-        torso_ball = pv.Sphere(radius=self.ball_radius * 0.5, center=torso_link_pos)
-        self.plotter.add_mesh(torso_ball, color=self.TORSO_LINK_COLOR, smooth_shading=True)
+            # Torso link ball (static)
+            torso_ball = pv.Sphere(radius=self.ball_radius * 0.5, center=torso_link_pos)
+            self.plotter.add_mesh(torso_ball, color=self.TORSO_LINK_COLOR, smooth_shading=True)
 
-        # Link 2: torso_link → head (dynamic, needs updating)
-        line2 = pv.Line(torso_link_pos, initial_head_pos)
-        self.head_link_actor = self.plotter.add_mesh(
-            line2, color=self.HEAD_LINK_COLOR, line_width=3.0
-        )
-        # Store torso_link position for updating head link
-        self._torso_link_pos = torso_link_pos
+            # Link 2: torso_link → head (dynamic, needs updating)
+            line2 = pv.Line(torso_link_pos, initial_head_pos)
+            self.head_link_actor = self.plotter.add_mesh(
+                line2, color=self.HEAD_LINK_COLOR, line_width=3.0
+            )
+            # Store torso_link position for updating head link
+            self._torso_link_pos = torso_link_pos
 
         self._initialized = True
 

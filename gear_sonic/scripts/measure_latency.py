@@ -36,7 +36,9 @@ import msgpack
 import numpy as np
 import zmq
 
-HEADER_SIZE = 1024
+# Must match gear_sonic.utils.teleop.zmq.zmq_planner_sender.HEADER_SIZE.
+# NOTE: that module's docstring says 1024, but the actual constant is 1280.
+HEADER_SIZE = 1280
 
 
 def _parse_pose_message(raw: bytes, topic: str):
