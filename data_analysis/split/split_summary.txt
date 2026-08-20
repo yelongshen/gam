@@ -1,0 +1,32 @@
+==========================================================
+TRAIN / TEST SPLIT SUMMARY   (leakage policy: sequence)
+==========================================================
+Target per-category test size : 400
+Seed                          : 42
+OOD test-only                 : True
+Env-support removed           : 1170
+Near-dup tol (L2 / frame%)    : 0.6 / 5%
+
+TEST  total : 1,538   sources: {'AMASS': 1516, 'LAFAN1': 22}
+    Basic Locomotion               400
+    Agility / High-Dynamic         400
+    Upper-Body Manipulation        400
+    Unstructured / OOD             338
+
+TRAIN total : 9,665   sources: {'AMASS': 9615, 'LAFAN1': 50}
+    Basic Locomotion              5547
+    Agility / High-Dynamic         716
+    Upper-Body Manipulation       3402
+    Unstructured / OOD               0
+
+Clips excluded from TRAIN:
+    near-duplicates of test : 3370
+    OOD (test-only policy)  : 4
+
+Subjects in TEST  : 37
+Subjects in TRAIN : 44
+Subject overlap   : 37  (expected for sequence mode; exact/near dups removed)
+
+WARNINGS:
+  - Unstructured / OOD: only 338 clean clips (< 400)
+==========================================================

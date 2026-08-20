@@ -33,13 +33,13 @@ python gear_sonic/training/train.py \
 python gear_sonic/training/train.py \
     --config gear_sonic/training/config.yaml \
     --num-epochs 200 \
-    --output-dir outputs/sonic_full \
-    --tensorboard-dir outputs/sonic_full/logs
+    --output-dir model_train/results/sonic_full \
+    --tensorboard-dir model_train/results/sonic_full/logs
 ```
 
 ### Monitor with TensorBoard
 ```bash
-tensorboard --logdir outputs/sonic_full/logs --port 6006
+tensorboard --logdir model_train/results/sonic_full/logs --port 6006
 # Open: http://localhost:6006
 ```
 
@@ -103,17 +103,17 @@ weight_decay: 1e-6
 python -c "from gear_sonic.training import EgoDataLoader; dl = EgoDataLoader(50); print(len(dl))"
 
 # Load trained model
-model = torch.load('outputs/sonic_training_test/best_model.pt')
+model = torch.load('model_train/results/sonic_training_test/best_model.pt')
 
 # List all checkpoints
-ls -lh outputs/sonic_training_test/*.pt
+ls -lh model_train/results/sonic_training_test/*.pt
 
 # Continue interrupted training
 # (edit train.py line 170 to load checkpoint first)
 
 # Export model for deployment
 python gear_sonic/training/export.py \
-    --checkpoint outputs/sonic_training_test/best_model.pt \
+    --checkpoint model_train/results/sonic_training_test/best_model.pt \
     --output-dir outputs/onnx_models
 ```
 
@@ -233,8 +233,8 @@ python -c "import torch; print(torch.cuda.is_available())"
 Before running full training:
 - [ ] Back up existing checkpoints: `cp -r outputs/ outputs_backup/`
 - [ ] Verify GPU space: `nvidia-smi` (check free memory)
-- [ ] Set up monitoring: `tensorboard --logdir outputs/sonic_full/logs &`
-- [ ] Create logs directory: `mkdir -p outputs/sonic_full/logs`
+- [ ] Set up monitoring: `tensorboard --logdir model_train/results/sonic_full/logs &`
+- [ ] Create logs directory: `mkdir -p model_train/results/sonic_full/logs`
 - [ ] Update config: Edit `config.yaml` for production settings
 - [ ] Test once more: Run with small dataset first
 
@@ -257,8 +257,8 @@ Before running full training:
 # If training crashes, restart from last checkpoint
 python gear_sonic/training/train.py \
     --config gear_sonic/training/config.yaml \
-    --resume-from outputs/sonic_full/checkpoint_epoch_*.pt \
-    --output-dir outputs/sonic_full_resumed
+    --resume-from model_train/results/sonic_full/checkpoint_epoch_*.pt \
+    --output-dir model_train/results/sonic_full_resumed
 
 # If you need to rollback code
 git reset --hard HEAD~1  # Go back 1 commit

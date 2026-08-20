@@ -17,16 +17,16 @@ cd /home/grease/gam
 # ============================================================================
 
 # View current training progress (test run)
-tail -f outputs/sonic_training_test.log
+tail -f model_train/results/sonic_training_test.log
 
 # Get epoch count
-grep "Epoch" outputs/sonic_training_test.log | tail -5
+grep "Epoch" model_train/results/sonic_training_test.log | tail -5
 
 # Check validation losses
-grep "Validation Metrics" outputs/sonic_training_test.log
+grep "Validation Metrics" model_train/results/sonic_training_test.log
 
 # View TensorBoard
-tensorboard --logdir outputs/sonic_training_test/logs
+tensorboard --logdir model_train/results/sonic_training_test/logs
 
 # ============================================================================
 # START TRAINING
@@ -54,7 +54,7 @@ python gear_sonic/training/train.py \
   --batch-size 64 \
   --num-epochs 300 \
   --learning-rate 5e-4 \
-  --output-dir outputs/sonic_v1
+  --output-dir model_train/results/sonic_v1
 
 # Run in background (so you can close terminal)
 nohup python gear_sonic/training/train.py \
@@ -72,7 +72,7 @@ from gear_sonic.training import SonicMLP
 
 # Load best model
 model = SonicMLP(obs_dim=57, action_dim=35)
-ckpt = torch.load("outputs/sonic_training_test/best_model.pt")
+ckpt = torch.load("model_train/results/sonic_training_test/best_model.pt")
 model.load_state_dict(ckpt["model_state"])
 model.eval()
 
@@ -94,7 +94,7 @@ nvidia-smi -l 1
 top -b -n 1 | head -20
 
 # Disk usage
-du -sh outputs/sonic_training_test/
+du -sh model_train/results/sonic_training_test/
 
 # ============================================================================
 # TROUBLESHOOTING
@@ -135,10 +135,10 @@ if torch.cuda.is_available():
 # ============================================================================
 
 # Remove test training outputs
-rm -rf outputs/sonic_training_test/
+rm -rf model_train/results/sonic_training_test/
 
 # Remove old checkpoints (keep best_model.pt)
-cd outputs/sonic_training
+cd model_train/results/sonic_training
 rm -f checkpoint_epoch_*.pt
 cd -
 
@@ -164,7 +164,7 @@ python gear_sonic/training/train.py \
   --config gear_sonic/training/config.yaml \
   --model-type transformer \
   --num-epochs 500 \
-  --output-dir outputs/sonic_transformer_500ep
+  --output-dir model_train/results/sonic_transformer_500ep
 
 # Train with different hyperparameters
 python gear_sonic/training/train.py \
@@ -172,11 +172,11 @@ python gear_sonic/training/train.py \
   --batch-size 128 \
   --learning-rate 1e-4 \
   --num-epochs 300 \
-  --output-dir outputs/sonic_tuned
+  --output-dir model_train/results/sonic_tuned
 
 # Train on subset of data for quick testing
 python gear_sonic/training/train.py \
   --config gear_sonic/training/config.yaml \
   --max-episodes 20 \
   --num-epochs 10 \
-  --output-dir outputs/sonic_quick_test
+  --output-dir model_train/results/sonic_quick_test

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+mkdir -p gear_sonic_deploy/reference/evaluation_set/Basic_Locomotion
+echo 'Processing category: Basic_Locomotion'
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/crouch_ff_start_270_R_001__A198.pkl gear_sonic_deploy/reference/evaluation_set/Basic_Locomotion
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/crouch_ff_stop_225_001__A146.pkl gear_sonic_deploy/reference/evaluation_set/Basic_Locomotion
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/crouch_ff_loop_270_R_003__A195.pkl gear_sonic_deploy/reference/evaluation_set/Basic_Locomotion
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/crouch_ff_loop_270_003__A128.pkl gear_sonic_deploy/reference/evaluation_set/Basic_Locomotion
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/dance_hiphop_running_man_diagonal_R_001__A313_M.pkl gear_sonic_deploy/reference/evaluation_set/Basic_Locomotion
+mkdir -p gear_sonic_deploy/reference/evaluation_set/Agility_HighDynamic
+echo 'Processing category: Agility_HighDynamic'
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/dance_retro_twist_step_R_002__A309.pkl gear_sonic_deploy/reference/evaluation_set/Agility_HighDynamic
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/dance_hiphop_kick_it_variation_R_001__A312.pkl gear_sonic_deploy/reference/evaluation_set/Agility_HighDynamic
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/inj_torso_jump_ff_180_R_max_002__A075_M.pkl gear_sonic_deploy/reference/evaluation_set/Agility_HighDynamic
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/dance_western_horse_step_with_leg_undercut_R_fast_003__A307.pkl gear_sonic_deploy/reference/evaluation_set/Agility_HighDynamic
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/jump_ff_180_R_002__A235_M.pkl gear_sonic_deploy/reference/evaluation_set/Agility_HighDynamic
+mkdir -p gear_sonic_deploy/reference/evaluation_set/UpperBody_Manipulation
+echo 'Processing category: UpperBody_Manipulation'
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/reach_jump_R_003__A160.pkl gear_sonic_deploy/reference/evaluation_set/UpperBody_Manipulation
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/reach_jump_R_001__A046_M.pkl gear_sonic_deploy/reference/evaluation_set/UpperBody_Manipulation
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/reach_jump_R_002__A326.pkl gear_sonic_deploy/reference/evaluation_set/UpperBody_Manipulation
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/medium_big_light_one_hand_pick_up_front_high_R_002__A526.pkl gear_sonic_deploy/reference/evaluation_set/UpperBody_Manipulation
+.venv_sim/bin/python gear_sonic_deploy/reference/convert_motions.py /home/grease/GR00T-WholeBodyControl/data/smpl_filtered/pickaxe_digging_wall_R_006__A357_M.pkl gear_sonic_deploy/reference/evaluation_set/UpperBody_Manipulation

@@ -1,0 +1,401 @@
+source,path,category,root_speed,airborne_frac,pelvis_low_frac,upper_lower_ratio,limb_energy
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/675/walk_with_handrail_table_beam_right10_stageii.npz,Basic Locomotion,0.344,0.0,0.0,1.071,0.71
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/132/132_12_stageii.npz,Basic Locomotion,0.224,0.0,0.0,1.753,0.46
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_89_F_MoSh/Subject_89_F_6_poses.npz,Basic Locomotion,1.276,0.0,0.0,1.04,7.12
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub035/0022_throwing_hard2_poses.npz,Upper-Body Manipulation,0.355,0.0,0.0,3.194,4.53
+AMASS,../egodata/downloads/amass/extracted/CNRS/CNRS/288/01_L_2_stageii.npz,Agility / High-Dynamic,1.002,0.067,0.0,0.993,3.88
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/66/Fast_CircleCCW(3)_stageii.npz,Basic Locomotion,0.824,0.0,0.0,0.913,2.89
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/83/83_62_stageii.npz,Agility / High-Dynamic,0.119,0.118,0.0,1.674,2.17
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/442/Aufstehen05_stageii.npz,Unstructured / OOD,0.056,0.0,0.552,4.138,0.27
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/67/Slow_StraightLong(36)_stageii.npz,Basic Locomotion,0.516,0.0,0.0,0.955,1.07
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/317/step_over_gap02_stageii.npz,Basic Locomotion,0.562,0.0,0.0,0.972,0.9
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub034/0011_normal_jog3_poses.npz,Agility / High-Dynamic,0.187,0.0,0.0,0.683,15.01
+AMASS,../egodata/downloads/amass/extracted/Transitions/Transitions/mazen_c3d/crouchwalk_jumpinplace_stageii.npz,Basic Locomotion,0.526,0.037,0.018,1.303,2.01
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s1/piggybank_offhand_1_stageii.npz,Upper-Body Manipulation,0.068,0.0,0.0,3.371,0.22
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/lean_over_table04_stageii.npz,Basic Locomotion,0.223,0.0,0.0,1.842,0.38
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s1/duck_inspect_1_stageii.npz,Upper-Body Manipulation,0.081,0.0,0.0,2.712,0.28
+AMASS,../egodata/downloads/amass/extracted/HDM05/HDM05/mm/HDM_mm_03-05_01_120_stageii.npz,Upper-Body Manipulation,0.151,0.0,0.099,2.44,1.63
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub018/0002_treadmill_slow_poses.npz,Basic Locomotion,0.141,0.0,0.0,0.41,3.41
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s7/flashlight_on_2_stageii.npz,Upper-Body Manipulation,0.161,0.0,0.0,2.312,0.53
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/9/WalkInClockwiseCircle03_stageii.npz,Basic Locomotion,0.424,0.0,0.0,0.973,0.67
+AMASS,../egodata/downloads/amass/extracted/HDM05/HDM05/bk/HDM_bk_03-02_02_120_stageii.npz,Basic Locomotion,0.159,0.0,0.0,1.621,1.45
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/kanno/jump-08-rope_backward-kanno_stageii.npz,Upper-Body Manipulation,0.132,0.053,0.0,2.321,1.35
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/1347/Experiment3a_subject1347_back_01_stageii.npz,Unstructured / OOD,0.006,0.0,0.768,2.299,0.19
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/70/Mixed_SlowFast(18)_1_stageii.npz,Basic Locomotion,0.913,0.0,0.0,1.007,2.04
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S01_Expert/Trial_upper_left_right_123_poses.npz,Upper-Body Manipulation,0.234,0.0,0.0,3.989,3.24
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/1226/Trial_01_stageii.npz,Upper-Body Manipulation,0.008,0.0,0.0,39.938,0.22
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/27/27_10_stageii.npz,Upper-Body Manipulation,0.042,0.0,0.0,11.76,0.62
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/12/RightTurn06_stageii.npz,Basic Locomotion,0.564,0.0,0.0,1.004,0.86
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub070/0022_throwing_hard1_poses.npz,Upper-Body Manipulation,0.325,0.0,0.0,2.552,3.95
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/67/Normal_CircleCCW(2)_stageii.npz,Basic Locomotion,0.577,0.0,0.0,0.936,1.33
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/105/105_15_stageii.npz,Upper-Body Manipulation,0.333,0.0,0.0,2.128,1.89
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub106/0021_throwing_hard1_poses.npz,Upper-Body Manipulation,0.101,0.0,0.0,6.739,3.37
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/kudo/gesture_etc-32-no-kudo_stageii.npz,Upper-Body Manipulation,0.031,0.0,0.0,5.135,0.21
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_60_F_MoSh/Subject_60_F_17_poses.npz,Upper-Body Manipulation,0.039,0.0,0.0,22.451,1.51
+AMASS,../egodata/downloads/amass/extracted/MoSh/MoSh/50021/misc_9_stageii.npz,Agility / High-Dynamic,0.76,0.152,0.0,0.944,3.79
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/114/114_08_stageii.npz,Agility / High-Dynamic,0.357,0.541,0.0,1.055,0.97
+AMASS,../egodata/downloads/amass/extracted/TCDHands/TCDHands/ExperimentDatabase/writing001_1_stageii.npz,Upper-Body Manipulation,0.005,0.0,0.0,7.762,0.17
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/68/Slow_StraightLong(39)_stageii.npz,Basic Locomotion,0.468,0.0,0.0,0.995,0.89
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/359/bend_left07_stageii.npz,Basic Locomotion,0.618,0.0,0.0,1.004,0.92
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub010/0013_knocking2_poses.npz,Basic Locomotion,1.173,0.0,0.0,1.326,3.63
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/1229/hand_to_mouth_left_arm_02_stageii.npz,Upper-Body Manipulation,0.01,0.0,0.0,27.648,0.19
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/kudo/walk-02-drank-kudo_stageii.npz,Basic Locomotion,0.142,0.0,0.0,1.203,0.79
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub062/0022_throwing_hard1_poses.npz,Upper-Body Manipulation,0.437,0.0,0.0,3.299,5.78
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub085/0030_scamper_poses.npz,Agility / High-Dynamic,1.266,0.0,0.0,1.175,8.75
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub056/0017_lifting_light1_poses.npz,Basic Locomotion,1.394,0.0,0.018,1.224,5.3
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s6/spherelarge_pick_all_stageii.npz,Upper-Body Manipulation,0.027,0.0,0.0,2.697,0.28
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/80/80_44_stageii.npz,Upper-Body Manipulation,0.123,0.0,0.0,7.282,3.17
+AMASS,../egodata/downloads/amass/extracted/ACCAD/Male1Walking_c3d/Walk B4 - Stand to Walk Back_poses.npz,Basic Locomotion,0.901,0.0,0.0,0.994,2.74
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/hamada/gesture_etc-49-taiko_under-hamada_stageii.npz,Upper-Body Manipulation,0.015,0.0,0.0,3.689,0.61
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/205/walking_slow03_stageii.npz,Basic Locomotion,0.334,0.0,0.0,1.037,0.48
+AMASS,../egodata/downloads/amass/extracted/SFU/SFU/0017/0017_RunningOnBench001_stageii.npz,Agility / High-Dynamic,1.058,0.369,0.0,1.112,4.69
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/66/Mixed_FastSlow(23)_stageii.npz,Basic Locomotion,0.861,0.0,0.0,1.036,2.08
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S02_Novice/Trial_upper_right_210_poses.npz,Upper-Body Manipulation,0.265,0.0,0.0,3.234,2.09
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/167/turn_left06_stageii.npz,Basic Locomotion,0.421,0.0,0.0,1.072,1.07
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/walking_upstairs04_stageii.npz,Agility / High-Dynamic,0.171,0.692,0.0,1.109,0.43
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s8/waterbottle_pick_all_stageii.npz,Upper-Body Manipulation,0.028,0.0,0.0,3.093,0.2
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/378/push_recovery_right04_stageii.npz,Basic Locomotion,0.449,0.0,0.0,1.131,0.91
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub095/0025_kicking1_poses.npz,Basic Locomotion,0.197,0.0,0.0,1.495,4.1
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/push_from_the_right_side17_stageii.npz,Basic Locomotion,0.108,0.0,0.0,1.272,0.71
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/88/88_11_stageii.npz,Agility / High-Dynamic,0.258,0.008,0.14,5.446,8.63
+AMASS,../egodata/downloads/amass/extracted/MoSh/MoSh/50020/shake_hips_stageii.npz,Upper-Body Manipulation,0.083,0.0,0.0,2.442,1.52
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/675/double_pour_and_mixing14_stageii.npz,Basic Locomotion,0.126,0.0,0.0,1.849,0.61
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/1346/Experiment3_subject1346_wash_leg_position_horizontal_02_stageii.npz,Basic Locomotion,0.03,0.0,0.0,1.759,0.27
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub028/0013_knocking1_poses.npz,Basic Locomotion,1.362,0.0,0.0,1.229,5.27
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/golf_putting05_stageii.npz,Upper-Body Manipulation,0.093,0.0,0.0,7.617,0.51
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub012/0021_catching_and_throwing_poses.npz,Upper-Body Manipulation,0.076,0.0,0.0,7.347,2.03
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub079/0013_knocking1_poses.npz,Basic Locomotion,1.085,0.0,0.0,1.284,3.5
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub112/0016_sitting2_poses.npz,Basic Locomotion,0.916,0.0,0.358,1.349,3.68
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_5_F_MoSh/Subject_5_F_1_poses.npz,Agility / High-Dynamic,0.165,0.0,0.0,1.912,10.9
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub048/0030_scamper_poses.npz,Agility / High-Dynamic,0.269,0.162,0.236,1.606,4.36
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/67/Slow_Fig8(1)_stageii.npz,Basic Locomotion,0.399,0.0,0.0,0.969,0.97
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/takiguchi/gesture_etc-20-swing_chair-takiguchi_stageii.npz,Basic Locomotion,0.052,0.0,0.305,1.831,0.81
+AMASS,../egodata/downloads/amass/extracted/ACCAD/Male2MartialArtsPunches_c3d/E14 - body cross left t2_poses.npz,Upper-Body Manipulation,0.299,0.0,0.0,3.514,4.85
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s2/flute_pass_1_stageii.npz,Upper-Body Manipulation,0.123,0.0,0.0,2.452,0.32
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s9/cylinderlarge_inspect_1_stageii.npz,Upper-Body Manipulation,0.134,0.0,0.0,2.267,0.58
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_37_F_MoSh/Subject_37_F_13_poses.npz,Agility / High-Dynamic,0.198,0.0,0.0,1.532,8.08
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/hamada/pose-14-look_up-hamada_stageii.npz,Basic Locomotion,0.049,0.0,0.0,1.94,0.26
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/424/turn_left09_stageii.npz,Basic Locomotion,0.416,0.0,0.0,1.072,0.72
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/674/shower_left_arm03_stageii.npz,Upper-Body Manipulation,0.077,0.0,0.0,7.015,0.45
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub114/0024_kicking1_poses.npz,Basic Locomotion,0.413,0.0,0.0,1.486,6.05
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub076/0021_catching_and_throwing_poses.npz,Upper-Body Manipulation,0.223,0.0,0.0,5.155,2.29
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/73/73_02_stageii.npz,Basic Locomotion,0.423,0.0,0.0,0.949,0.88
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/674/wipe_back01_stageii.npz,Upper-Body Manipulation,0.159,0.0,0.0,2.399,0.65
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/64/64_21_stageii.npz,Upper-Body Manipulation,0.085,0.0,0.0,2.448,1.01
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/68/Normal_StraightLong(12)_stageii.npz,Agility / High-Dynamic,0.578,0.0,0.037,1.273,23.51
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/317/walking_medium03_stageii.npz,Basic Locomotion,0.631,0.0,0.0,1.009,0.81
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/shiono/walk-10-shoulder_bag-shiono_stageii.npz,Basic Locomotion,0.377,0.0,0.0,1.043,1.63
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/348/walking_slow07_stageii.npz,Basic Locomotion,0.372,0.0,0.0,0.95,0.48
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S05_Novice/Trial_upper_right_130_poses.npz,Upper-Body Manipulation,0.093,0.0,0.0,4.668,1.85
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/66/Mixed_FastSlow(28)_stageii.npz,Basic Locomotion,0.795,0.0,0.0,1.002,1.49
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/359/upstairs02_stageii.npz,Agility / High-Dynamic,0.186,0.642,0.0,1.029,0.57
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub109/0014_knocking2_poses.npz,Basic Locomotion,1.348,0.0,0.0,1.127,4.32
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub027/0018_lifting_light2_poses.npz,Basic Locomotion,1.174,0.0,0.0,1.402,4.85
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_65_F_MoSh/Subject_65_F_11_poses.npz,Upper-Body Manipulation,0.022,0.0,0.0,24.439,0.82
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/425/upstairs_06_stageii.npz,Agility / High-Dynamic,0.185,0.639,0.0,1.357,1.52
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S10_Expert/Trial_upper_right_108_poses.npz,Upper-Body Manipulation,0.402,0.0,0.0,2.142,2.37
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub077/0016_sitting2_poses.npz,Basic Locomotion,1.267,0.0,0.14,1.141,4.42
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/471/Push_Medium01_stageii.npz,Basic Locomotion,0.011,0.0,0.0,1.102,0.22
+AMASS,../egodata/downloads/amass/extracted/EKUT/EKUT/234/SLPD209_stageii.npz,Agility / High-Dynamic,1.081,0.657,0.0,1.108,2.19
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/378/push_recovery_stand_left08_stageii.npz,Basic Locomotion,0.519,0.0,0.0,1.519,1.31
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/122/122_15_stageii.npz,Basic Locomotion,0.134,0.0,0.0,1.099,0.6
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/yamaoka/tennis-18-catch_netball-yamaoka_stageii.npz,Basic Locomotion,0.469,0.003,0.0,1.157,1.39
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S01_Expert/Trial_upper_left_157_poses.npz,Upper-Body Manipulation,0.3,0.0,0.0,2.065,2.28
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s7/toothbrush_pass_1_stageii.npz,Upper-Body Manipulation,0.16,0.0,0.0,2.516,0.63
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub034/0014_knocking2_poses.npz,Basic Locomotion,1.428,0.0,0.0,1.068,4.57
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_71_F_MoSh/Subject_71_F_19_poses.npz,Unstructured / OOD,0.239,0.0,0.546,2.114,1.2
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/kanno/accident-14-dodge_turn_down-kanno_stageii.npz,Basic Locomotion,0.158,0.0,0.0,1.57,0.43
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_35_F_MoSh/Subject_35_F_5_poses.npz,Basic Locomotion,0.428,0.0,0.0,0.967,4.2
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s8/pyramidmedium_inspect_1_stageii.npz,Upper-Body Manipulation,0.024,0.0,0.0,9.978,0.15
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub071/0031_rom_poses.npz,Basic Locomotion,0.065,0.0,0.0,1.737,1.95
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S07_Expert/Trial_upper_right_left_017_poses.npz,Upper-Body Manipulation,0.259,0.0,0.0,2.46,1.78
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/424/turn_right06_stageii.npz,Basic Locomotion,0.465,0.0,0.0,1.071,0.71
+AMASS,../egodata/downloads/amass/extracted/MoSh/MoSh/50020/simple_crouch_3_stageii.npz,Upper-Body Manipulation,0.032,0.0,0.093,4.113,0.76
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/1721/RecoveryStepping_50_120_03_stageii.npz,Basic Locomotion,0.19,0.0,0.0,1.206,0.59
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S10_Expert/Trial_upper_left_right_193_poses.npz,Upper-Body Manipulation,0.367,0.0,0.0,2.926,2.64
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_9_F_MoSh/Subject_9_F_13_poses.npz,Upper-Body Manipulation,0.133,0.0,0.0,4.782,1.43
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_51_F_MoSh/Subject_51_F_11_poses.npz,Basic Locomotion,0.51,0.0,0.298,1.627,2.38
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub078/0011_normal_jog3_poses.npz,Agility / High-Dynamic,0.224,0.0,0.0,0.764,15.24
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub050/0008_normal_walk4_poses.npz,Basic Locomotion,0.14,0.0,0.0,0.619,6.55
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s3/cup_drink_1_stageii.npz,Upper-Body Manipulation,0.163,0.0,0.0,2.186,0.51
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/67/Normal_CircleCW(1)_stageii.npz,Basic Locomotion,0.572,0.0,0.0,0.919,1.32
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub041/0029_scamper_rom_poses.npz,Basic Locomotion,0.48,0.0,0.0,1.821,5.05
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/ichige/walk-07-moonwalk-ichige_stageii.npz,Basic Locomotion,0.077,0.0,0.0,1.504,0.51
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_77_F_MoSh/Subject_77_F_10_poses.npz,Upper-Body Manipulation,0.017,0.0,0.0,20.859,1.33
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/122/122_35_stageii.npz,Agility / High-Dynamic,0.274,0.435,0.0,0.97,0.77
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S01_Expert/Trial_upper_left_right_144_poses.npz,Upper-Body Manipulation,0.23,0.0,0.0,3.95,3.08
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub048/0005_normal_walk1_poses.npz,Basic Locomotion,0.161,0.0,0.0,0.545,5.68
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/aita/gesture_etc-22-mobile_receive-aita_stageii.npz,Upper-Body Manipulation,0.017,0.0,0.0,9.646,0.13
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub077/0009_normal_jog1_poses.npz,Agility / High-Dynamic,0.233,0.0,0.0,0.782,14.73
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/aita/gesture_etc-09-scratch-aita_stageii.npz,Upper-Body Manipulation,0.01,0.0,0.0,12.325,0.11
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/167/downstairs07_stageii.npz,Agility / High-Dynamic,0.28,0.535,0.0,1.107,0.99
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/513/step_stones07_stageii.npz,Basic Locomotion,0.674,0.027,0.0,1.188,1.96
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/36/36_26_stageii.npz,Agility / High-Dynamic,0.357,0.403,0.0,1.119,1.06
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub017/0008_normal_walk4_poses.npz,Basic Locomotion,0.18,0.0,0.0,0.633,5.95
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/ichige/soccer-11-dribble_3-ichige_stageii.npz,Basic Locomotion,0.421,0.0,0.0,1.047,1.49
+AMASS,../egodata/downloads/amass/extracted/Transitions/Transitions/mazen_c3d/dance_kick_stageii.npz,Basic Locomotion,0.287,0.0,0.0,1.449,1.7
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/70/Normal_AFig8CCW(1)_1_stageii.npz,Basic Locomotion,0.41,0.0,0.0,1.025,1.14
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_6_F_MoSh/Subject_6_F_10_poses.npz,Upper-Body Manipulation,0.022,0.0,0.0,24.773,2.68
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S01_Expert/Trial_upper_right_left_145_poses.npz,Upper-Body Manipulation,0.236,0.0,0.0,3.37,2.64
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub059/0005_normal_walk1_poses.npz,Basic Locomotion,0.171,0.0,0.0,0.597,6.38
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub048/0009_normal_jog1_poses.npz,Agility / High-Dynamic,0.205,0.0,0.0,0.754,15.16
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/317/walking_run02_stageii.npz,Basic Locomotion,0.964,0.0,0.0,1.1,1.62
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/70/Mixed_SlowFast(6)_1_stageii.npz,Basic Locomotion,0.886,0.0,0.0,0.99,2.11
+AMASS,../egodata/downloads/amass/extracted/EKUT/EKUT/234/SLPD103_stageii.npz,Agility / High-Dynamic,0.827,0.327,0.0,1.036,1.2
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub067/0027_circle_walk_poses.npz,Basic Locomotion,1.186,0.0,0.0,1.016,5.06
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_16_F_MoSh/Subject_16_F_4_poses.npz,Upper-Body Manipulation,0.013,0.0,0.0,18.872,0.57
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s5/waterbottle_pick_all_stageii.npz,Upper-Body Manipulation,0.036,0.0,0.0,3.684,0.32
+AMASS,../egodata/downloads/amass/extracted/EKUT/EKUT/125/WCC2_stageii.npz,Basic Locomotion,0.398,0.0,0.0,0.958,0.9
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/379/push_recovery_right11_stageii.npz,Basic Locomotion,0.594,0.0,0.0,1.297,1.36
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub087/0029_jumping2_poses.npz,Agility / High-Dynamic,0.141,0.069,0.0,1.681,4.7
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S10_Expert/Trial_upper_left_056_poses.npz,Upper-Body Manipulation,0.265,0.0,0.0,3.021,2.04
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/105/105_27_stageii.npz,Basic Locomotion,0.291,0.0,0.0,1.166,0.95
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub001/0019_jumping2_poses.npz,Agility / High-Dynamic,0.228,0.221,0.0,1.868,9.53
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_73_F_MoSh/Subject_73_F_16_poses.npz,Agility / High-Dynamic,0.108,0.0,0.0,1.902,8.57
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/70/Mixed_FastSlow(23)_1_stageii.npz,Basic Locomotion,0.815,0.0,0.0,0.998,1.89
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/56/56_02_stageii.npz,Upper-Body Manipulation,0.04,0.0,0.0,6.23,1.0
+AMASS,../egodata/downloads/amass/extracted/SFU/SFU/0005/0005_Walking001_stageii.npz,Basic Locomotion,0.639,0.0,0.0,0.99,1.32
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/9/bend_left06_stageii.npz,Basic Locomotion,0.431,0.0,0.0,0.997,0.54
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/317/walking_run07_stageii.npz,Basic Locomotion,0.975,0.0,0.0,1.158,1.71
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/424/parkour05_stageii.npz,Basic Locomotion,0.505,0.0,0.0,0.973,0.94
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub087/0020_lifting_heavy2_poses.npz,Basic Locomotion,1.149,0.0,0.106,1.11,4.01
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s10/stapler_staple_2_stageii.npz,Upper-Body Manipulation,0.114,0.0,0.0,2.861,0.51
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_83_F_MoSh/Subject_83_F_10_poses.npz,Upper-Body Manipulation,0.162,0.0,0.0,3.893,1.73
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/69/Fast_StraightLong(18)_stageii.npz,Basic Locomotion,0.943,0.0,0.0,0.972,2.13
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/hamada/accident-13-damage_back-hamada_stageii.npz,Basic Locomotion,0.256,0.0,0.0,1.329,0.68
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/359/bend_right04_stageii.npz,Basic Locomotion,0.597,0.0,0.0,1.026,0.95
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_82_F_MoSh/Subject_82_F_18_poses.npz,Basic Locomotion,0.697,0.0,0.0,1.154,3.52
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/slope_up07_stageii.npz,Agility / High-Dynamic,0.477,0.333,0.0,1.021,0.54
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s4/airplane_pass_1_stageii.npz,Upper-Body Manipulation,0.203,0.0,0.0,2.173,0.52
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub063/0010_normal_jog2_poses.npz,Agility / High-Dynamic,0.255,0.043,0.0,0.677,17.57
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/67/Slow_StraightLong(30)_stageii.npz,Basic Locomotion,0.513,0.0,0.0,0.962,0.98
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/513/kick05_stageii.npz,Basic Locomotion,0.171,0.0,0.0,1.169,0.71
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/go_over_beam05_stageii.npz,Basic Locomotion,0.336,0.0,0.0,1.191,0.51
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/317/walking_slow08_stageii.npz,Basic Locomotion,0.45,0.0,0.0,1.031,0.56
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s4/bowl_pass_1_stageii.npz,Upper-Body Manipulation,0.131,0.0,0.0,3.133,0.61
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/9/walking_slow10_stageii.npz,Basic Locomotion,0.259,0.0,0.0,1.15,0.33
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/675/walk_slow_with_handrail_table_beam_left02_stageii.npz,Basic Locomotion,0.214,0.0,0.0,1.177,0.46
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/31/31_11_stageii.npz,Upper-Body Manipulation,0.023,0.0,0.0,3.037,0.39
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/hamada/sitdown_standup-13-applause-hamada_stageii.npz,Upper-Body Manipulation,0.035,0.0,0.0,2.675,0.71
+AMASS,../egodata/downloads/amass/extracted/TCDHands/TCDHands/ExperimentDatabase/graspSphere_B_stageii.npz,Upper-Body Manipulation,0.018,0.0,0.0,18.105,0.98
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub098/0026_kicking2_poses.npz,Basic Locomotion,0.174,0.0,0.0,1.522,2.9
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/359/turn_left01_stageii.npz,Basic Locomotion,0.582,0.0,0.0,1.073,1.18
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s5/mouse_pick_all_stageii.npz,Upper-Body Manipulation,0.044,0.0,0.0,3.266,0.33
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub060/0018_lifting_light2_poses.npz,Basic Locomotion,1.264,0.0,0.0,1.34,4.59
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub047/0008_normal_walk4_poses.npz,Basic Locomotion,0.192,0.0,0.0,0.735,7.99
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/80/80_53_stageii.npz,Upper-Body Manipulation,0.076,0.0,0.0,11.052,1.22
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/572/tennis_forehand_right05_stageii.npz,Upper-Body Manipulation,0.143,0.0,0.0,3.872,0.75
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_36_F_MoSh/Subject_36_F_17_poses.npz,Upper-Body Manipulation,0.025,0.0,0.0,15.05,0.46
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/76/76_04_stageii.npz,Basic Locomotion,0.107,0.0,0.0,1.898,0.82
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/90/90_16_stageii.npz,Agility / High-Dynamic,0.091,0.157,0.395,1.8,2.08
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_52_F_MoSh/Subject_52_F_19_poses.npz,Basic Locomotion,0.933,0.0,0.0,1.124,3.62
+AMASS,../egodata/downloads/amass/extracted/EKUT/EKUT/300/PushStandOpen_04_stageii.npz,Basic Locomotion,0.023,0.0,0.0,1.178,0.36
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/85/85_02_stageii.npz,Agility / High-Dynamic,0.438,0.072,0.079,1.254,3.67
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/kudo/gesture_etc-45-feel_dizzy_-kudo_stageii.npz,Upper-Body Manipulation,0.007,0.0,0.0,8.164,0.05
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub048/0015_sitting1_poses.npz,Basic Locomotion,0.937,0.0,0.0,1.15,3.16
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s5/duck_pass_1_stageii.npz,Upper-Body Manipulation,0.144,0.0,0.0,2.913,0.47
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/09/09_05_stageii.npz,Basic Locomotion,1.833,0.0,0.0,0.995,4.94
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/66/Fast_StraightLong(27)_stageii.npz,Basic Locomotion,1.08,0.0,0.0,0.99,2.71
+AMASS,../egodata/downloads/amass/extracted/TCDHands/TCDHands/ExperimentDatabase/counting_1_stageii.npz,Upper-Body Manipulation,0.003,0.0,0.0,15.324,0.16
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_37_F_MoSh/Subject_37_F_5_poses.npz,Agility / High-Dynamic,0.138,0.0,0.0,1.327,9.84
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/68/Slow_StraightLong(42)_stageii.npz,Basic Locomotion,0.451,0.0,0.0,1.033,0.88
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/1229/supination_with_help_02_stageii.npz,Upper-Body Manipulation,0.007,0.0,0.0,8.656,0.06
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/9/RightTurn07_stageii.npz,Basic Locomotion,0.419,0.0,0.0,0.96,0.6
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/70/Mixed_FastSlow(32)_1_stageii.npz,Basic Locomotion,0.782,0.0,0.0,1.0,1.78
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_45_F_MoSh/Subject_45_F_12_poses.npz,Basic Locomotion,0.413,0.0,0.0,1.593,1.51
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/144/144_04_stageii.npz,Basic Locomotion,0.411,0.0,0.0,1.015,0.82
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub051/0025_kicking1_poses.npz,Basic Locomotion,0.864,0.0,0.0,1.358,6.78
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/shiono/turn-02-look_around-shiono_stageii.npz,Upper-Body Manipulation,0.037,0.0,0.0,5.37,0.16
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s2/cup_pass_1_stageii.npz,Upper-Body Manipulation,0.151,0.0,0.0,2.297,0.33
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_76_F_MoSh/Subject_76_F_12_poses.npz,Basic Locomotion,1.037,0.0,0.0,1.183,5.79
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/141/141_24_stageii.npz,Basic Locomotion,1.165,0.0,0.0,1.175,5.45
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/38/38_02_stageii.npz,Basic Locomotion,0.768,0.0,0.0,0.951,1.79
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/12/RightTurn10_stageii.npz,Basic Locomotion,0.587,0.0,0.0,0.997,0.78
+AMASS,../egodata/downloads/amass/extracted/DFaust/DFaust/50002/50002_hips_stageii.npz,Upper-Body Manipulation,0.187,0.0,0.0,2.284,0.82
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub058/0008_normal_walk4_poses.npz,Basic Locomotion,1.718,0.0,0.0,0.997,7.46
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_76_F_MoSh/Subject_76_F_1_poses.npz,Agility / High-Dynamic,0.111,0.0,0.0,1.633,5.85
+AMASS,../egodata/downloads/amass/extracted/DFaust/DFaust/50025/50025_shake_hips_stageii.npz,Agility / High-Dynamic,0.119,0.0,0.0,3.594,10.78
+AMASS,../egodata/downloads/amass/extracted/HDM05/HDM05/tr/HDM_tr_01-02_03_120_stageii.npz,Basic Locomotion,0.241,0.005,0.146,1.398,1.29
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub109/0012_normal_jog4_poses.npz,Agility / High-Dynamic,0.206,0.0,0.0,0.562,13.39
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S07_Expert/Trial_upper_left_225_poses.npz,Basic Locomotion,0.36,0.0,0.0,1.928,1.9
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub023/0009_normal_jog1_poses.npz,Agility / High-Dynamic,0.252,0.0,0.0,0.71,13.32
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/167/turn_right09_stageii.npz,Basic Locomotion,0.526,0.0,0.0,0.923,1.06
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/314/walking_run02_stageii.npz,Basic Locomotion,1.345,0.0,0.0,1.005,4.57
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub043/0004_motorcycle_poses.npz,Upper-Body Manipulation,0.007,0.0,0.0,2.074,0.38
+AMASS,../egodata/downloads/amass/extracted/HDM05/HDM05/bk/HDM_bk_02-03_04_120_stageii.npz,Upper-Body Manipulation,0.203,0.0,0.0,2.466,0.5
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/70/Normal_CircleCW(1)_1_stageii.npz,Basic Locomotion,0.515,0.0,0.0,0.962,1.28
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/133/133_18_stageii.npz,Basic Locomotion,0.347,0.0,0.0,1.276,0.81
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/shiono/gesture_etc-33-watch_here-shiono_stageii.npz,Upper-Body Manipulation,0.029,0.0,0.0,13.033,0.36
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_25_F_MoSh/Subject_25_F_21_poses.npz,Basic Locomotion,0.427,0.0,0.318,1.542,2.15
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/425/walking_fast03_stageii.npz,Basic Locomotion,0.892,0.0,0.0,1.059,1.69
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/74/74_09_stageii.npz,Upper-Body Manipulation,0.014,0.0,0.0,3.5,0.51
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S10_Expert/Trial_upper_right_175_poses.npz,Basic Locomotion,0.444,0.0,0.0,1.945,2.07
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub090/0017_lifting_light1_poses.npz,Basic Locomotion,1.193,0.0,0.031,1.329,4.06
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s4/train_play_1_stageii.npz,Upper-Body Manipulation,0.029,0.0,0.0,12.106,0.24
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/200/KickHuefthoch03_stageii.npz,Basic Locomotion,0.247,0.0,0.0,0.649,0.95
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S05_Novice/Trial_upper_right_115_poses.npz,Upper-Body Manipulation,0.217,0.0,0.0,3.343,2.39
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s10/cylindermedium_pass_1_stageii.npz,Upper-Body Manipulation,0.127,0.0,0.0,3.265,0.42
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/314/step_over_gap09_stageii.npz,Basic Locomotion,0.663,0.0,0.0,1.066,1.23
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_21_F_MoSh/Subject_21_F_20_poses.npz,Upper-Body Manipulation,0.017,0.0,0.0,21.985,1.1
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_14_F_MoSh/Subject_14_F_12_poses.npz,Unstructured / OOD,0.411,0.0,0.734,1.065,3.37
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_89_F_MoSh/Subject_89_F_21_poses.npz,Unstructured / OOD,0.365,0.0,0.695,1.287,2.67
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub086/0009_normal_jog1_poses.npz,Agility / High-Dynamic,0.223,0.056,0.0,0.639,18.7
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub048/0013_knocking1_poses.npz,Basic Locomotion,1.141,0.0,0.0,1.109,3.45
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/423/go_over_beam01_stageii.npz,Basic Locomotion,0.433,0.0,0.0,1.116,0.7
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/1717/displace_from_left_to_right_25_stageii.npz,Upper-Body Manipulation,0.059,0.0,0.0,6.678,0.25
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_4_F_MoSh/Subject_4_F_15_poses.npz,Basic Locomotion,0.513,0.0,0.0,1.305,2.01
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/68/Mixed_FastSlow(28)_stageii.npz,Basic Locomotion,0.927,0.0,0.0,1.036,2.4
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/69/Mixed_SlowFast(12)_stageii.npz,Basic Locomotion,0.99,0.0,0.0,0.979,2.32
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/36/36_20_stageii.npz,Agility / High-Dynamic,0.303,0.464,0.0,1.103,1.0
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/572/punch_right01_stageii.npz,Upper-Body Manipulation,0.085,0.0,0.0,3.902,0.55
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub092/0019_throwing_hard2_poses.npz,Upper-Body Manipulation,0.178,0.0,0.0,3.683,2.69
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub044/0029_jumping2_poses.npz,Agility / High-Dynamic,0.184,0.133,0.0,2.07,7.4
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/572/wipe_circular_left09_stageii.npz,Upper-Body Manipulation,0.014,0.0,0.0,20.554,0.18
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/golf_drive02_stageii.npz,Upper-Body Manipulation,0.143,0.0,0.0,6.536,1.2
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_56_F_MoSh/Subject_56_F_4_poses.npz,Agility / High-Dynamic,0.135,0.0,0.0,1.229,8.92
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s1/stapler_offhand_1_stageii.npz,Upper-Body Manipulation,0.057,0.0,0.0,3.534,0.22
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s9/eyeglasses_clean_1_stageii.npz,Upper-Body Manipulation,0.064,0.0,0.0,3.199,0.35
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/425/walking_slow02_stageii.npz,Basic Locomotion,0.481,0.0,0.0,1.073,0.63
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/359/walking_fast01_stageii.npz,Basic Locomotion,0.869,0.0,0.0,1.033,1.42
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/883/wipe_head_dabbing03_stageii.npz,Upper-Body Manipulation,0.006,0.0,0.0,20.941,0.1
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/1717/displace_from_left_to_right_07_stageii.npz,Upper-Body Manipulation,0.077,0.0,0.0,5.872,0.47
+AMASS,../egodata/downloads/amass/extracted/MoSh/MoSh/50027/stretches_stageii.npz,Upper-Body Manipulation,0.073,0.0,0.0,10.226,0.66
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/8/WalkingStraightBackwards08_stageii.npz,Basic Locomotion,0.432,0.0,0.0,1.086,0.54
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_15_F_MoSh/Subject_15_F_12_poses.npz,Basic Locomotion,0.44,0.0,0.0,1.454,2.03
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_32_F_MoSh/Subject_32_F_1_poses.npz,Unstructured / OOD,0.371,0.0,0.653,1.405,2.79
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/183/downstairs01_stageii.npz,Agility / High-Dynamic,0.216,0.718,0.0,0.961,0.75
+AMASS,../egodata/downloads/amass/extracted/EKUT/EKUT/265/SLPD301_stageii.npz,Agility / High-Dynamic,0.893,0.391,0.0,1.019,2.25
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s9/teapot_pour_2_stageii.npz,Upper-Body Manipulation,0.115,0.0,0.0,2.11,0.31
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/wave_both14_stageii.npz,Upper-Body Manipulation,0.025,0.0,0.0,36.448,1.17
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/291/push_recovery_left08_stageii.npz,Basic Locomotion,0.323,0.0,0.0,0.947,0.49
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/969/Trial_32_stageii.npz,Upper-Body Manipulation,0.011,0.0,0.0,42.964,0.15
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s2/camera_pick_all_stageii.npz,Upper-Body Manipulation,0.011,0.0,0.0,3.29,0.17
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/bend_left04_stageii.npz,Basic Locomotion,0.464,0.0,0.0,1.013,0.5
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S05_Novice/Trial_upper_left_184_poses.npz,Upper-Body Manipulation,0.207,0.0,0.0,3.55,2.22
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/67/Mixed_FastSlow(32)_stageii.npz,Basic Locomotion,1.105,0.0,0.0,0.977,2.98
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub060/0017_lifting_light1_poses.npz,Basic Locomotion,1.166,0.0,0.0,1.338,4.24
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_74_F_MoSh/Subject_74_F_18_poses.npz,Basic Locomotion,0.898,0.0,0.0,1.124,4.33
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/11/WalkInCounterClockwiseCircle07_stageii.npz,Basic Locomotion,0.51,0.0,0.0,1.026,1.02
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub054/0002_treadmill_slow_poses.npz,Basic Locomotion,0.12,0.0,0.0,0.584,3.35
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/aita/pose-13-model-aita_stageii.npz,Upper-Body Manipulation,0.044,0.0,0.0,2.188,0.19
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/167/walking_run01_stageii.npz,Basic Locomotion,0.72,0.0,0.0,1.24,2.13
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/29/29_11_stageii.npz,Upper-Body Manipulation,0.051,0.0,0.0,8.213,0.58
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/10/WalkingStraightBackwards08_stageii.npz,Basic Locomotion,0.423,0.0,0.0,1.094,0.69
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/167/upstairs03_stageii.npz,Agility / High-Dynamic,0.227,0.644,0.0,1.109,0.9
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/144/144_27_stageii.npz,Upper-Body Manipulation,0.29,0.0,0.0,2.386,0.97
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S02_Novice/Trial_upper_left_082_poses.npz,Upper-Body Manipulation,0.285,0.0,0.0,3.53,2.33
+AMASS,../egodata/downloads/amass/extracted/HDM05/HDM05/bk/HDM_bk_05-02_01_120_stageii.npz,Upper-Body Manipulation,0.115,0.0,0.205,3.136,0.48
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/67/Slow_StraightLong(46)_stageii.npz,Basic Locomotion,0.559,0.0,0.0,0.959,1.23
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/70/Slow_EllipseCW(1)_stageii.npz,Basic Locomotion,0.411,0.0,0.0,1.025,1.01
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/883/wipe_back_horizontal04_stageii.npz,Upper-Body Manipulation,0.005,0.0,0.0,18.016,0.12
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/7/WalkingStraightBackwards06_stageii.npz,Basic Locomotion,0.397,0.0,0.0,1.049,0.43
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s8/airplane_fly_1_stageii.npz,Upper-Body Manipulation,0.157,0.0,0.0,2.363,0.57
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/67/Slow_StraightShort(3)_stageii.npz,Basic Locomotion,0.397,0.0,0.0,1.109,0.79
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S10_Expert/Trial_upper_left_right_226_poses.npz,Upper-Body Manipulation,0.286,0.0,0.0,3.852,2.48
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/68/Normal_StraightLong(49)_stageii.npz,Basic Locomotion,0.653,0.0,0.0,1.04,1.41
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/122/122_37_stageii.npz,Basic Locomotion,0.463,0.0,0.0,1.025,1.22
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_68_F_MoSh/Subject_68_F_6_poses.npz,Upper-Body Manipulation,0.361,0.0,0.0,3.702,3.2
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/167/upstairs04_stageii.npz,Agility / High-Dynamic,0.234,0.689,0.0,1.103,0.86
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/359/bend_left02_stageii.npz,Basic Locomotion,0.604,0.0,0.0,1.006,0.99
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s10/phone_pass_1_stageii.npz,Upper-Body Manipulation,0.12,0.0,0.0,4.463,0.48
+AMASS,../egodata/downloads/amass/extracted/EKUT/EKUT/300/PushStandOpen_07_stageii.npz,Basic Locomotion,0.056,0.0,0.0,1.18,0.41
+AMASS,../egodata/downloads/amass/extracted/ACCAD/Male2Running_c3d/C4 - run to walk_poses.npz,Agility / High-Dynamic,2.125,0.0,0.0,1.027,9.67
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/kaiwa/gesture_etc-40-head_banging-kaiwa_stageii.npz,Upper-Body Manipulation,0.162,0.0,0.0,2.056,1.06
+AMASS,../egodata/downloads/amass/extracted/ACCAD/Male2Walking_c3d/B9 -  Walk turn left 90_poses.npz,Basic Locomotion,1.373,0.0,0.0,0.96,5.31
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub023/0013_knocking1_poses.npz,Basic Locomotion,1.103,0.0,0.0,1.143,3.84
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub085/0007_normal_walk3_poses.npz,Basic Locomotion,0.13,0.0,0.0,0.495,5.34
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/ichige/sitdown_standup-11-one_knee_drawn_up-ichige_stageii.npz,Unstructured / OOD,0.017,0.0,0.74,3.616,0.46
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/675/walk_with_handrail_table_right003_stageii.npz,Basic Locomotion,0.502,0.0,0.0,1.085,1.01
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_79_F_MoSh/Subject_79_F_21_poses.npz,Basic Locomotion,0.383,0.0,0.0,1.352,2.95
+AMASS,../egodata/downloads/amass/extracted/HDM05/HDM05/tr/HDM_tr_02-03_02_120_stageii.npz,Upper-Body Manipulation,0.109,0.0,0.0,2.765,0.39
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/969/Trial_90_stageii.npz,Upper-Body Manipulation,0.015,0.0,0.0,37.589,0.28
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/walking_forward_4steps_right_02_stageii.npz,Basic Locomotion,0.466,0.0,0.0,1.027,0.56
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/80/80_36_stageii.npz,Upper-Body Manipulation,0.024,0.0,0.0,13.311,0.72
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/66/Slow_AFig8CW(2)_stageii.npz,Basic Locomotion,0.297,0.0,0.0,1.134,0.82
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub104/0025_kicking1_poses.npz,Basic Locomotion,0.234,0.0,0.0,1.211,3.16
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/06/06_14_stageii.npz,Upper-Body Manipulation,0.271,0.0,0.0,2.264,2.13
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/yokoyama/karate-08-jab-yokoyama_stageii.npz,Upper-Body Manipulation,0.036,0.0,0.0,4.527,0.99
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/1717/displace_from_left_to_right_47_stageii.npz,Upper-Body Manipulation,0.065,0.0,0.0,6.236,0.33
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub077/0011_normal_jog3_poses.npz,Agility / High-Dynamic,0.226,0.0,0.0,0.732,15.01
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub106/0004_motorcycle_poses.npz,Basic Locomotion,0.011,0.0,0.0,1.499,0.53
+AMASS,../egodata/downloads/amass/extracted/EKUT/EKUT/300/PushBeam_24_stageii.npz,Basic Locomotion,0.622,0.0,0.0,1.147,1.67
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/79/79_24_stageii.npz,Upper-Body Manipulation,0.04,0.0,0.0,13.596,1.87
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub098/0022_throwing_hard1_poses.npz,Upper-Body Manipulation,0.233,0.0,0.0,3.557,3.96
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/317/walking_fast04_stageii.npz,Basic Locomotion,0.942,0.0,0.0,1.027,1.53
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S05_Novice/Trial_upper_left_right_207_poses.npz,Upper-Body Manipulation,0.222,0.0,0.0,4.047,2.72
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/kudo/gesture_etc-16-dryer-kudo_stageii.npz,Upper-Body Manipulation,0.013,0.0,0.0,13.55,0.15
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_47_F_MoSh/Subject_47_F_18_poses.npz,Upper-Body Manipulation,0.083,0.0,0.0,20.74,4.35
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/78/78_13_stageii.npz,Basic Locomotion,1.508,0.0,0.0,1.198,5.33
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub016/0011_normal_jog3_poses.npz,Agility / High-Dynamic,0.268,0.0,0.0,0.786,16.32
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/68/Normal_StraightLong(23)_stageii.npz,Basic Locomotion,0.598,0.0,0.0,1.02,1.18
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/32/32_03_stageii.npz,Upper-Body Manipulation,0.014,0.0,0.0,23.51,0.56
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub057/0030_rom_poses.npz,Basic Locomotion,0.125,0.0,0.0,1.604,2.59
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_4_F_MoSh/Subject_4_F_5_poses.npz,Basic Locomotion,0.192,0.0,0.0,1.359,7.53
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub097/0020_lifting_heavy2_poses.npz,Basic Locomotion,1.279,0.0,0.182,1.271,4.52
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S09_Novice/Trial_upper_right_left_088_poses.npz,Upper-Body Manipulation,0.156,0.0,0.0,3.905,1.88
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub023/0020_lifting_heavy2_poses.npz,Basic Locomotion,1.198,0.0,0.0,1.28,4.34
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/69/Fast_EllipseCCW(6)_stageii.npz,Basic Locomotion,0.675,0.0,0.0,0.952,2.22
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/572/tennis_smash_left04_stageii.npz,Upper-Body Manipulation,0.153,0.0,0.0,3.034,0.64
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/291/push_recovery_right01_stageii.npz,Basic Locomotion,0.395,0.0,0.0,0.932,0.57
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s9/watch_set_2_stageii.npz,Basic Locomotion,0.116,0.0,0.0,1.903,0.31
+AMASS,../egodata/downloads/amass/extracted/BMLhandball/BMLhandball/S09_Novice/Trial_upper_right_224_poses.npz,Upper-Body Manipulation,0.187,0.0,0.0,4.222,2.25
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/66/Fast_StraightLong(32)_stageii.npz,Basic Locomotion,1.032,0.0,0.0,0.956,2.67
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s7/pyramidmedium_pass_1_stageii.npz,Upper-Body Manipulation,0.226,0.0,0.0,2.134,0.74
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/83/83_31_stageii.npz,Agility / High-Dynamic,0.258,0.429,0.0,0.967,0.85
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/82/82_10_stageii.npz,Basic Locomotion,0.484,0.0,0.0,1.067,1.07
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/68/Mixed_SlowFast(28)_stageii.npz,Basic Locomotion,1.136,0.0,0.0,1.045,3.35
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/348/walking_medium09_stageii.npz,Basic Locomotion,0.581,0.0,0.0,0.955,0.74
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/68/Slow_EllipseCW(1)_stageii.npz,Basic Locomotion,0.387,0.0,0.0,1.074,0.84
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/68/Normal_StraightLong(48)_stageii.npz,Basic Locomotion,0.641,0.0,0.0,1.028,1.38
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub016/0008_normal_walk4_poses.npz,Basic Locomotion,0.164,0.0,0.0,0.562,6.71
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_41_F_MoSh/Subject_41_F_1_poses.npz,Upper-Body Manipulation,0.023,0.0,0.0,16.18,0.51
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/948/Wipe_Back_Dabbing_01_stageii.npz,Upper-Body Manipulation,0.009,0.0,0.0,13.644,0.15
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/551/egg_whisk06_stageii.npz,Basic Locomotion,0.189,0.0,0.0,1.405,0.36
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/348/go_over_beam02_stageii.npz,Basic Locomotion,0.596,0.0,0.0,0.913,1.07
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_15_F_MoSh/Subject_15_F_14_poses.npz,Agility / High-Dynamic,1.195,0.0,0.0,1.091,8.37
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s7/mouse_pass_1_stageii.npz,Upper-Body Manipulation,0.208,0.0,0.0,2.704,0.96
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub101/0014_sitting1_poses.npz,Basic Locomotion,1.278,0.0,0.279,1.153,3.95
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s10/binoculars_pick_all_stageii.npz,Upper-Body Manipulation,0.041,0.0,0.0,3.525,0.29
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/572/violin_left02_stageii.npz,Upper-Body Manipulation,0.017,0.0,0.0,23.304,0.14
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/slope_up05_stageii.npz,Agility / High-Dynamic,0.53,0.376,0.0,1.046,0.71
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/70/Mixed_FastSlow(29)_stageii.npz,Basic Locomotion,0.929,0.0,0.0,1.004,2.41
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/kaiwa/sitdown_standup-03-chair_back-kaiwa_stageii.npz,Unstructured / OOD,0.048,0.0,0.469,1.515,0.39
+AMASS,../egodata/downloads/amass/extracted/ACCAD/Male2Walking_c3d/B18 -  Walk to leap to walk t3_poses.npz,Agility / High-Dynamic,2.01,0.092,0.0,1.033,10.23
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_6_F_MoSh/Subject_6_F_8_poses.npz,Upper-Body Manipulation,0.062,0.0,0.0,2.776,1.1
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub094/0006_normal_walk2_poses.npz,Basic Locomotion,0.2,0.0,0.0,0.772,7.88
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_89_F_MoSh/Subject_89_F_15_poses.npz,Basic Locomotion,0.836,0.0,0.0,1.031,2.62
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/167/walking_slow10_stageii.npz,Basic Locomotion,0.461,0.0,0.0,1.087,0.69
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_70_F_MoSh/Subject_70_F_19_poses.npz,Upper-Body Manipulation,0.028,0.0,0.0,13.846,0.47
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/80/80_28_stageii.npz,Upper-Body Manipulation,0.026,0.0,0.0,13.146,0.71
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/378/push_recovery_stand_back03_stageii.npz,Basic Locomotion,0.345,0.0,0.0,1.862,1.17
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s5/toothbrush_brush_1_stageii.npz,Upper-Body Manipulation,0.105,0.0,0.0,2.559,0.44
+AMASS,../egodata/downloads/amass/extracted/GRAB/GRAB/s7/binoculars_pass_1_stageii.npz,Basic Locomotion,0.166,0.0,0.0,1.985,0.43
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/69/Slow_Fig8(3)_stageii.npz,Basic Locomotion,0.321,0.0,0.0,1.053,0.74
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/955/wipe_head_dabbing01_stageii.npz,Upper-Body Manipulation,0.004,0.0,0.0,37.969,0.2
+AMASS,../egodata/downloads/amass/extracted/Transitions/Transitions/mazen_c3d/airkick_longjump_stageii.npz,Basic Locomotion,0.625,0.003,0.0,1.182,1.64
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/952/wipe_head_smallcircle01_stageii.npz,Unstructured / OOD,0.005,0.0,1.0,30.634,0.16
+AMASS,../egodata/downloads/amass/extracted/Transitions/Transitions/mazen_c3d/dance_longjump_stageii.npz,Basic Locomotion,0.427,0.031,0.0,1.568,2.02
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_75_F_MoSh/Subject_75_F_8_poses.npz,Upper-Body Manipulation,0.246,0.0,0.0,2.132,1.47
+AMASS,../egodata/downloads/amass/extracted/ACCAD/MartialArtsWalksTurns_c3d/E3 - advance_poses.npz,Basic Locomotion,0.809,0.0,0.0,1.071,3.83
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/kawaguchi/accident-01-dodge-kawaguchi_stageii.npz,Upper-Body Manipulation,0.127,0.0,0.0,2.582,0.87
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/122/122_01_stageii.npz,Basic Locomotion,0.199,0.0,0.0,1.167,0.68
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub083/0011_normal_jog3_poses.npz,Agility / High-Dynamic,0.212,0.0,0.0,0.661,13.48
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/3/balancing02_stageii.npz,Upper-Body Manipulation,0.08,0.0,0.0,2.766,0.15
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/138/138_25_stageii.npz,Basic Locomotion,0.605,0.0,0.0,1.169,1.72
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/67/Mixed_SlowFast(25)_stageii.npz,Basic Locomotion,1.35,0.0,0.0,0.917,3.59
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/965/Experiment3a_02_stageii.npz,Upper-Body Manipulation,0.004,0.0,0.0,3.132,0.17
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub033/0009_normal_jog2_poses.npz,Agility / High-Dynamic,0.173,0.0,0.0,0.831,13.99
+AMASS,../egodata/downloads/amass/extracted/BMLmovi/BMLmovi/Subject_33_F_MoSh/Subject_33_F_2_poses.npz,Basic Locomotion,1.019,0.0,0.0,1.037,3.57
+AMASS,../egodata/downloads/amass/extracted/TCDHands/TCDHands/ExperimentDatabase/SignB_stageii.npz,Upper-Body Manipulation,0.005,0.0,0.0,29.043,0.35
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub043/0016_sitting2_poses.npz,Unstructured / OOD,1.309,0.0,0.45,1.238,3.93
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/167/step_over_gap01_stageii.npz,Basic Locomotion,0.428,0.0,0.0,1.072,0.88
+AMASS,../egodata/downloads/amass/extracted/SSM/SSM/20160930_50032/running_on_the_spot_sync_stageii.npz,Agility / High-Dynamic,0.193,0.0,0.0,1.855,9.91
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub002/0024_scamper_poses.npz,Basic Locomotion,0.615,0.0,0.0,2.517,5.68
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/378/push_recovery_stand_front01_stageii.npz,Basic Locomotion,0.291,0.0,0.0,1.82,1.34
+AMASS,../egodata/downloads/amass/extracted/EyesJapanDataset/Eyes_Japan_Dataset/kaiwa/gesture_etc-32-no-kaiwa_stageii.npz,Upper-Body Manipulation,0.058,0.0,0.0,6.831,0.55
+AMASS,../egodata/downloads/amass/extracted/WEIZMANN/WEIZMANN/68/Normal_StraightLong(46)_stageii.npz,Basic Locomotion,0.644,0.0,0.0,1.025,1.43
+AMASS,../egodata/downloads/amass/extracted/BMLrub/BioMotionLab_NTroje/rub007/0013_lifting_light2_poses.npz,Basic Locomotion,0.825,0.0,0.102,1.515,3.28
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/167/bend_right07_stageii.npz,Basic Locomotion,0.434,0.0,0.0,1.053,0.71
+AMASS,../egodata/downloads/amass/extracted/CMU/CMU/143/143_32_stageii.npz,Basic Locomotion,1.009,0.0,0.0,1.041,2.82
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/675/walk_with_handrail_beam_left02_stageii.npz,Basic Locomotion,0.537,0.0,0.0,1.013,1.14
+AMASS,../egodata/downloads/amass/extracted/KIT/KIT/675/dry_left_arm_09_stageii.npz,Basic Locomotion,0.258,0.0,0.0,1.805,0.65

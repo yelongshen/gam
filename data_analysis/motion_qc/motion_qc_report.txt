@@ -1,0 +1,84 @@
+============================================================
+MOTION DATA QUALITY REPORT
+============================================================
+Total sequences        : 16,835
+Passed QC (hard gates) : 15,392  (91.4%)
+Failed QC              : 1,443  (8.6%)
+Flagged outliers       : 913
+
+Failure reasons (a clip can have several):
+  foot_skate             1049  ( 6.2%)
+  static                  191  ( 1.1%)
+  floating                182  ( 1.1%)
+  too_short                29  ( 0.2%)
+  jitter                    9  ( 0.1%)
+  teleport                  8  ( 0.0%)
+  ground_pen                4  ( 0.0%)
+  nan                       3  ( 0.0%)
+
+Per-category QC pass rate (clean pool available for split):
+  category                       total    pass   pass%  outlier
+  Agility / High-Dynamic          1949    1234   63.3%      385
+  Basic Locomotion                8588    7998   93.1%      216
+  Uncategorized                      3       0    0.0%        0
+  Unstructured / OOD               401     400   99.8%        4
+  Upper-Body Manipulation         5894    5760   97.7%      308
+
+Worst foot_skate:
+          3.68  [Agility / High-Dyn] 0009_normal_jog1_poses.npz
+          3.53  [Agility / High-Dyn] 0011_normal_jog3_poses.npz
+          3.31  [Agility / High-Dyn] 0011_normal_jog3_poses.npz
+          3.31  [Agility / High-Dyn] 0012_normal_jog4_poses.npz
+           3.3  [Agility / High-Dyn] 0010_normal_jog2_poses.npz
+           3.3  [Agility / High-Dyn] 0010_normal_jog2_poses.npz
+          3.26  [Agility / High-Dyn] 0011_normal_jog3_poses.npz
+          3.25  [Agility / High-Dyn] 0012_normal_jog4_poses.npz
+
+Worst max_jerk:
+      31480.88  [Agility / High-Dyn] Normal_StraightLong(8)_stageii.npz
+      28402.09  [Agility / High-Dyn] Normal_StraightLong(12)_stageii.npz
+      21991.47  [Agility / High-Dyn] Normal_StraightLong(14)_stageii.npz
+      21969.04  [Agility / High-Dyn] Normal_StraightLong(2)_stageii.npz
+        5403.9  [Basic Locomotion  ] Normal_StraightLong(6)_stageii.npz
+       5254.87  [Upper-Body Manipul] 79_07_stageii.npz
+       4961.33  [Agility / High-Dyn] C26 - run to crouch_poses.npz
+       4543.77  [Basic Locomotion  ] Normal_StraightLong(16)_stageii.npz
+
+Worst max_speed:
+         83.55  [Agility / High-Dyn] Normal_StraightLong(12)_stageii.npz
+         52.57  [Agility / High-Dyn] Normal_StraightLong(8)_stageii.npz
+         45.23  [Agility / High-Dyn] Normal_StraightLong(2)_stageii.npz
+         39.49  [Agility / High-Dyn] Normal_StraightLong(14)_stageii.npz
+         30.51  [Basic Locomotion  ] Normal_StraightLong(16)_stageii.npz
+         26.68  [Agility / High-Dyn] obstacles5_subject3.bvh
+         23.74  [Basic Locomotion  ] Normal_StraightLong(6)_stageii.npz
+         20.41  [Basic Locomotion  ] Normal_StraightLong(13)_stageii.npz
+
+Worst ground_pen:
+          0.28  [Agility / High-Dyn] 912_3_15_stageii.npz
+          0.28  [Agility / High-Dyn] 912_3_15_stageii.npz
+          0.27  [Agility / High-Dyn] 912_3_17_stageii.npz
+          0.27  [Agility / High-Dyn] 912_3_17_stageii.npz
+          0.19  [Agility / High-Dyn] 126_10_stageii.npz
+          0.14  [Unstructured / OOD] 126_02_stageii.npz
+          0.14  [Agility / High-Dyn] Normal_StraightLong(12)_stageii.npz
+          0.13  [Agility / High-Dyn] 90_25_stageii.npz
+
+Worst bone_cv:
+           0.0  [Basic Locomotion  ] sprint1_subject4.bvh
+           0.0  [Basic Locomotion  ] aiming2_subject2.bvh
+           0.0  [Basic Locomotion  ] walk3_subject5.bvh
+           0.0  [Agility / High-Dyn] dance1_subject2.bvh
+           0.0  [Agility / High-Dyn] dance2_subject4.bvh
+           0.0  [Agility / High-Dyn] fightAndSports1_subject1.bvh
+           0.0  [Unstructured / OOD] ground1_subject5.bvh
+           0.0  [Basic Locomotion  ] sprint1_subject2.bvh
+
+============================================================
+Clean pool (qc_pass==1, outlier_flag==0) per category:
+  Agility / High-Dynamic         1227
+  Basic Locomotion               7790
+  Uncategorized                     0  <-- BELOW 400!
+  Unstructured / OOD              396  <-- BELOW 400!
+  Upper-Body Manipulation        5453
+============================================================

@@ -1,0 +1,15 @@
+==============================================================================
+OFFLINE SIMULATION EVALUATION — per-category metrics
+==============================================================================
+Clips evaluated: 8  (2 per category target)
+
+category                   N non_fall%    MAE°  tilt°   |w|  torqueNm  peakNm
+-----------------------------------------------------------------------------
+Agility / High-Dynamic     2    100.0%    69.8   10.7  2.28     10.17   113.5
+Basic Locomotion           2    100.0%    63.3   11.2  2.20     10.37   108.5
+Unstructured / OOD         2    100.0%    64.1   11.1  2.24      9.70   137.3
+Upper-Body Manipulation    2    100.0%    63.0   11.8  2.16      9.56   136.7
+==============================================================================
+Legend: non_fall%=survived episodes, MAE°=action-vs-achieved pose,
+        tilt°=max base tilt, |w|=mean root ang vel, torque in N·m.
+==============================================================================

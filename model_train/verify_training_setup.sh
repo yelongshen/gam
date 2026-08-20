@@ -130,7 +130,7 @@ if [ "$all_exist" = true ]; then
     echo "═══════════════════════════════════════════════════════════════"
     echo ""
     echo "Next steps:"
-    echo "  1. Monitor test training: tail -f outputs/sonic_training_test.log"
+    echo "  1. Monitor test training: tail -f model_train/results/sonic_training_test.log"
     echo "  2. Start full training: python gear_sonic/training/train.py --config gear_sonic/training/config.yaml"
     echo "  3. View documentation: cat TRAINING_README.md"
     echo ""

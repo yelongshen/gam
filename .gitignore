@@ -159,6 +159,7 @@ cython_debug/
 
 # log
 outputs/
+model_train/results/
 
 # Ruff stuff:
 .ruff_cache/
@@ -167,6 +168,7 @@ outputs/
 .pypirc
 
 outputs/
+data/
 
 .DS_Store
 

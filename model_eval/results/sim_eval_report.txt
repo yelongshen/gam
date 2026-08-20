@@ -1,0 +1,12 @@
+================================================================================
+OFFLINE SIMULATION EVALUATION — per-category metrics
+================================================================================
+Clips evaluated: 10 valid  (target 400/category)
+
+category                    N non_fall%    MAE°  tilt°   |w|  torqueNm  peakNm  trk%
+------------------------------------------------------------------------------------
+Basic Locomotion           10    100.0%    68.3   15.4  1.94     12.94   139.0   73%
+================================================================================
+Legend: non_fall%=survived, MAE°=action-vs-achieved pose, tilt°=max base tilt,
+        |w|=mean root ang vel (rad/s), torque in N·m.
+================================================================================

@@ -1,0 +1,76 @@
+============================================================
+MOTION DATA QUALITY REPORT
+============================================================
+Total sequences        : 300
+Passed QC (hard gates) : 272  (90.7%)
+Failed QC              : 28  (9.3%)
+Flagged outliers       : 30
+
+Failure reasons (a clip can have several):
+  static                   27  ( 9.0%)
+  jitter                    1  ( 0.3%)
+
+Per-category QC pass rate (clean pool available for split):
+  category                       total    pass   pass%  outlier
+  Agility / High-Dynamic            49      48   98.0%        5
+  Basic Locomotion                  73      73  100.0%        5
+  Unstructured / OOD                 6       6  100.0%        0
+  Upper-Body Manipulation          172     145   84.3%       20
+
+Worst foot_skate:
+          0.88  [Basic Locomotion  ] Subject_79_F_12_poses.npz
+          0.84  [Basic Locomotion  ] Subject_79_F_4_poses.npz
+           0.8  [Basic Locomotion  ] Subject_28_F_14_poses.npz
+          0.78  [Basic Locomotion  ] Subject_56_F_19_poses.npz
+           0.7  [Basic Locomotion  ] Subject_79_F_20_poses.npz
+          0.65  [Basic Locomotion  ] Subject_28_F_17_poses.npz
+          0.64  [Basic Locomotion  ] Subject_28_F_11_poses.npz
+          0.62  [Agility / High-Dyn] 50025_running_on_spot_stageii.npz
+
+Worst max_jerk:
+       4185.07  [Agility / High-Dyn] 50021_running_on_spot_stageii.npz
+        3984.8  [Agility / High-Dyn] 50009_running_on_spot_stageii.npz
+       3709.63  [Agility / High-Dyn] 50022_punching_stageii.npz
+       3681.77  [Agility / High-Dyn] 50022_running_on_spot_stageii.npz
+       3508.06  [Agility / High-Dyn] 50020_running_on_spot_stageii.npz
+       3304.56  [Agility / High-Dyn] 50020_shake_arms_stageii.npz
+       2838.94  [Agility / High-Dyn] 50027_running_on_spot_stageii.npz
+       2801.47  [Agility / High-Dyn] 50026_running_on_spot_stageii.npz
+
+Worst max_speed:
+          9.63  [Agility / High-Dyn] 50022_punching_stageii.npz
+          9.19  [Agility / High-Dyn] 50022_running_on_spot_stageii.npz
+          8.63  [Agility / High-Dyn] 50009_running_on_spot_stageii.npz
+          8.59  [Agility / High-Dyn] 50021_running_on_spot_stageii.npz
+          7.86  [Basic Locomotion  ] 50025_knees_stageii.npz
+          7.48  [Agility / High-Dyn] 50007_jumping_jacks_stageii.npz
+          7.47  [Agility / High-Dyn] Subject_12_F_19_poses.npz
+           7.4  [Basic Locomotion  ] Subject_28_F_6_poses.npz
+
+Worst ground_pen:
+          0.02  [Unstructured / OOD] Subject_28_F_21_poses.npz
+          0.02  [Basic Locomotion  ] Subject_56_F_8_poses.npz
+          0.02  [Unstructured / OOD] Subject_80_F_2_poses.npz
+          0.01  [Agility / High-Dyn] 50027_running_on_spot_stageii.npz
+          0.01  [Basic Locomotion  ] Subject_28_F_14_poses.npz
+          0.01  [Basic Locomotion  ] 50002_one_leg_jump_stageii.npz
+          0.01  [Basic Locomotion  ] Subject_80_F_18_poses.npz
+          0.01  [Upper-Body Manipul] Subject_28_F_20_poses.npz
+
+Worst bone_cv:
+           0.0  [Upper-Body Manipul] Subject_27_F_20_poses.npz
+           0.0  [Upper-Body Manipul] 50020_chicken_wings_stageii.npz
+           0.0  [Agility / High-Dyn] Subject_28_F_19_poses.npz
+           0.0  [Upper-Body Manipul] 50021_punching_stageii.npz
+           0.0  [Upper-Body Manipul] Subject_27_F_21_poses.npz
+           0.0  [Upper-Body Manipul] 50027_shake_hips_stageii.npz
+           0.0  [Agility / High-Dyn] 50020_shake_arms_stageii.npz
+           0.0  [Basic Locomotion  ] 50022_one_leg_loose_stageii.npz
+
+============================================================
+Clean pool (qc_pass==1, outlier_flag==0) per category:
+  Agility / High-Dynamic           44  <-- BELOW 400!
+  Basic Locomotion                 68  <-- BELOW 400!
+  Unstructured / OOD                6  <-- BELOW 400!
+  Upper-Body Manipulation         125  <-- BELOW 400!
+============================================================

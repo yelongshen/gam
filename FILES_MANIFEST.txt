@@ -193,7 +193,7 @@ UTILITIES & VERIFICATION
 RESULTS & OUTPUTS
 ═══════════════════════════════════════════════════════════════════════════
 
-✅ outputs/sonic_training_test/
+✅ model_train/results/sonic_training_test/
    ├── best_model.pt (2.3 MB)            ← Best validation checkpoint
    ├── checkpoint_epoch_010.pt (2.3 MB)
    ├── checkpoint_epoch_020.pt (2.3 MB)
@@ -203,7 +203,7 @@ RESULTS & OUTPUTS
    ├── config.json                       ← Training configuration
    └── logs/                             ← TensorBoard events
 
-✅ outputs/sonic_training_test.log
+✅ model_train/results/sonic_training_test.log
    • Complete training log file
    • Epoch progress tracking
    • Loss values at each step
