@@ -108,3 +108,39 @@ Instead, the workflow operates conceptually differently from traditional IK arch
 
 **This is why PHUMA acts as our primary evaluation backend:** 
 Evaluating standard humanoid RL setups usually requires explicitly retargeted sequences to grade against. PHUMA precisely delivers idealized tracking limits natively mapping to G1 robotic targets, allowing us to compute precise MPJPE against optimal baselines over 29-DOF rather than measuring human-scale discrepancies inherently distorted by height/reach mappings internally inside SMPL parameters!
+
+---
+
+## 4. Applied Example: 77-Motion LAFAN1 Sweep, Checkpoint Comparison (2026-08-24)
+
+As a concrete application of the "Task Success Rate / Non-Fall Rate" and category-split framework
+described in Sections 1-3 above, we ran a full sweep of all 77 LAFAN1 motion clips
+(`/tmp/lafan1_all/motion_lib_individual/g1_csv`) through `eval_agent_trl.py` in a single parallel
+batch (`num_envs=77`), comparing 3 checkpoints: `sonic_release/last.pt`, a low-latency variant,
+and `sonic_pretrained/model_step_150000.pt`.
+
+**Caveat:** the `ee_body_pos`/`foot_pos_xyz`/`anchor_pos` termination thresholds were relaxed to
+`10000.0` to work around a known RSI floor-penetration data bug (see
+`LAFAN1_eval_investigation.md`), so these are diagnostic/relaxed-bar numbers, not the standard
+production eval metric.
+
+| Checkpoint | success_rate | progress_rate |
+|---|---|---|
+| `last.pt` | **11.5%** | **35.3%** |
+| low_latency | 5.1% | 23.9% |
+| pretrained (150k) | 5.1% | 23.7% |
+
+Category split (using LAFAN1's native action prefixes, analogous to this doc's Section 1.A
+Basic Locomotion / Agility / Gestures / Unstructured taxonomy but mapped to LAFAN1's own naming
+convention — walk/run/sprint, jumps/fight/dance, push*/fallAndGetUp/ground,
+aiming/multipleActions/obstacles respectively) showed **Basic Motion is the only category with
+non-trivial success** (21-32% depending on checkpoint) across all 3 models — every other category
+(Agile, Interaction/Perturbation, Misc/Object-Obstacle) sits at or near 0% success rate for 2 of
+the 3 checkpoints, and only marginally recovers for `last.pt` (6-8%).
+
+This matches the expected pattern from Section 1.A's ID/OOD framing: **Basic Locomotion acts as
+the in-distribution baseline and is comparatively easy**, while the other 3 categories behave like
+out-of-distribution "harder" splits — here compounded by the still-unresolved LAFAN1 leg-scale/
+floor-penetration data bug, which likely suppresses all 4 categories' true achievable success
+rate until fixed. See `checkpoint_comparison.md` Section 11 and `LAFAN1_eval_investigation.md`
+Section 7 for full per-category tables and root-cause discussion.

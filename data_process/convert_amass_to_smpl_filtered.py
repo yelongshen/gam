@@ -116,14 +116,31 @@ def convert_one(npz_path):
         return None
     duration = (T0 - 1) / src_fps
     t_src = np.arange(T0) / src_fps
-    t_tgt = np.arange(0, duration, 1.0 / TARGET_FPS)
+    # FIX: np.arange(0, duration, step) has an EXCLUSIVE stop bound, so
+    # whenever `duration` is an exact multiple of the target frame period,
+    # the very last frame (at t == duration) gets silently dropped,
+    # producing T-1 frames instead of T. Use linspace with an explicit,
+    # rounded frame count instead, which always includes the endpoint.
+    num_tgt = int(round(duration * TARGET_FPS)) + 1
+    t_tgt = np.linspace(0, duration, num_tgt, endpoint=True)
     if len(t_tgt) < 4:
         return None
 
     pose72 = _interp_linear(t_src, pose72_raw, t_tgt)
     trans = _interp_linear(t_src, trans_raw, t_tgt)
 
-    pose_aa, transl = canonicalize_root_rotation(pose72, trans)
+    pose_aa, transl_yup = canonicalize_root_rotation(pose72, trans)
+
+    # FIX: `transl_yup` is still in AMASS's native Y-up convention (only
+    # heading-rotated by canonicalize_root_rotation, never axis-remapped).
+    # Every downstream consumer (convert_smpl_filtered_to_bvh.py, and the
+    # LAFAN1 pipeline's own transl, which IS genuinely Z-up from the start)
+    # assumes `transl` is Z-up. Without this remap, convert_smpl_filtered_to_bvh.py
+    # misreads the true (Y-up) height axis as forward/depth and the true
+    # (Y-up) forward axis as height -- causing retargeted BVH/G1 output to
+    # appear to continuously "climb" while the source human is actually just
+    # walking forward. Apply the same ZUP remap used for smpl_joints below.
+    transl = transl_yup @ ZUP.T
 
     # smpl_joints: KEEP root rotation (real smpl_filtered convention), Z-up,
     # pelvis-pinned.
@@ -169,6 +186,7 @@ def _convert_one_task(args_tuple):
 
 
 def main():
+    global TARGET_FPS
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", default="/home/grease/egodata/downloads/amass/extracted")
     ap.add_argument("--output", default=os.path.join(
@@ -182,7 +200,11 @@ def main():
                     help="parallel worker processes (default 8)")
     ap.add_argument("--skip_existing", action="store_true",
                     help="skip files whose output .pkl already exists")
+    ap.add_argument("--target_fps", type=float, default=TARGET_FPS,
+                    help=f"output resample framerate (default {TARGET_FPS})")
     args = ap.parse_args()
+
+    TARGET_FPS = args.target_fps
 
     if args.files:
         npz_files = [f if os.path.isabs(f) else os.path.join(args.input, f)

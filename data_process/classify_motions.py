@@ -344,6 +344,7 @@ def load_joints(path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--limit', type=int, default=0, help='max files (0 = all)')
+    ap.add_argument('--lafan_only', action='store_true')
     ap.add_argument('--save', type=str, default='motion_categories.csv')
     args = ap.parse_args()
 
@@ -351,7 +352,7 @@ def main():
              if all(t not in os.path.basename(f).lower()
                     for t in ('shape', 'stagei.', 'neutral'))]
     lafan = glob.glob(os.path.join(LAFAN_ROOT, "**/*.bvh"), recursive=True)
-    files = amass + lafan
+    files = lafan if args.lafan_only else (amass + lafan)
     if args.limit:
         import random
         random.seed(0)

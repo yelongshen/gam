@@ -205,3 +205,24 @@ external_dependencies/XRoboToolkit-PC-Service-Pybind_X86_and_ARM64/tmp/
 *.trt
 *.pt
 
+# Generated debug/visualization outputs (GIFs, PNGs) -- regenerable from
+# scripts, not source content. Excludes the whole data_visualization/ tree
+# and any *_check/ output dirs created by data_visual_script/*.py.
+data_visualization/
+*.gif
+data_process/viz/
+data_visual_script/out/
+
+# Downloaded/local checkpoint bundles (config + .pt together) -- keep code,
+# exclude the model weights bundle entirely.
+sonic_pretrained/
+
+# Raw PICO SMPL streaming captures / teleop logs -- large per-frame .npz
+# dumps, not source content (see model_eval/PICO_SMPL_STREAMING_DATASETS_NOTE.md).
+logs/
+paired_smpl_raw/
+paired_smpl_g1_deploy/
+reuben_testclip_0/
+gear_sonic_deploy/reference/recorded_motion/
+gear_sonic_deploy/reference/evaluation_set/
+

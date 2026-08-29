@@ -22,8 +22,59 @@ That `root_quat` is also what's streamed as body_quat_w (smpl_anchor_orientation
 
 Used by run_sim_eval.py to drive per-clip simulation evaluation.
 
-Usage:
+CLI arguments:
+  --path         (required) clip path: smpl_filtered .pkl, raw AMASS .npz, or LAFAN .bvh
+  --port         int, default 5556      ZMQ publish port
+  --fps          float, default 50.0    playback frame rate
+  --loops        int, default 1         number of times to loop the clip
+  --settle       float, default 1.0     seconds to hold the first frame before playing
+                                        (lets the policy/robot settle into the pose)
+  --visualize    flag                   enable the live 3D LiveSkeleton matplotlib viewer
+  --vis_every    int, default 5         render every Nth frame in the viewer
+  --no_official  flag                   skip the official per-frame root-rotation removal
+                                        transform described above (debugging only)
+
+Usage (basic):
   .venv_teleop/bin/python stream_clip_mode2.py --path <clip> --fps 50 [--loops 1]
+
+Usage examples (from data_process/, real clips used in this repo):
+  # LAFAN1, with live 3D visualization and a 2s settle before playback
+  .venv_teleop/bin/python ./data_process/stream_clip_mode2.py \\
+      --path ../ego_dataset/lafan1_smpl_filtered_FIXED/walk1_subject1.pkl \\
+      --fps 50 --settle 2.0 --visualize
+
+  # AMASS (smpl_filtered v2)
+  .venv_teleop/bin/python ./data_process/stream_clip_mode2.py \\
+      --path ../ego_dataset/amass_smpl_filtered_v2/ACCAD__Male2Walking_c3d__B10_-__Walk_turn_left_45_poses.pkl \\
+      --fps 50 --settle 2.0 --visualize
+
+  # AMASS (smpl_filtered FPS30 source)
+  .venv_teleop/bin/python ./data_process/stream_clip_mode2.py \\
+      --path ../ego_dataset/amass_smpl_filtered_FPS30/CMU__CMU__29__29_24_stageii.pkl \\
+      --fps 50 --settle 2.0 --visualize
+
+  .venv_teleop/bin/python ./data_process/stream_clip_mode2.py \\
+      --path ../ego_dataset/amass_smpl_filtered_FPS30/EyesJapanDataset__Eyes_Japan_Dataset__kudo__walk-23-shuffle_oneleg-kudo_stageii.pkl \\
+      --fps 50 --settle 2.0 --visualize
+
+Prerequisites for any of the above (full sim2sim pipeline):
+  1. MuJoCo sim already running:
+       env -u CYCLONEDDS_HOME .venv_sim/bin/python gear_sonic/scripts/run_sim_loop.py
+  2. g1_deploy_onnx_ref running with --input-type zmq, with ']' then Enter sent
+     via stdin to enter CONTROL state and enable ZMQ streaming mode.
+  3. THEN run this script to publish the clip over ZMQ (port 5556 by default);
+     it streams the clip once and exits.
+
+Orchestrated (called as a subprocess) by:
+  - model_eval/run_sim_eval.py        (per-clip batch simulation evaluation)
+  - model_eval/visualize_tracker_sim.py (paired with sim tracker recording)
+
+Reused as a library (not directly invoked) by:
+  - data_process/normalize_split_test.py
+  - data_process/convert_lafan_to_smpl_filtered.py
+  both `import stream_clip_mode2 as S` to reuse `official_root_quat_w()`,
+  `_YTOZ`, `_BASE_CONJ` for consistent Y-up->Z-up root-rotation math shared
+  between the offline conversion pipeline and this live streaming path.
 """
 import argparse
 import os

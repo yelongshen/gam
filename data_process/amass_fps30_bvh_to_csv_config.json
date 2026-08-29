@@ -1,0 +1,9 @@
+{
+        "import_folder": "/home/grease/gam/data/amass_bvh_FPS30",
+        "export_folder": "/home/grease/gam/data/amass_csv_FPS30",
+        "batch_size": 100,
+        "retargeter": "Newton",
+        "retarget_source": "soma",
+        "retarget_target": "unitree_g1",
+        "retarget_source_facing_direction": "Mujoco"
+}

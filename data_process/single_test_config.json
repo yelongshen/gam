@@ -1,0 +1,9 @@
+{
+        "import_folder": "/home/grease/gam/data/bvh_single_test",
+        "export_folder": "/home/grease/gam/data/csv_single_test",
+        "batch_size": 1,
+        "retargeter": "Newton",
+        "retarget_source": "soma",
+        "retarget_target": "unitree_g1",
+        "retarget_source_facing_direction": "Mujoco"
+}

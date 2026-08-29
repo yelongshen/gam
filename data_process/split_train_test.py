@@ -1,10 +1,43 @@
-"""Train/test split for categorized + QC'd motion dataset (policy A/B/C)."""
+"""
+Train/test split for the categorized + QC'd motion dataset.
+
+Supports three leakage-control policies:
+
+  --leakage sequence   (policy B, DEFAULT)
+        Sample the test set at the sequence level, then remove from TRAIN any
+        clip that is a NEAR-DUPLICATE of a test clip (same subject_id + same
+        category + very similar length/kinematic signature). Keeps most of the
+        training data while preventing the same/near-same motion from leaking.
+
+  --leakage subject    (policy A, strictest)
+        No subject_id may appear in both TRAIN and TEST. Safest but very costly
+        for AMASS (one subject owns hundreds of clips).
+
+  --leakage source     (policy C)
+        Hold out whole sub-datasets (e.g. SFU, HumanEva) for TEST.
+
+Test pool is restricted to clean clips: qc_pass==1 AND outlier_flag==0
+(unless --allow_outliers_in_test).
+
+OOD handling:
+  --ood_test_only      Put clean OOD clips into TEST (capped at --per_category)
+                       and exclude OOD from TRAIN entirely. Recommended because
+                       OOD is tiny (~401 clips) and is meant to measure
+                       generalization, not to be trained on.
+
+Outputs:
+    split_test.csv, split_train.csv, split_summary.txt
+
+Usage:
+    .venv_sim/bin/python split_train_test.py                       # policy B, 400/cat
+    .venv_sim/bin/python split_train_test.py --ood_test_only
+    .venv_sim/bin/python split_train_test.py --leakage subject
+"""
 import csv
 import argparse
 import random
-import re
-import os
 from collections import defaultdict, Counter
+
 import numpy as np
 
 CATEGORIES = [
@@ -14,10 +47,14 @@ CATEGORIES = [
     "Unstructured / OOD",
 ]
 OOD = "Unstructured / OOD"
-SIG_KEYS = ['n_frames', 'mean_speed', 'max_speed', 'max_jerk', 'foot_skate', 'float_gap']
+
+# features (from motion_qc.csv) used to build a near-duplicate signature
+SIG_KEYS = ['n_frames', 'mean_speed', 'max_speed', 'max_jerk',
+            'foot_skate', 'float_gap']
 
 
 def robust_scale(rows):
+    """Return (median, mad) per SIG_KEY for normalizing signatures."""
     scale = {}
     for k in SIG_KEYS:
         v = np.array([float(r[k]) for r in rows], dtype=float)
@@ -57,13 +94,18 @@ def main():
     ap.add_argument('--qc_csv', default='motion_qc.csv')
     ap.add_argument('--per_category', type=int, default=400)
     ap.add_argument('--seed', type=int, default=42)
-    ap.add_argument('--leakage', choices=['sequence', 'subject', 'source'], default='sequence')
-    ap.add_argument('--dup_tol', type=float, default=0.6)
-    ap.add_argument('--dup_frame_tol', type=float, default=0.05)
+    ap.add_argument('--leakage', choices=['sequence', 'subject', 'source'],
+                    default='sequence')
+    ap.add_argument('--dup_tol', type=float, default=0.6,
+                    help='near-dup L2 distance threshold in scaled feature space '
+                         '(smaller = stricter; sequence mode only)')
+    ap.add_argument('--dup_frame_tol', type=float, default=0.05,
+                    help='relative frame-count difference to still count as dup')
     ap.add_argument('--ood_test_only', action='store_true')
     ap.add_argument('--keep_env_support', action='store_true',
-                    help='keep motions needing chairs/stairs/handrails/etc. '
-                         '(excluded by default: flat-ground sim has no such geometry)')
+                    help='keep motions that need chairs/stairs/handrails/etc. '
+                         '(excluded by default: the flat-ground sim has no such '
+                         'geometry, so those references are untrackable)')
     ap.add_argument('--allow_outliers_in_test', action='store_true')
     ap.add_argument('--include_failed_in_train', action='store_true')
     ap.add_argument('--test_out', default='split_test.csv')
@@ -76,6 +118,7 @@ def main():
         r['qc_pass'] = int(r['qc_pass'])
         r['outlier_flag'] = int(r.get('outlier_flag', 0) or 0)
 
+    # drop environment-support motions from BOTH splits unless asked to keep
     n_env = 0
     if not args.keep_env_support:
         before = len(rows)
@@ -95,6 +138,7 @@ def main():
             return False
         return True
 
+    # ── choose TEST set ─────────────────────────────────────────────────────
     test_ids = set()
     test_rows = []
     warnings = []
@@ -103,7 +147,8 @@ def main():
         by_cat_src = defaultdict(lambda: defaultdict(list))
         for r in rows:
             if test_eligible(r):
-                by_cat_src[r['category']][r['subject_id'].split('/')[0]].append(r)
+                src = r['subject_id'].split('/')[0]  # dataset name
+                by_cat_src[r['category']][src].append(r)
         for c in CATEGORIES:
             srcs = list(by_cat_src[c].keys())
             random.shuffle(srcs)
@@ -118,6 +163,7 @@ def main():
             for r in picked:
                 test_ids.add(id(r)); test_rows.append(r)
     else:
+        # sequence & subject modes: sample sequences per category
         by_cat = defaultdict(list)
         for r in rows:
             if test_eligible(r):
@@ -133,11 +179,12 @@ def main():
 
     test_subjects = set(r['subject_id'] for r in test_rows)
 
+    # ── near-dup index for sequence mode ────────────────────────────────────
     dup_index = defaultdict(list)
     if args.leakage == 'sequence':
         for r in test_rows:
-            dup_index[(r['subject_id'], r['category'])].append(
-                (signature(r, scale), float(r['n_frames'])))
+            key = (r['subject_id'], r['category'])
+            dup_index[key].append((signature(r, scale), float(r['n_frames'])))
 
     def is_near_dup_of_test(r):
         key = (r['subject_id'], r['category'])
@@ -146,11 +193,13 @@ def main():
         sig = signature(r, scale)
         nf = float(r['n_frames'])
         for tsig, tnf in dup_index[key]:
-            if abs(nf - tnf) / max(tnf, 1.0) <= args.dup_frame_tol and \
+            frame_rel = abs(nf - tnf) / max(tnf, 1.0)
+            if frame_rel <= args.dup_frame_tol and \
                np.linalg.norm(sig - tsig) <= args.dup_tol:
                 return True
         return False
 
+    # ── build TRAIN set ─────────────────────────────────────────────────────
     train_rows = []
     dropped_dup = dropped_subject = dropped_ood = dropped_source = 0
     test_sources = set(r['subject_id'].split('/')[0] for r in test_rows)
@@ -166,7 +215,8 @@ def main():
         if args.leakage == 'subject' and r['subject_id'] in test_subjects:
             dropped_subject += 1
             continue
-        if args.leakage == 'source' and r['subject_id'].split('/')[0] in test_sources:
+        if args.leakage == 'source' and \
+                r['subject_id'].split('/')[0] in test_sources:
             dropped_source += 1
             continue
         if args.leakage == 'sequence' and is_near_dup_of_test(r):
@@ -174,6 +224,7 @@ def main():
             continue
         train_rows.append(r)
 
+    # ── write CSVs ──────────────────────────────────────────────────────────
     fieldnames = list(rows[0].keys()) + ['split']
     with open(args.test_out, 'w', newline='') as fh:
         w = csv.DictWriter(fh, fieldnames=fieldnames)
@@ -186,6 +237,7 @@ def main():
         for r in train_rows:
             rr = dict(r); rr['split'] = 'train'; w.writerow(rr)
 
+    # ── summary ─────────────────────────────────────────────────────────────
     test_cat = Counter(r['category'] for r in test_rows)
     train_cat = Counter(r['category'] for r in train_rows)
     test_src = Counter(r['source'] for r in test_rows)
@@ -200,10 +252,11 @@ def main():
     L.append(f"Target per-category test size : {args.per_category}")
     L.append(f"Seed                          : {args.seed}")
     L.append(f"OOD test-only                 : {args.ood_test_only}")
-    L.append(f"Env-support removed           : {n_env}"
-             + ("  (kept via --keep_env_support)" if args.keep_env_support else ""))
+    L.append(f"Env-support clips removed     : {n_env}"
+             + ("  (kept: --keep_env_support)" if args.keep_env_support else ""))
     if args.leakage == 'sequence':
-        L.append(f"Near-dup tol (L2 / frame%)    : {args.dup_tol} / {args.dup_frame_tol*100:.0f}%")
+        L.append(f"Near-dup tol (L2 / frame%)    : {args.dup_tol} / "
+                 f"{args.dup_frame_tol*100:.0f}%")
     L.append("")
     L.append(f"TEST  total : {len(test_rows):,}   sources: {dict(test_src)}")
     for c in CATEGORIES:
@@ -226,9 +279,11 @@ def main():
     L.append(f"Subjects in TEST  : {len(test_subjects)}")
     L.append(f"Subjects in TRAIN : {len(train_subjects)}")
     if args.leakage == 'subject':
-        L.append(f"Subject overlap   : {len(overlap)}  {'(LEAKAGE!)' if overlap else '(clean, disjoint)'}")
+        L.append(f"Subject overlap   : {len(overlap)}  "
+                 f"{'(LEAKAGE!)' if overlap else '(clean, disjoint)'}")
     else:
-        L.append(f"Subject overlap   : {len(overlap)}  (expected for {args.leakage} mode; exact/near dups removed)")
+        L.append(f"Subject overlap   : {len(overlap)}  "
+                 f"(expected for {args.leakage} mode; exact/near dups removed)")
     if warnings:
         L.append("")
         L.append("WARNINGS:")

@@ -48,7 +48,14 @@ def convert_one(bvh_path):
     src_fps = 30.0
     duration = (T0 - 1) / src_fps
     t_src = np.arange(T0) / src_fps
-    t_tgt = np.arange(0, duration, 1.0 / N.TARGET_FPS)
+    # FIX: np.arange(0, duration, step) has an EXCLUSIVE stop bound, so
+    # whenever `duration` is an exact multiple of the target frame period
+    # (e.g. TARGET_FPS == src_fps, or duration*TARGET_FPS is an integer),
+    # the very last frame (at t == duration) gets silently dropped,
+    # producing T-1 frames instead of T. Use linspace with an explicit,
+    # rounded frame count instead, which always includes the endpoint.
+    num_tgt = int(round(duration * N.TARGET_FPS)) + 1
+    t_tgt = np.linspace(0, duration, num_tgt, endpoint=True)
     if len(t_tgt) < 4:
         return None
     j50 = N._interp_linear(t_src, j_raw, t_tgt)
@@ -64,7 +71,18 @@ def convert_one(bvh_path):
     F0 = np.column_stack([right0, fwd0, up0])
     F0_tgt = np.eye(3)
     R_align = F0_tgt @ F0.T
-    aligned_joints = j50 @ R_align.T
+    # FIX: rotate around the frame-0 root position (pivot), not the world
+    # origin. Rotating absolute (far-from-origin) coordinates directly by
+    # R_align introduces a spurious lever-arm displacement in root height/
+    # position whenever up0 isn't *exactly* world-up (e.g. a small ~2.5deg
+    # tilt at 500+cm from origin causes a ~24cm height error). Rotating
+    # about the root's own frame-0 position preserves the true root height
+    # while still correctly canonicalizing orientation. Note: pose_aa and
+    # smpl_joints are unaffected either way, since they're computed from
+    # *differences* between aligned_joints entries, which are invariant to
+    # the choice of rotation pivot.
+    root0 = j50[0:1, 0:1, :]
+    aligned_joints = (j50 - root0) @ R_align.T + root0
 
     # Step 5: derive pose_aa[:, :3] from the canonicalized joints, per frame.
     up = aligned_joints[:, 12] - aligned_joints[:, 0]
