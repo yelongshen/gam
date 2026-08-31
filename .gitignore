@@ -226,3 +226,9 @@ reuben_testclip_0/
 gear_sonic_deploy/reference/recorded_motion/
 gear_sonic_deploy/reference/evaluation_set/
 
+# Excluded/QC-filtered raw motion .pkl clips (data, not source content) and
+# scratch/backup files left over from editing.
+data_process/excluded_clips/
+*.bak
+gear_sonic/scripts/note.txt
+
