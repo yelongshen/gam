@@ -104,6 +104,19 @@ Visualize with:
     --out_dir data_visualization/gmr_retarget_check --frame_step 4
 ```
 
+## Evaluation Results
+
+`logs_pkl/` (smpl) + the retargeted `motion_lib` data (robot) were combined into
+`pico_evalset` and evaluated across three checkpoints — see
+**`notes_pico_evalset_3model_comparison.md`** in this folder. Headline findings:
+
+- No checkpoint universally dominates on this teleop-specific set (unlike the AMASS
+  evalset, where `RELEASED` wins — see `notes_amass_108clips_3model_comparison.md`).
+- `paired_smpl_raw_clip_2` and `paired_smpl_raw_clip_5` fail across **all** checkpoints
+  and both `num_envs` settings (progress ~0.10–0.20).
+- `_raw_clip` clips are systematically harder than the `_deploy_clipreal_*` ones.
+- Results are sensitive to `num_envs`; fix it when comparing checkpoints.
+
 Also checked but currently **empty** (no recorded frames yet):
 - `logs/smpl_raw/`
 - `gear_sonic_deploy/reference/evaluation_set_raw_smpl/`
