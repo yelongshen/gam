@@ -228,6 +228,21 @@ reuben_testclip_0/
 # above via data_process/pico_to_smpl_filtered.py (--target_fps sets the rate).
 logs_pkl/
 logs_pkl_FPS*/
+
+# Root-level scratch scripts/notes. The repo root is the CWD for every script
+# invocation, so new .py/.md files naturally land here and then get COPIED
+# (not moved) into data_process/ | model_eval/ | data_visual_script/ |
+# data_analysis_script/ and committed from there -- leaving the root original
+# untracked forever, silently rotting out of sync with the real copy.
+# These patterns are ROOT-ONLY (leading slash), so subfolders stay tracked.
+# To add a genuinely new top-level script, use `git add -f <file>`.
+/*.py
+/*.md
+!/README.md
+!/DOCUMENTATION_INDEX.md
+!/PROJECT_SUMMARY.md
+!/QUICK_REFERENCE.md
+!/download_from_hf.py
 gear_sonic_deploy/reference/recorded_motion/
 gear_sonic_deploy/reference/evaluation_set/
 
