@@ -223,6 +223,11 @@ logs/
 paired_smpl_raw/
 paired_smpl_g1_deploy/
 reuben_testclip_0/
+
+# Converted smpl_filtered .pkl datasets -- regenerable from the raw captures
+# above via data_process/pico_to_smpl_filtered.py (--target_fps sets the rate).
+logs_pkl/
+logs_pkl_FPS*/
 gear_sonic_deploy/reference/recorded_motion/
 gear_sonic_deploy/reference/evaluation_set/
 

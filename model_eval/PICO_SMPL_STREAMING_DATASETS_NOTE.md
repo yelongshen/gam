@@ -8,12 +8,101 @@ verification, root-orientation correction work, deploy-vs-raw comparison).
 
 | Directory | Frames | Frame-index range | Schema | Notes |
 |---|---|---|---|---|
-| `logs/smpl_raw_real_robot/` | 51,438 | `000000` – ... | basic (`smpl_pose`, `smpl_joints`, `body_quat_w`, `joint_pos`, `joint_vel`, ...) | Explicitly labeled `_real_robot` — captured from an actual hardware PICO session (not sim). Largest single recording found. |
-| `logs/yelong_cliptest_0/` | 2,000 | `144143` – ... | basic | Yelong's first raw PICO take. Source of the many `gamc/storage/test/pkl_playback_yelong_*` axis-correction debugging variants (NOT independent recordings — all derived from this + `yelong_cliptest_1`). |
-| `logs/yelong_cliptest_1/` | 1,000 | (later range) | basic | Yelong's second raw PICO take. |
-| `reuben_testclip_0/` | 10,000 | `000000` – ... | basic | Reuben's raw PICO take. |
-| `paired_smpl_raw/` | 13,908 | `011572` – ... | **rich** (adds `vr_position`, `vr_orientation`, `frame_index`, `left/right_trigger`, `left/right_grip`, `pico_dt`, `pico_fps`, `timestamp_realtime`, `timestamp_monotonic`, `left/right_hand_joints`, `toggle_data_collection`, `toggle_data_abort`, `heading_increment`) | Richer/later-generation capture format vs. the 4 above. Frame-index range does NOT overlap with `paired_smpl_g1_deploy` below. |
-| `paired_smpl_g1_deploy/` | 33,596 | `081019` – ... | rich (identical schema to `paired_smpl_raw`) | Despite the "paired" naming, this does NOT appear to be a frame-aligned twin of `paired_smpl_raw` (non-overlapping frame-index ranges, different total counts) — relationship between the two is still unconfirmed. |
+| `logs/smpl_raw_real_robot/` | 51,438 | `000000` – `051437` | basic (`smpl_pose`, `smpl_joints`, `body_quat_w`, `joint_pos`, `joint_vel`, ...) | Explicitly labeled `_real_robot` — captured from an actual hardware PICO session (not sim). Largest single recording found. |
+| `logs/yelong_cliptest_0/` | 2,000 | `144143` – `146142` | basic | Yelong's first raw PICO take. Source of the many `gamc/storage/test/pkl_playback_yelong_*` axis-correction debugging variants (NOT independent recordings — all derived from this + `yelong_cliptest_1`). |
+| `logs/yelong_cliptest_1/` | 1,000 | `146143` – `147142` | basic | Yelong's second raw PICO take. |
+| `reuben_testclip_0/` | 10,000 | `000000` – `009999` | basic | Reuben's raw PICO take. |
+| `paired_smpl_raw/` | 13,908 | `011572` – `025479` | **rich** (adds `vr_position`, `vr_orientation`, `frame_index`, `left/right_trigger`, `left/right_grip`, `pico_dt`, `pico_fps`, `timestamp_realtime`, `timestamp_monotonic`, `left/right_hand_joints`, `toggle_data_collection`, `toggle_data_abort`, `heading_increment`) | Richer/later-generation capture format vs. the 4 above. Frame-index range does NOT overlap with `paired_smpl_g1_deploy` below. |
+| `paired_smpl_g1_deploy/` | 33,596 | `081019` – `114614` | rich (identical schema to `paired_smpl_raw`) | Despite the "paired" naming, this does NOT appear to be a frame-aligned twin of `paired_smpl_raw` (non-overlapping frame-index ranges, different total counts) — relationship between the two is still unconfirmed. |
+
+### Derived Action Segments (Symlinked Subsets)
+
+The following datasets are clean, single-action sub-segments systematically extracted from the raw recordings above using `detect_action_clips.py` (which detects basic locomotion, jumping, waving, etc., based on kinematics thresholding):
+
+| Directory | Frames | Segment Range | Source | Label |
+|---|---|---|---|---|
+| `logs/reuben_cliptest_0/` | 600 | `[0, 600)` | `reuben_testclip_0` | walking |
+| `logs/reuben_cliptest_1/` | 1,500 | `[3000, 4500)` | `reuben_testclip_0` | walking |
+| `logs/reuben_cliptest_2/` | 1,500 | `[7000, 8500)` | `reuben_testclip_0` | walking |
+| `logs/paired_smpl_g1_deploy_clipreal_0/` | 1,500 | `[1000, 2500)` | `paired_smpl_g1_deploy` | (manually requested range) |
+| `logs/paired_smpl_g1_deploy_clipreal_1/` | 800 | `[3000, 3800)` | `paired_smpl_g1_deploy` | (manually requested range) |
+| `logs/paired_smpl_g1_deploy_clipreal_2/` | 1,700 | `[4200, 5900)` | `paired_smpl_g1_deploy` | (manually requested range) |
+| `logs/paired_smpl_g1_deploy_clipreal_3/` | 1,800 | `[6000, 7800)` | `paired_smpl_g1_deploy` | (manually requested range) |
+| `logs/paired_smpl_g1_deploy_clipreal_4/` | 700 | `[8800, 9500)` | `paired_smpl_g1_deploy` | (manually requested range) |
+| `logs/paired_smpl_g1_deploy_clipreal_5/` | 1,200 | `[9800, 11000)` | `paired_smpl_g1_deploy` | (manually requested range) |
+| `logs/paired_smpl_g1_deploy_clipreal_6/` | 1,500 | `[13500, 15000)` | `paired_smpl_g1_deploy` | (manually requested range) |
+| `logs/paired_smpl_g1_deploy_clipreal_7/` | 1,600 | `[19300, 20900)` | `paired_smpl_g1_deploy` | (manually requested range) |
+| `logs/paired_smpl_raw_clip_0/` | 2,500 | `[0, 2500)` | `paired_smpl_raw` | (manually requested range) |
+| `logs/paired_smpl_raw_clip_1/` | 2,700 | `[2800, 5500)` | `paired_smpl_raw` | (manually requested range) |
+| `logs/paired_smpl_raw_clip_2/` | 1,900 | `[5600, 7500)` | `paired_smpl_raw` | (manually requested range) |
+| `logs/paired_smpl_raw_clip_3/` | 700 | `[7600, 8300)` | `paired_smpl_raw` | (manually requested range) |
+| `logs/paired_smpl_raw_clip_4/` | 2,100 | `[8600, 10700)` | `paired_smpl_raw` | (manually requested range) |
+| `logs/paired_smpl_raw_clip_5/` | 3,000 | `[10900, 13900)` | `paired_smpl_raw` | (manually requested range) |
+| `logs/smpl_raw_real_robot_clip_0/` | 2,000 | `[0, 2000)` | `smpl_raw_real_robot` | (manually requested range) |
+
+*Note: Frame ranges for derived sets correspond to their array indices in the sorted source sequence, not literal filename suffix boundaries.*
+
+## Converted `smpl_filtered` Datasets (`logs_pkl/`, `logs_pkl_FPS30/`)
+
+Every clip directory above is also available as a single `smpl_filtered`-format `.pkl`,
+produced by `data_process/pico_to_smpl_filtered.py` (see `SMPL_FILTERED_DATA_FORMAT.md`).
+These are **generated artifacts** (gitignored) — regenerate with:
+
+```bash
+for d in logs/*clip*/; do
+  .venv_sim/bin/python data_process/pico_to_smpl_filtered.py \
+      --dir "$d" --out "logs_pkl/$(basename $d).pkl" --target_fps 50
+done
+```
+
+| Directory | Clips | Target fps | Total frames | Notes |
+|---|---|---|---|---|
+| `logs_pkl/` | 20 | 50 | 17,901 (358.1 s) | Matches the `stream_clip_mode2.py` default rate. |
+| `logs_pkl_FPS30/` | 20 | 30 | 10,744 (358.1 s) | Source for the GMR retargeting run below. |
+
+### Conversion conventions (verified against the capture source)
+
+The raw capture (`pico_manager_thread_server.py` → `process_smpl_joints()`) stores fields in a
+**different frame** than `smpl_filtered` expects, so the converter inverts them:
+
+- `body_quat_w` is **already** Z-up + base-rot-removed (`smpl_root_ytoz_up` then
+  `remove_smpl_base_rot`). `pose_aa[:, :3]` is therefore the *inverse* of that, so
+  `stream_clip_mode2.official_root_quat_w(pose_aa[:, :3])` reproduces `body_quat_w` exactly.
+- Raw `smpl_joints` are **already de-rotated** (`quat_apply(quat_inv(body_quat_w), joints)`),
+  whereas `smpl_filtered` keeps root rotation and pins only root *translation*. The converter
+  therefore re-applies `quat_apply(body_quat_w, raw)`, which lands the pelvis exactly on
+  `PELVIS_OFFSET` (SMPL-X rest `J[0]`).
+- Joints come from **SMPL-X** FK (`compute_human_joints`, 55-joint tree, output indices
+  `[0..21] + [39, 54]`) — *not* the standard SMPL 24-joint tree, so `fix_amass.smpl_fk` is
+  the wrong model for validating this data.
+- Rotations are resampled with **SLERP**, never linearly: the PICO root sits at `|aa| ≈ 2.8 rad`
+  and crosses the ±π wrap-around (measured jumps of ~2π), which linear interpolation turns into
+  garbage (1.38 quaternion / 0.88 m joint error).
+
+`--verify` (on by default) hard-fails if a converted clip would not stream identically to the
+validated `pico_replay_server.py` raw path; all 20 clips pass at ~1e-8.
+
+**Known limitation:** `transl` is all-zero (`--transl_mode zero`) because the raw capture stores
+no pelvis world position — only head/hand VR anchors. Pose fidelity is unaffected (`smpl_joints`
+is pelvis-pinned by design), but there is no world locomotion, so walking clips play *in place*.
+
+## Retargeted G1 `motion_lib` Data (`/home/grease/GMR/teleop_retargeted_g1_motion_lib/`)
+
+`logs_pkl_FPS30/` retargeted to the Unitree G1 via GMR — 20 `.pkl` files, one per clip, in
+`motion_lib` format (`root_trans_offset` (T,3), `pose_aa` (T,30,3), `dof` (T,29),
+`root_rot` (T,4), `smpl_joints` (zeros), `fps=30`). Frame counts match the 30 fps sources
+exactly, and root height is a sensible 0.76–0.83 m (no foot-through-floor).
+
+Because the source `transl` is zero (above), **root travel is ~0.00–0.03 m in every clip** —
+the retargeted robot articulates correctly but never moves across the floor.
+
+Visualize with:
+
+```bash
+.venv_sim/bin/python data_visual_script/visualize_robot_pkl.py \
+    --pkl_dir /home/grease/GMR/teleop_retargeted_g1_motion_lib \
+    --out_dir data_visualization/gmr_retarget_check --frame_step 4
+```
 
 Also checked but currently **empty** (no recorded frames yet):
 - `logs/smpl_raw/`
