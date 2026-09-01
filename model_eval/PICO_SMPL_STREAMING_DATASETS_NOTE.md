@@ -13,7 +13,7 @@ verification, root-orientation correction work, deploy-vs-raw comparison).
 | `logs/yelong_cliptest_1/` | 1,000 | `146143` – `147142` | basic | Yelong's second raw PICO take. |
 | `reuben_testclip_0/` | 10,000 | `000000` – `009999` | basic | Reuben's raw PICO take. |
 | `paired_smpl_raw/` | 13,908 | `011572` – `025479` | **rich** (adds `vr_position`, `vr_orientation`, `frame_index`, `left/right_trigger`, `left/right_grip`, `pico_dt`, `pico_fps`, `timestamp_realtime`, `timestamp_monotonic`, `left/right_hand_joints`, `toggle_data_collection`, `toggle_data_abort`, `heading_increment`) | Richer/later-generation capture format vs. the 4 above. Frame-index range does NOT overlap with `paired_smpl_g1_deploy` below. |
-| `paired_smpl_g1_deploy/` | 33,596 | `081019` – `114614` | rich (identical schema to `paired_smpl_raw`) | Despite the "paired" naming, this does NOT appear to be a frame-aligned twin of `paired_smpl_raw` (non-overlapping frame-index ranges, different total counts) — relationship between the two is still unconfirmed. |
+| `paired_smpl_g1_deploy/` | 33,596 | `081019` – `114614` | rich (identical schema to `paired_smpl_raw`) | **Human-side input of the `/home/grease/g1_deploy_run` real-robot session** (Aug 6, 18:30, matched to +1.99 s — see "Pairing With Real-Robot Deploy Runs" below). The `"paired"` prefix refers to *that* robot-side pairing, NOT to `paired_smpl_raw`, which is a separate earlier session. |
 
 ### Derived Action Segments (Symlinked Subsets)
 
@@ -157,15 +157,93 @@ toggle_data_abort       (1,)
 heading_increment       (1,)
 ```
 
+## Pairing With Real-Robot Deploy Runs (`/home/grease/g1_deploy_run*`)
+
+Real-robot deployment logs are `state_logger` CSV bundles (`q.csv`, `dq.csv`, `base_quat.csv`,
+`action.csv`, `token_state.csv`, `motor_torque.csv`, `motor_temperature.csv`, ... +
+`metadata.json`). They carry `time_realtime_ms` (Unix epoch), and the rich PICO captures carry
+`timestamp_realtime`, so the two sides can be matched on **wall clock**.
+
+### Session timeline (all Aug 6, 2026)
+
+```text
+15:03:53  yelong_cliptest_0     ( 40 s)
+15:04:33  yelong_cliptest_1     ( 20 s)
+18:03:20  reuben_testclip_0     (209 s)
+18:07:20  paired_smpl_raw       (279 s)  ── pairs with recorded_motion/20260806/streamed_180732 (18:07:32)
+18:30:46  paired_smpl_g1_deploy (505 s)  ── pairs with g1_deploy_run       (18:30:48, +1.99 s)
+                                 ~184 s gap
+18:42:15  g1_deploy_run002      ( 78 s)  ── NO PICO pair (reference-motion run, see below)
+
+(separately: logs/smpl_raw_real_robot is Aug 11 17:14, 731 s — no deploy-run counterpart)
+```
+
+### ✅ `g1_deploy_run` ↔ `paired_smpl_g1_deploy`
+
+| | PICO (human input) | Robot (deploy output) |
+|---|---|---|
+| Start | 18:30:46.948 | 18:30:48.938 (**+1.99 s**) |
+| End | 18:39:11.585 | 18:39:26.758 (+15.17 s) |
+| Frames | 33,596 @ 66.6 Hz | 25,892 @ 50.0 Hz |
+| Overlap | **99.6%** of PICO | **97.1%** of robot |
+
+The streamer was started ~2 s before the deploy binary attached; the 15 s tail is the robot
+still running after streaming stopped. **This also resolves the `"paired"` naming**: the prefix
+does NOT mean it is a twin of `paired_smpl_raw` — it means *SMPL paired with the g1 deploy run*.
+Non-overlapping frame indices with `paired_smpl_raw` are expected (separate sessions).
+
+### ❌ `g1_deploy_run002` has no corresponding PICO SMPL data — by design
+
+It wasn't a teleop session at all.
+
+| | `g1_deploy_run` | `g1_deploy_run002` |
+|---|---|---|
+| `motion_name` | `"streamed"` + `"squat_001__A359"` | `"squat_001__A359"` only |
+| `encoder_mode` | `0` and **`2`** (Mode-2 = live SMPL stream) | `0` only — never Mode-2 |
+| `motion_playing` | `0` and `1` | `0` only |
+| Duration | 517.8 s | 78.2 s |
+| PICO pair | ✅ `paired_smpl_g1_deploy` | ❌ none exists |
+
+`encoder_mode == 2` is the Mode-2 live-SMPL path fed by `pico_manager`. `run002` never enters
+it and never logs `"streamed"` — it only replays the built-in reference motion
+`squat_001__A359` against `reference/real_example`. With no human in the loop there was no SMPL
+stream to record, so no counterpart capture can exist. **This conclusion does not depend on
+timestamps at all.**
+
+### Verifying that `smpl_raw_real_robot` is not `run002` under a reset clock
+
+Both PICO captures come from the same long-uptime host, so their two independent clocks
+cross-check each other:
+
+| | realtime Δ | monotonic Δ |
+|---|---|---|
+| `paired_smpl_g1_deploy` → `smpl_raw_real_robot` | 4.961 days | 4.947 days |
+
+They agree to 0.28% (ordinary NTP correction), and neither capture contains a single backward
+jump. A reset/relabel would break that agreement. Note the deploy runs show monotonic
+~2,000–2,800 s (robot onboard PC, freshly booted) vs PICO ~948,000–1,376,000 s (VR host, 11–16
+days uptime) — **different machines**, so only `realtime` is comparable across the two sides.
+
+> ⚠️ **Do NOT use the PICO `joint_pos` field to content-match against a deploy run's `q.csv`.**
+> It populates only indices 23–28 (hand/gripper DOFs from `G1GripperInverseKinematicsSolver`),
+> not the 29-DOF body state. A cross-correlation on it scores ~0.05 even for the *known-good*
+> `paired_smpl_g1_deploy` ↔ `g1_deploy_run` pair, i.e. the test is invalid, not the pairing.
+> For content-based confirmation use `base_quat` (robot) ↔ `body_quat_w` (PICO), or
+> `token_state.csv` ↔ PICO `smpl_joints` (in Mode-2 the tokens *are* the encoded SMPL input).
+
 ## Open Questions For Later Study
 
-1. What is the actual relationship between `paired_smpl_raw` and `paired_smpl_g1_deploy`
-   (same session continued, two different sessions, or one derived from the other)? Check
-   `timestamp_realtime` / `timestamp_monotonic` values to determine actual chronological
-   relationship rather than relying on `frame_index` filename ranges alone.
+1. ~~What is the actual relationship between `paired_smpl_raw` and `paired_smpl_g1_deploy`?~~
+   **RESOLVED** (see the pairing section above): they are two *separate* Aug 6 sessions, each
+   paired with its own robot-side recording — `paired_smpl_raw` ↔
+   `recorded_motion/20260806/streamed_180732/` (18:07), and `paired_smpl_g1_deploy` ↔
+   `g1_deploy_run` (18:30). The `"paired"` prefix refers to the robot-side pairing, not to a
+   relationship between the two PICO captures.
 2. Confirm whether `logs/yelong_cliptest_0/1` and `reuben_testclip_0` use the "basic" schema
    only, or also contain the richer VR/trigger/hand-joint fields (need to actually inspect one
    file from each — this note currently assumes "basic" based on the earlier session's
    discovery of `convert_yelong_clip_to_track_npz.py`, but hasn't been directly verified).
 3. Investigate why `logs/smpl_raw/` and `evaluation_set_raw_smpl/` are empty — were they meant
    to hold recordings that were never captured, or were their contents moved/deleted?
+4. `logs/smpl_raw_real_robot` (Aug 11, 731 s) is labelled `_real_robot` but has **no** deploy-run
+   counterpart on disk — was its robot-side log never saved, or stored elsewhere?
