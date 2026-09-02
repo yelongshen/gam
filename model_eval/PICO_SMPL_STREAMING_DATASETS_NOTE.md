@@ -121,15 +121,74 @@ Also checked but currently **empty** (no recorded frames yet):
 - `logs/smpl_raw/`
 - `gear_sonic_deploy/reference/evaluation_set_raw_smpl/`
 
-## Separately: Full C++ Deploy-Side Recording (CSV bundle, not `pose_*.npz`)
+## Separately: C++ Deploy-Side "streamed_*" Recordings (CSV bundle, not `pose_*.npz`)
 
-| Directory | Frames | Format |
-|---|---|---|
-| `gear_sonic_deploy/reference/recorded_motion/20260806/streamed_180732/` | 13,270 | CSV bundle: `smpl_joint.csv`, `smpl_pose.csv` (human side) + `joint_pos.csv`, `joint_vel.csv`, `body_pos.csv`, `body_quat.csv`, `body_lin_vel.csv`, `body_ang_vel.csv` (robot side). Session timestamp = Aug 6, 2026, 18:07:32. |
+| Directory | Frames | Rate | Session |
+|---|---|---|---|
+| `gear_sonic_deploy/reference/recorded_motion/20260806/streamed_180732/` | 13,270 | — | Aug 6, 18:07 |
+| `/home/grease/g1_robot_data/streamed_081851/` | 24,453 | **~70 Hz** | Aug 11 (see below) |
 
-This is the C++ deploy binary's own recorder output (different format from the raw per-frame
-`.npz` captures above), and uniquely captures **both** the human SMPL stream and the robot's
-tracked state simultaneously in one bundle.
+Both are the C++ deploy binary's own reference-motion recorder output. Files:
+`smpl_joint.csv` (72 col), `smpl_pose.csv` (63 col), `joint_pos.csv`/`joint_vel.csv` (29 col),
+`body_quat.csv` (4 col), `body_pos.csv`/`body_lin_vel.csv`/`body_ang_vel.csv` (3 col).
+
+> ⚠️ **Despite the robot-sounding filenames, these bundles are HUMAN-side only.**
+> Verified identical in BOTH bundles:
+> - `joint_pos` / `joint_vel` populate **only indices 23–28** (hand/gripper DOFs) — 23 of 29
+>   columns are exactly zero.
+> - `body_pos`, `body_lin_vel`, `body_ang_vel` are **entirely zero**.
+>
+> Only `smpl_joint`, `smpl_pose` and `body_quat` carry real data. This is inherent to Mode-2:
+> the stream carries SMPL, not robot joint state, so the robot-state fields are never filled.
+> For the robot's actual response use a `state_logger` bundle (`q.csv` etc., see below).
+>
+> There are also **no timestamp columns**, and row counts differ per file (e.g. 24,358–24,457)
+> because each stream is truncated independently when recording stops.
+
+### `streamed_081851` ⊂ `smpl_raw_real_robot` (verified by content)
+
+`streamed_081851` is **not** an independent recording — it is a **sub-segment of the Aug 11
+`logs/smpl_raw_real_robot` PICO capture**, re-recorded on the deploy side:
+
+| | value |
+|---|---|
+| Best Pearson r | **0.9356** (per-window normalized, 21 features: ankles/feet/wrists/head) |
+| True rate | **70.0 Hz** (NOT 50 Hz — matches PICO's 70.4 Hz, not the 50 Hz control loop) |
+| Duration | 24,350 frames ÷ 70 Hz = **347.9 s** |
+| Position in source | covers **[164.6 s, 512.5 s]** of the 730.7 s capture |
+
+So the relationship is: PICO records the **full** session upstream (731 s @ 70.4 Hz); the deploy
+binary records **what it actually received** over ZMQ (348 s @ 70 Hz), starting ~165 s later and
+stopping ~218 s earlier. Comparing the two isolates *transport* effects (dropped/stale frames)
+from *human* motion.
+
+> **Methodology warning — how to align these correctly.** Assuming 50 Hz for a `streamed_*`
+> bundle yields r = 0.25 and the wrong offset; a time-*warped* match (resampling both to equal
+> length) yields a misleading r = 0.74 at a bogus offset. Only a joint **offset × rate** search
+> with per-window normalization recovers the true answer (r = 0.94, 70 Hz). These bundles carry
+> no timestamps, so the rate must be solved for, never assumed.
+
+## Real-Robot `state_logger` Bundles Outside the Repo (`/home/grease/g1_robot_data/`)
+
+| Directory | Rows | Window | Mode | Pairs with |
+|---|---|---|---|---|
+| `g1_deploy_run/` | 25,892 | Aug 6 18:30:48 → 18:39:26 (518 s) | `encoder_mode` 0,2 | `paired_smpl_g1_deploy` |
+| `g1_deploy_run002/` | 3,913 | Aug 6 18:42:15 → 18:43:33 (78 s) | `encoder_mode` 0 only | — (reference motion) |
+| `g1_real_deploy_logs/` | 31,015 | **Aug 11 17:15:36 → 17:27:00 (684 s)** | `encoder_mode` 0,2 | **`logs/smpl_raw_real_robot`** |
+
+### Aug 11 session — the second complete human↔robot pair
+
+```text
+17:14:00  logs/smpl_raw_real_robot   (731 s, 70.4 Hz)  human, PICO-side, FULL session
+17:15:36  g1_real_deploy_logs        (684 s, 50 Hz)    robot, state_logger  (+96 s)
+   └─ streamed_081851                (348 s, 70 Hz)    human, deploy-side subset [164.6-512.5 s]
+17:26:11  (PICO ends)
+17:27:00  (robot ends, +49 s)
+```
+
+`g1_real_deploy_logs` uses the same `policy/low_latency/` checkpoint and logs
+`motion_name ∈ {"streamed", "squat_001__A359"}` with `encoder_mode ∈ {0, 2}` — genuine Mode-2
+teleop. This makes Aug 11 a **second, ~35% longer** sim2real pair alongside Aug 6.
 
 ## Rich-Schema Field Reference (`paired_smpl_raw` / `paired_smpl_g1_deploy`)
 
@@ -245,5 +304,8 @@ days uptime) — **different machines**, so only `realtime` is comparable across
    discovery of `convert_yelong_clip_to_track_npz.py`, but hasn't been directly verified).
 3. Investigate why `logs/smpl_raw/` and `evaluation_set_raw_smpl/` are empty — were they meant
    to hold recordings that were never captured, or were their contents moved/deleted?
-4. `logs/smpl_raw_real_robot` (Aug 11, 731 s) is labelled `_real_robot` but has **no** deploy-run
-   counterpart on disk — was its robot-side log never saved, or stored elsewhere?
+4. ~~`logs/smpl_raw_real_robot` (Aug 11, 731 s) is labelled `_real_robot` but has **no** deploy-run
+   counterpart on disk~~ — **RESOLVED**: the counterpart is
+   `/home/grease/g1_robot_data/g1_real_deploy_logs/` (Aug 11 17:15:36, 684 s, `encoder_mode`
+   0/2). It simply lives outside the repo. See "Real-Robot `state_logger` Bundles Outside the
+   Repo" above. The deploy-side human recording `streamed_081851` belongs to the same session.
