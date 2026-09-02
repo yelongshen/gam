@@ -162,6 +162,36 @@ binary records **what it actually received** over ZMQ (348 s @ 70 Hz), starting 
 stopping ~218 s earlier. Comparing the two isolates *transport* effects (dropped/stale frames)
 from *human* motion.
 
+#### The two are REDUNDANT — same data recorded twice
+
+With **local** re-alignment (per 20 s chunk, searching near the expected offset) the two agree
+essentially exactly:
+
+| metric | value |
+|---|---|
+| median local RMS (all 24 joints) | **0.0029 m** (2.9 mm) |
+| max local RMS | 0.0092 m (9.2 mm) |
+| best chunk | 0.0000–0.0013 m (numerical noise) |
+
+Residuals are at resampling-interpolation level, i.e. **`streamed_081851` carries no independent
+information** — it is the same SMPL stream as `smpl_raw_real_robot` over `[164.6 s, 512.5 s]`,
+just re-serialised at the deploy end. For analysis, prefer `smpl_raw_real_robot`: it is the
+superset (731 s vs 348 s), keeps per-frame timestamps, and retains the richer npz schema.
+
+`streamed_081851` remains useful only for (a) confirming what the deploy binary actually
+received, and (b) replay via the reference-motion path, which expects this CSV layout.
+
+#### Clock drift between the two recorders (~24,000 ppm)
+
+The optimal local offset slides monotonically **166.18 s → 164.06 s over 300 s** — a steady
+**-7.1 ms per second (~2.4%)** drift, because the two recorders use *independent, unsynchronised*
+clocks and the deploy side's nominal "70 Hz" is not exactly PICO's measured 70.4 Hz.
+
+This is why a **single global offset is not sufficient**: it fits the start well and accumulates
+~7 s of error by the end, which is what inflates the global RMS to 0.043 m (12.6% of signal
+scale) despite a 3 mm local match. **Always re-align locally** (or fit offset + rate) when
+comparing these two sources.
+
 > **Methodology warning — how to align these correctly.** Assuming 50 Hz for a `streamed_*`
 > bundle yields r = 0.25 and the wrong offset; a time-*warped* match (resampling both to equal
 > length) yields a misleading r = 0.74 at a bogus offset. Only a joint **offset × rate** search
