@@ -361,3 +361,77 @@ Sim replay feeds a clean 50 Hz stream with no drops. The real run had **10.8 % d
 and **19.9 % repeated-input steps**. To attribute sim-vs-real differences to *dynamics*, either
 replay the exact delivered sequence (the `best[]` index mapping reconstructs it) or restrict the
 comparison to clean stretches.
+
+---
+
+## 9. Policy compute time — what the robot logs can and cannot show
+
+**Question:** what is the latency distribution from "policy receives SMPL over ZMQ" to
+"policy outputs motor commands"?
+
+**Answer: the robot logs cannot provide it.** Three independent checks:
+
+1. **No timing column exists.** All 22 CSVs share the same 5-column prefix
+   (`index, time_ms, time_realtime_ms, time_monotonic_ms, ros_timestamp`) plus payload.
+   No duration or delay field is recorded.
+
+2. **Every sink shares one timestamp per row** — verified directly (row index 1):
+
+   ```
+   q.csv            ('1', '19.978', '1786493736908.572', '2069974.498')
+   action.csv       ('1', '19.978', '1786493736908.572', '2069974.498')
+   token_state.csv  ('1', '19.978', '1786493736908.572', '2069974.498')
+   motor_torque.csv ('1', '19.978', '1786493736908.572', '2069974.498')
+   ```
+
+   `state_logger.cpp` assembles **one entry per control step** and stamps every sink with that
+   single snapshot, so no *within-step* stage timing survives into the CSVs.
+
+3. **The binary measures it but discards it.** `g1_deploy_onnx_ref.cpp:4077–4082` computes
+   `obs_duration`, `policy_duration` and `motor_command_duration` and prints them every 50 ticks
+   — to **stdout only**. No stdout capture from the Aug 11 run exists on disk.
+
+### What the logs DO establish: an upper bound with percentiles
+
+The control thread is rate-limited to 20 ms
+(`CreateRecurrentThreadEx("control", …, control_dt_ * 1e6, …)`), so it sleeps away any slack and
+the period does **not** reveal compute time. It does, however, expose **overruns** — ticks that
+failed to finish inside their 20 ms budget — which bounds the compute from above.
+
+Measured over **21,977 control steps / 439.6 s** in the Mode-2 window:
+
+| percentile | period |
+|---|---|
+| p50 | 20.000 ms |
+| p90 | 20.016 ms |
+| p99 | 20.159 ms |
+| p99.9 | 20.497 ms |
+| max | 25.816 ms |
+
+| overrun | steps | share |
+|---|---|---|
+| > 20.5 ms | 22 | 0.100 % |
+| > 22 ms | 11 | 0.050 % |
+| > 25 ms | 1 | 0.005 % |
+| > 30 ms | 0 | **0 %** |
+
+**Conclusion:** total per-tick compute (obs + encoder + policy + motor command) stayed **under
+20 ms in 99.90 % of control steps**, worst case 25.8 ms, and **never exceeded 30 ms**. The policy
+comfortably sustains the 50 Hz control rate.
+
+> ⚠️ This is a **bound with a percentile, not a distribution**. It cannot distinguish a typical
+> tick taking 3 ms from one taking 18 ms — only that ~all of them fit inside 20 ms. The earlier
+> "< 20 ms" claims in §7 and the stage table are this bound, **inferred**, not a direct
+> measurement of policy inference time.
+
+### How to obtain the real distribution
+
+| option | gives | caveat |
+|---|---|---|
+| Capture stdout on the robot (`\| tee run.log`) next session | true on-robot obs/policy/motor durations | needs a hardware run; **free** |
+| Add the three durations to `state_logger`'s CSV set | permanent, per-step, on-robot | small C++ change |
+| Run the binary here (sim + streamer + policy, capture stdout) | same code path and models | **dev-box CPU, not the robot's** |
+| `onnxruntime` timing of `model_encoder.onnx` / `model_decoder.onnx` | network inference only | dev-box CPU; excludes obs assembly |
+
+The first two are the only ways to get numbers that describe the **robot**. Note `onnxruntime` is
+not installed in any of `.venv_sim`, `.venv_teleop`, `.venv-1`.
