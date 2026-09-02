@@ -215,6 +215,79 @@ differently to `Kd`, cannot be settled from these logs — it needs the firmware
 or a controlled hardware test. **The ankle parallel linkage remains a real sim/hardware
 mismatch (§3.3) but is not the cause of the gain anomaly.**
 
+## 3c. ⚠️ SECOND CORRECTION — there are TWO simulators, and §3 conflated them
+
+The constants are **duplicated, not shared** — defined independently in
+`gear_sonic/envs/manager_env/robots/g1.py` (IsaacLab, training) and
+`policy_parameters.hpp` (deploy). Duplication invites drift, so they were diffed.
+
+### ✅ Good news: the two copies have NOT diverged
+
+| group | stiffness | damping | armature |
+|---|---|---|---|
+| feet (ankle pitch/roll) | 28.5012 | 1.8144 | 0.007219 |
+| waist roll/pitch | 28.5012 | 1.8144 | 0.007219 |
+| waist_yaw | 40.1792 | 2.5579 | 0.010178 |
+| hip pitch/roll, knee | 99.0984 | 6.3088 | 0.025102 |
+| arms (`5020`) | 14.2506 | 0.9072 | 0.003610 |
+| wrist (`4010`) | 16.7783 | 1.0681 | 0.004250 |
+
+`g1.py` uses the identical formula (`ω = 2π·10`, `ζ = 2.0`, `Kp = armature·ω²`,
+`Kd = 2ζ·armature·ω`) and identical armature constants, including the same `2.0×` factor on
+feet and waist. Every value matches the compiled deploy header exactly. **So the policy is
+trained and deployed under the same nominal gains — this is not the source of the gap.**
+
+### ❌ But §3 was wrong about "the sim has no armature"
+
+There are **two different simulators**, and §3 inspected the wrong one:
+
+| | model | armature | friction | ankle linkage | role |
+|---|---|---|---|---|---|
+| **IsaacLab** | `g1.py` | ✅ **present** (per-joint `ImplicitActuatorCfg`) | ❌ none | ❌ serial | **training** |
+| **MuJoCo** | `g1_29dof.xml` | ❌ **absent** | ❌ none | ❌ serial | deploy-side sim testing |
+
+`g1.py` sets `armature=2.0*ARMATURE_5020` on feet/waist, `ARMATURE_7520_22` on hip/knee, etc.,
+and `effort_limit_sim=50` on the ankle. So §3.1's "no rotor armature" applies **only to the
+MuJoCo deploy-test model**, not to the environment the policy was trained in.
+
+**Revised omissions:**
+
+| omission | IsaacLab (training) | MuJoCo (deploy test) |
+|---|---|---|
+| rotor armature | ✅ modelled | ❌ **missing** |
+| joint friction | ❌ **missing** | ❌ **missing** |
+| ankle A/B linkage | ❌ **missing** | ❌ **missing** |
+| ankle torque limit | 50 N·m | ±50 N·m (real hits **72.2**) |
+
+Joint friction and the ankle linkage are absent from **both**, so they remain live gap
+candidates. The missing armature is a **MuJoCo-only** defect — it makes deploy-side sim testing
+inconsistent with training, which matters for Phase C.
+
+### The `Kd` finding survives this correction
+
+Since sim and deploy command the same `Kd = 1.8144`, the fitted excess is a
+**hardware-vs-model** effect, not a config mismatch. Conditioning was checked so the
+`Kp`/`Kd` split is not an artefact of collinearity:
+
+| joint | `std(e)` | `std(dq)` | `corr(e,dq)` | cond | `Kd` fitted | nominal |
+|---|---|---|---|---|---|---|
+| `L_ankle_pitch` | 0.330 | 0.445 | 0.25 | **1.5** | **3.01** | 1.81 |
+| `R_ankle_pitch` | 0.270 | 0.457 | 0.20 | **1.3** | **2.91** | 1.81 |
+| `waist_pitch` | 0.298 | 0.199 | 0.15 | **4.1** | **2.79** | 1.81 |
+| `L_hip_pitch` | 0.173 | 0.425 | 0.29 | 6.5 | 6.18 | 6.31 ✓ |
+| `L_sho_pitch` | 0.224 | 0.238 | 0.00 | 1.1 | 0.78 | 0.91 ✓ |
+| `L_ankle_roll` | 0.085 | 0.376 | 0.29 | 16.4 | 0.90 | 1.81 |
+| `R_ankle_roll` | 0.066 | 0.322 | 0.32 | 27.0 | 1.02 | 1.81 |
+
+The **pitch** result is robust: best-conditioned joints (cond 1.3–4.1), low collinearity, and
+`Kd` ≈ **1.6× nominal**. Physically this is extra velocity-proportional torque on hardware —
+viscous friction / back-EMF — which is exactly what **neither** simulator models
+(`frictionloss = 0` in MuJoCo; no friction term in `g1.py`).
+
+The **roll** result (`Kd` ≈ 0.5× nominal) is **weaker and should not be relied on**: those
+joints have 4–5× less position-error excitation (`std(e)` 0.066–0.085 vs 0.27–0.33) and 4–20×
+worse conditioning. Treat it as unresolved.
+
 ## 4. Conclusions
 
 1. ✅ **Torque delivery is not the gap.** R² > 0.999, gain ≈ 0.99. The real motor does what a
@@ -232,8 +305,8 @@ mismatch (§3.3) but is not the cause of the gain anomaly.**
 
 | # | Fix | Effort | Basis |
 |---|---|---|---|
-| 1 | Add `armature` per joint from `policy_parameters.hpp` | trivial (XML attr) | values already exist |
-| 2 | Add `frictionloss` per joint | small | needs §5 experiment to set values |
+| 1 | Add `armature` to **`g1_29dof.xml`** (MuJoCo only — IsaacLab already has it) | trivial (XML attr) | §3c; values already exist |
+| 2 | Add joint friction to **both** sims — the pitch `Kd` excess (1.6×) is a direct estimate | small | §3b, §3c |
 | 3 | Fix `Kd` on the six "2× 5020" joints (pitch ≈ 1.6× nominal, roll ≈ 0.5×) | small | §3b |
 | 4 | Raise ankle `actuatorfrcrange` — real `L_ankle_pitch` hits **72.2 N·m** vs ±50 in the XML | trivial | §3b |
 | 5 | Model the ankle A/B linkage (`<equality>`) — a real mismatch, but NOT the gain cause | medium | §3.3, §3b |
