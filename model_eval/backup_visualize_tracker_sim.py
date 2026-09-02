@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
-import run_sim_eval as R
+import model_eval.backup_run_sim_eval as R
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data_process"))
 import classify_motions as C
 

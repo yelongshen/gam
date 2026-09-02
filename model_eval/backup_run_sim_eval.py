@@ -26,7 +26,7 @@ import subprocess
 from collections import defaultdict
 
 import numpy as np
-import sim_eval_metrics as M
+import model_eval.backup_sim_eval_metrics as M
 
 REPO = "/home/grease/gam"
 DEPLOY = os.path.join(REPO, "gear_sonic_deploy")
