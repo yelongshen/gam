@@ -3,8 +3,14 @@
 **Question:** does the real motor do what the simulated one does?
 
 **Short answer:** at the **torque** level, yes — remarkably so (R² > 0.999). The gap is not in
-torque delivery. It is in **three things the MuJoCo model omits entirely**: joint friction,
-rotor armature, and the ankle's parallel linkage.
+torque delivery. It is in **what the MuJoCo model omits**: joint friction, rotor armature, the
+ankle's parallel linkage, and a too-low ankle torque limit. Separately, the **damping** on the
+six "2× 5020" joints is mis-specified (see §3b).
+
+> **Revision note.** §3.3 originally attributed a +8–10 % ankle gain anomaly to the parallel
+> linkage. Cross-checking against `dev_notes/g1_pd_gains_full_answer.md` and running the tests
+> it implies **refuted** that: the anomaly tracks the assigned `Kp` group exactly (including
+> waist roll/pitch, which are *not* parallel). See §3b.
 
 **Data:** `g1_robot_data/g1_real_deploy_logs`, Mode-2 window, 21,977 steps / 439.6 s,
 `policy/low_latency`.
@@ -147,12 +153,76 @@ the same treatment and worth checking on the hardware.
 
 ---
 
+## 3b. ⚠️ CORRECTION — the linkage hypothesis in §3.3 is REFUTED
+
+After cross-checking against
+`GR00T-WholeBodyControl/dev_notes/g1_pd_gains_full_answer.md`, which independently
+confirms the gain table, the `dq_target = tau_ff = 0` assumption, the `tau_est()` source, and
+the exact fitting recipe used here, the §3.3 explanation does **not** survive its own tests.
+
+**Test 1 — saturation?** No. Only 0.55 % / 0.18 % / 0.09 % of ankle-pitch / ankle-pitch /
+waist-pitch samples come within 5 % of the effort limit. (Though note `L_ankle_pitch` reaches
+**72.2 N·m**, well above the ±50 `actuatorfrcrange` in `g1_29dof.xml` — the sim limit is too
+low, a separate finding.)
+
+**Test 2 — load-dependent?** No. `corr(gain, mean|tau|) = 0.53`, but the counterexample is
+decisive: `L_hip_pitch` carries **12.41 N·m at gain 0.9956**, while `L_ankle_pitch` carries
+**11.52 N·m at gain 1.0838**. Same load, opposite deviation.
+
+**Test 3 — grouped by assigned `Kp`?** ✅ **Perfect separation.**
+
+| assigned `Kp` | motor group | n | mean gain |
+|---|---|---|---|
+| 14.2506 | `5020` | 10 | 0.9841 |
+| 16.7783 | `4010` | 4 | 0.9862 |
+| **28.5012** | **`5020` × 2** | **6** | **1.0543** |
+| 40.1792 | `7520_14` | 3 | 0.9887 |
+| 99.0984 | `7520_22` | 6 | 0.9954 |
+
+**All 6 joints assigned the "2× 5020" gain have gain > 1 (1.016–1.097); all 23 other joints
+have gain < 1 (0.971–0.996).** No overlap.
+
+That group is `{L/R ankle_pitch, L/R ankle_roll, waist_roll, waist_pitch}` — it includes
+**waist roll/pitch, which are not a parallel A/B mechanism**. So the anomaly follows the
+**gain assignment**, not the ankle linkage. §3.3 is withdrawn as the explanation.
+
+### What the data implies instead
+
+Re-fitting `tau = Kp_eff·(q_target − q) − Kd_eff·dq` with **both gains free**:
+
+| joint | `Kp` nominal | `Kp` fitted | `Kd` nominal | `Kd` fitted | R² |
+|---|---|---|---|---|---|
+| `L_ankle_pitch` | 28.5012 | **30.12** | 1.8144 | **3.01** | 0.99722 |
+| `R_ankle_pitch` | 28.5012 | **30.37** | 1.8144 | **2.91** | 0.99640 |
+| `waist_pitch` | 28.5012 | **30.39** | 1.8144 | **2.79** | 0.99888 |
+| `L_ankle_roll` | 28.5012 | 27.66 | 1.8144 | 0.90 | 0.99053 |
+| `waist_roll` | 28.5012 | 27.96 | 1.8144 | 0.89 | 0.99037 |
+| `L_hip_pitch` | 99.0984 | 98.39 | 6.3088 | 6.18 | 0.99962 |
+| `L_sho_pitch` | 14.2506 | 14.12 | 0.9072 | 0.78 | 0.99732 |
+
+Two distinct effects inside the "2×" group:
+
+- **pitch joints** (ankle ×2, waist): `Kp` ≈ +6 %, and **`Kd` ≈ 1.6× nominal** (2.8–3.0 vs
+  1.81). The stiffness error is modest; the *damping* error is large.
+- **roll joints** (ankle ×2, waist): `Kp` ≈ −2 %, **`Kd` ≈ 0.5× nominal** (0.89–1.02 vs 1.81).
+
+Directly-driven joints need no correction (`hip_pitch` 98.39 vs 99.10, `sho_pitch` 14.12 vs
+14.25 — both within ~1 %), which is what makes the "2×" group stand out.
+
+**Most likely cause:** the firmware's effective damping on the doubled-gain joints differs from
+`Kd = 2ζ·armature·ω` with the 2× factor applied. Whether the 2× is applied to `Kp` only, or
+differently to `Kd`, cannot be settled from these logs — it needs the firmware's gain handling
+or a controlled hardware test. **The ankle parallel linkage remains a real sim/hardware
+mismatch (§3.3) but is not the cause of the gain anomaly.**
+
 ## 4. Conclusions
 
 1. ✅ **Torque delivery is not the gap.** R² > 0.999, gain ≈ 0.99. The real motor does what a
    commanded PD torque source should do. No actuator network required.
-2. ⚠️ **Effective gains deviate systematically** on ankle pitch/roll and waist pitch (+2 to
-   +10 %), matching the worst-tracking joints from Phase A.
+2. ⚠️ **The deviation follows the assigned gain, not the mechanism.** All 6 "2× 5020" joints
+   (ankle pitch/roll, waist roll/pitch) have gain > 1; all 23 others < 1 — perfect separation
+   (§3b). Free-fitting shows pitch joints need `Kd` ≈ **1.6×** nominal and roll joints ≈ **0.5×**,
+   while `Kp` is within ~6 %. Direct-drive joints need no correction.
 3. ❌ **Per-joint mechanical ID is not identifiable** from closed-loop teleop logs (R² = 0.026,
    negative inertias). Needs dedicated excitation.
 4. ⭐ **The sim model omits armature, friction and the ankle parallel linkage** — all three are
@@ -164,7 +234,9 @@ the same treatment and worth checking on the hardware.
 |---|---|---|---|
 | 1 | Add `armature` per joint from `policy_parameters.hpp` | trivial (XML attr) | values already exist |
 | 2 | Add `frictionloss` per joint | small | needs §5 experiment to set values |
-| 3 | Model the ankle A/B linkage (`<equality>`), or apply the measured +8–10 % gain correction | medium | §3.3 |
+| 3 | Fix `Kd` on the six "2× 5020" joints (pitch ≈ 1.6× nominal, roll ≈ 0.5×) | small | §3b |
+| 4 | Raise ankle `actuatorfrcrange` — real `L_ankle_pitch` hits **72.2 N·m** vs ±50 in the XML | trivial | §3b |
+| 5 | Model the ankle A/B linkage (`<equality>`) — a real mismatch, but NOT the gain cause | medium | §3.3, §3b |
 
 ### 5. To identify friction/inertia properly
 
