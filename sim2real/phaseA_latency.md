@@ -269,3 +269,95 @@ measured arrival, not end-to-end.
 **Recommended one-line fix:** add `streaming_data_delay` and the obs/policy durations to the
 `state_logger` CSV set, and log the consumed sample's PICO `timestamp_realtime`. That makes
 stage ① and ② directly measurable on future runs.
+
+---
+
+## 8. Decomposition v2 — using the policy-side recording `streamed_081851`
+
+`/home/grease/g1_robot_data/streamed_081851/` is the deploy binary's own recording of the SMPL
+it **received**. Comparing it against the PICO capture measures stage ①+② **by frame
+correspondence, with no clocks involved** — which sidesteps §4's cross-machine problem entirely.
+
+### ⚠️ Two corrections to earlier conclusions
+
+**(a) `streamed_081851` is 50 Hz, not 70 Hz.**
+
+| hypothesis | correlation |
+|---|---|
+| **50 Hz, aligned to Mode-2 start** | **0.9970** ✅ |
+| 70 Hz @ 164.6 s (earlier claim) | 0.047 ❌ |
+
+Independently confirmed by frame count: 24,453 received vs 489.1 s × 50 Hz = 24,455 expected.
+It is written **once per control step** and spans **exactly** the Mode-2 window. The earlier
+70 Hz figure came from a rate-scale search that found a spurious optimum; the note in
+`PICO_SMPL_STREAMING_DATASETS_NOTE.md` §"streamed_081851 ⊂ smpl_raw_real_robot" should be
+read with this correction.
+
+**(b) The PICO capture is ~46-50 Hz, not 70.4 Hz. Its clock FREEZES.**
+
+| | |
+|---|---|
+| duplicate timestamps | **52.7 %** of frames |
+| unique timestamps | 24,313 / 51,438 |
+| **worst stuck group** | **17,786 frames sharing ONE timestamp** |
+| stuck block | frames **33,652 – 51,437** (final 34.6 % of capture) |
+| location | **inside the Mode-2 window** |
+| true rate (valid region) | **46.06 Hz** (33,652 frames / 730.6 s) |
+
+The "70.4 Hz" used earlier was `frames / span` computed *with* the frozen tail included, so it
+overcounted. Per-60 s buckets consistently show ~50 Hz, matching the corrected figure.
+
+> **`timestamp_realtime` is unusable for the last third of this capture.** Use `frame_index`
+> (verified monotonic and unique) or content matching instead.
+
+### Result: transport is essentially 1:1, with ~11 % loss
+
+Content matching is unaffected by the clock problem — **100 % of received frames matched a
+PICO frame exactly** (median error 5.0e-10, i.e. bit-identical float32).
+
+| metric | value |
+|---|---|
+| PICO frames spanned | 11,705 – 33,656 (21,952) |
+| distinct frames delivered | 19,580 |
+| **delivered** | **89.2 %** |
+| **dropped** | **10.8 %** |
+
+Per-control-step advance through the PICO stream (capture ≈50 Hz, control 50 Hz → expect 1.0):
+
+| advance | share | meaning |
+|---|---|---|
+| 0 | **19.9 %** | stale — no new frame this step |
+| 1 | **75.9 %** | nominal 1:1 |
+| 2 | 3.7 % | catch-up after a drop |
+| ≥3 | 0.5 % | catch-up after a longer gap |
+| **mean** | **0.850** | pipeline tracks ~1:1 |
+
+**This revises §7's headline.** There I inferred "captured at 70.4 Hz but reaching the policy at
+only ~32 Hz", implying the pipeline discards a third of the input. With the corrected capture
+rate that framing is wrong: capture and control are **both ~50 Hz**, and the pipeline runs
+**~1:1**. The genuine losses are:
+
+- **10.8 % of frames dropped outright**, and
+- **~20 % of control steps running on a repeated frame** (§7's `token_state` staleness measure,
+  36 %, is a *different* and stricter quantity: it also counts steps where the encoder re-ran on
+  an unchanged buffer).
+
+### Corrected stage table
+
+| # | Stage | Measurable? | Result |
+|---|---|---|---|
+| ① | PICO capture → ZMQ delivery | ✅ **by content** | **89.2 % delivered, 10.8 % dropped** |
+| ② | delivery → policy consumption | ✅ | **75.9 % of steps advance 1:1; 19.9 % stale** |
+| ③ | encoder → policy → motor command | ✅ | **< 20 ms, same control step** (PD corr 1.000) |
+| ④ | motor command → joint motion | ⚠️ | feedback confound → Phase B |
+| — | *absolute* time for ① | ❌ | cross-machine clock offset (§4) |
+
+We now have the **loss and staleness** of stage ①-② without clocks; only the absolute
+millisecond delay of ① remains unmeasurable.
+
+### Implication for Phase C (unchanged, but better quantified)
+
+Sim replay feeds a clean 50 Hz stream with no drops. The real run had **10.8 % dropped frames**
+and **19.9 % repeated-input steps**. To attribute sim-vs-real differences to *dynamics*, either
+replay the exact delivered sequence (the `best[]` index mapping reconstructs it) or restrict the
+comparison to clean stretches.
