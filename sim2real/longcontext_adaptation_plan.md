@@ -71,17 +71,29 @@ run — not yet executed in this session).
 
 ## 2. Plan: train a long-context / world-model-adaptive policy
 
-### 2.1 Two candidate approaches (not mutually exclusive)
+**See `sim2real/longcontext_training_technical_plan.md` for the detailed, corrected
+technical plan** — an earlier pass at this section incorrectly assumed the deployed
+policy was a memoryless single-frame MLP (based on the generic
+`observation_config_example.yaml` template). Inspecting the **actual deployed**
+`sonic_pretrained/observation_config.yaml` shows the decoder already consumes 10
+frames (0.2s @ 50Hz) of proprioceptive history (`his_body_joint_positions_10frame_step1`,
+etc.) plus a 64D `token_state` from a multi-frame-aware encoder. The real gaps are:
+(1) the history window is short and has no explicit tracking-error signal, and
+(2) there is no cross-episode memory (the actual LocoFormer-equivalent gap). The
+linked document lays out a corrected 3-phase plan: widen/add explicit history (low
+risk) → cross-episode persistence (moderate) → procedural dynamics randomization
+(heavy, full LocoFormer recipe).
+
+### 2.1 Two candidate approaches (not mutually exclusive) — summary
 
 **(a) Long-context in-context adaptation (LocoFormer-style)**
-- Extend the policy's temporal context window to **span multiple episodes**, not just
-  a fixed short window (current `sonic_pretrained` architecture uses a 4-frame
-  low-latency buffer per `EVAL_METRICS_DRAFT.md` §3 "Context Horizon Window
-  Robustness" — this is the opposite end of the tradeoff from LocoFormer).
+- Extend the policy's temporal context to **span multiple episodes** — the existing
+  `his_*_10frame_step1` window and `token_state` both reset per episode today; this is
+  the concrete, corrected gap (see `longcontext_training_technical_plan.md` §0.4).
 - Train with **aggressive domain randomization** over exactly the parameters this
   session's analysis flagged as uncertain/impactful: `dof_damping` and
   `dof_frictionloss` on ankle-pitch/waist-pitch (randomize around the fitted optimal
-  point, e.g. `damping ~ U(0.5, 1.2)` per `sim2real/optimal_calibration.md` §3), and
+  point, e.g. `damping ~ U(0.3, 1.8)` per `sim2real/optimal_calibration.md` §3), and
   **especially** armature/damping/friction on the low-inertia wrist-roll/shoulder-yaw
   axes identified in this session's Phase C.2 root-cause analysis, since those are
   structurally the most sensitive to mismatch and the least explained by our current
@@ -109,13 +121,12 @@ run — not yet executed in this session).
 treat (b) as a stretch goal / ablation to understand *why* (a) works, using this
 session's existing residual/R² analysis tooling as the diagnostic.
 
-### 2.2 Concrete training-pipeline changes needed
+### 2.2 Concrete training-pipeline changes needed (see technical plan for full detail)
 
-1. **Context length**: increase the policy's input history window in `g1.py`/training
-   config from the current short buffer to span multiple seconds or full episodes.
-   Requires updating the observation stacking and likely the policy architecture
-   (transformer/RNN-style backbone rather than the current low-latency 4-frame MLP, if
-   applicable — needs checking `sonic_pretrained`'s architecture).
+1. **Context length**: widen the existing `his_*_10frame_step1` observations (e.g. to
+   `50frame_step1`) and add an explicit tracking-error history stream — a
+   config/export-level change, not a new architecture, since the multi-frame
+   observation mechanism already exists.
 2. **Domain randomization ranges**: extend IsaacLab's `ImplicitActuatorCfg` (already
    holding the armature values aligned in this session) to randomize
    `damping`/`friction` per-episode within a *training* range informed by this
