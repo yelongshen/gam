@@ -142,13 +142,103 @@ session, all 29 joints, one-step-ahead teacher-forced RMS in degrees:
   any further increase in ankle damping should be validated against a stability/rollout test
   before being adopted.
 
-## 5. Reproduction
+## 5. Cross-check: torque-domain metric (`tau_sim_total` vs real `motor_torque`)
+
+The comparisons above all use the **position-domain** metric (`q1step`, one-step-ahead RMS
+error in degrees). A second, independent metric was added in
+`model_eval/sim2real_phaseC1_tau_comparison.py`: compare a **torque-domain** quantity against
+the real robot's measured `motor_torque` log.
+
+### What is compared
+
+MuJoCo cleanly separates two torque-like quantities and neither is a "measurement" — both are
+exactly known from the model:
+
+- `qfrc_actuator` = the actuator command (`ctrl`, clipped) — **always exactly equal to the PD
+  law's output**, completely unaffected by `dof_damping`/`frictionloss` (verified empirically:
+  identical to 4 decimal places across `b=0, 1.19, 5.0`).
+- `qfrc_passive` = `-dof_damping * qvel` (+ any `frictionloss` term) — the passive force implied
+  by the model's damping/friction settings at the current state.
+
+`tau_sim_total = qfrc_actuator + qfrc_passive` is used as the sim-side analogue of the real
+robot's `motor_torque` (`tau_est`), which is a genuine hardware measurement that already
+conflates command + real friction + back-EMF etc. (there is no such command/measurement split
+inside MuJoCo — both terms above are deterministic and fully known from the model parameters).
+
+### Results (full 439.6 s session, calibrated joints only)
+
+| joint | config | RMS (N·m) | corr | gain (`tau_real ≈ gain·tau_sim`) |
+|---|---|---|---|---|
+| `L_ankle_pitch` | baseline (no fix) | 1.1166 | 0.9977 | 1.0562 |
+| | **Phase B fix** | **1.0716** (-4.0%) | **0.9990** | 1.0602 |
+| | best-scan fix | 1.4368 (+28.7%) | 0.9945 | 1.0606 |
+| `R_ankle_pitch` | baseline (no fix) | 1.0797 | 0.9974 | 1.0640 |
+| | **Phase B fix** | **1.0094** (-6.5%) | **0.9990** | 1.0659 |
+| | best-scan fix | 1.3959 (+29.3%) | 0.9913 | 1.0621 |
+| `waist_pitch` | baseline (no fix) | 0.8125 | 0.9996 | 1.0651 |
+| | Phase B fix | 0.8103 (~flat) | 0.9998 | 1.0666 |
+| | best-scan fix | 0.8107 (~flat) | 0.9998 | 1.0666 |
+
+### Interpretation
+
+- **Phase B fix improves both RMS and correlation** on both ankle-pitch joints in the
+  torque domain, consistent with (and independently corroborating) its position-domain result.
+- **best-scan fix (`b=3.0`) makes the torque-domain fit substantially worse** (~29% higher RMS,
+  correlation drops) despite improving the position-domain (`q1step`) metric it was tuned
+  against — direct evidence of overfitting to `q1step` at the expense of physical plausibility.
+- **The `gain` (≈1.06, i.e. real torque ~6% larger than sim) barely moves under either fix.**
+  `qfrc_passive`'s magnitude (a few N·m from `dof_damping·dq` at typical velocities) is too
+  small relative to the torques involved (tens of N·m) to meaningfully close a 6% multiplicative
+  gap. This means the Phase B `Kd`-residual (linear-in-velocity, `dof_damping`) captures part of
+  the real discrepancy (RMS/correlation improve) but **not the full gain>1 anomaly** documented
+  in `sim2real/phaseB_actuator.md` §3b — a Coulomb (`frictionloss`) term, an additive bias, or
+  the previously-considered Kp/linkage effects likely account for the remainder.
+
+### Which metric should be trusted more: `q1step` (position) or torque RMSE?
+
+**Torque-domain RMSE/correlation is the more trustworthy metric for selecting damping values**,
+for two reasons:
+
+1. **It cross-validates.** The Phase B values were *derived* from a torque-domain regression
+   (§1 above) — showing they *also* improve an independently-computed torque-domain metric here
+   is evidence of a real, reproducible physical effect, not a metric-specific artifact.
+   The best-scan values were tuned *against* `q1step` and only look good on `q1step` — testing
+   them against the untouched torque-domain metric reveals they are worse there, unmasking the
+   overfit.
+2. **`q1step` (position) is one integration step removed from the actual quantity being
+   calibrated.** `dof_damping` acts directly as a force/torque term; testing it directly in the
+   torque domain is a more direct measurement of the parameter's fit than propagating it through
+   one step of the full rigid-body dynamics and inertia matrix to see the resulting position
+   error, which is a noisier, more indirect readout (and, per §2 above, does not even have an
+   interior minimum in a sane damping range — a bad sign for using it as the sole objective).
+
+**Practical guidance:** use `q1step` as a *sanity check* / secondary confirmation (a good
+damping value should not make position prediction worse), but use the **torque-domain
+RMSE/correlation/gain** as the primary objective when selecting or scanning `dof_damping` (and
+any future `frictionloss`) values — it is closer to the physical quantity being fit and is far
+less prone to being gamed by numerically-unstable but position-metric-favorable damping.
+
+## 6. Reproduction
 
 ```bash
-# main C.1 baseline-vs-phaseB comparison
+# main C.1 baseline-vs-phaseB comparison (position domain, q1step)
 .venv_sim/bin/python model_eval/sim2real_phaseC1_onestep_prediction.py --duration 439.6
 
-# per-joint damping scan
+# per-joint damping scan (position domain, q1step)
 .venv_sim/bin/python model_eval/sim2real_phaseC1_damping_scan.py \
     --joints 4 10 14 --lo 0.0 --hi 3.0 --steps 11 --duration 439.6
+
+# torque-domain cross-check (tau_sim_total vs real motor_torque)
+.venv_sim/bin/python model_eval/sim2real_phaseC1_tau_comparison.py --duration 439.6
+
+# frictionloss scan (Coulomb term) on top of a fixed dof_damping
+.venv_sim/bin/python model_eval/sim2real_phaseC1_friction_scan.py \
+    --joints 4 10 14 --lo 0.0 --hi 3.0 --steps 7 --duration 439.6
 ```
+
+## 7. Combined optimal config (damping + friction)
+
+See `sim2real/optimal_calibration.md` for the final least-squares-optimal
+`dof_damping`/`dof_frictionloss` combination (derived from this torque-domain analysis), the
+full 29-joint comparison against baseline/Phase B, and a discussion of how (and whether) to
+integrate it into the MuJoCo deploy-test model vs. the IsaacLab training environment.
