@@ -7,6 +7,34 @@ checkpoint config, `model_step_150000.pt`), **not** the generic
 `observation_config_example.yaml` template (an earlier pass at this doc incorrectly
 used the template and concluded the policy was memoryless — corrected below).
 
+## TODO (actionable, distilled from this plan)
+
+- [ ] **TODO 1 — Cross-episode training objective**: change the training loop so the
+      policy's recurrent/context state (`token_state` or a dedicated hidden state) is
+      **not reset every episode**, but persists across multiple episodes (with a
+      periodic hard reset only when simulating "a genuinely new robot," e.g. every N
+      episodes or on dynamics re-randomization). This is Phase 2 in §1/§4, and is the
+      actual mechanism needed for LocoFormer-style "learn from a fall this episode,
+      adjust the next" behavior — see §1 Phase 2 and §4.
+- [ ] **TODO 2 — Next-state prediction head + residual-as-input**: add an auxiliary
+      output that predicts next state (or a compact targeted subset — see §5.4), train
+      it with an explicit supervised loss, and feed the **prediction residual**
+      (`state_t − predicted_state_hat_t`, using the *previous* step's prediction per
+      the causality note in §5.1) back into the policy as an input feature for the
+      current step. This is the design detailed in full in §5, with the causality
+      diagram (§5.1), safety argument vs. autoregressive planning (§5.2), theoretical
+      justification (§5.3), concrete design recommendations (§5.4), and references
+      (§5.5: RMA, Neural-Fly, ICM, RL²).
+
+These two are **independent and can be developed/ablated separately** before
+combining: TODO 1 changes *when* context resets; TODO 2 changes *what* the context
+contains. Recommended order: prototype TODO 2 first (cheaper — works even within a
+single episode, testable in the existing episodic training loop with no infra
+changes), then TODO 1 (requires IsaacLab episode/reset-handling changes, per §3
+"Risks and mitigations"), then evaluate the combination together via
+`sim2real/online_deployment_eval_plan.md`'s protocol, especially the wrist-roll/
+shoulder-yaw stress subset and disturbance-recovery metrics.
+
 ## 0. What the current policy actually is (corrected architecture understanding)
 
 The deployed policy is an **encoder → 64D `token_state` → decoder** split, with the
