@@ -143,13 +143,119 @@ Gate every phase transition on sim2real/online_deployment_eval_plan.md's protoco
 especially the wrist-roll/shoulder-yaw stress subset and disturbance-recovery metrics.
 ```
 
+## 5. Predicted-next-state residual as an explicit input feature
+
+A concrete refinement of Phase 1/2: have the policy output **both** an action and a
+predicted next state, then feed the **prediction residual**
+(`state_t − predicted_state_hat_t`, computed from the *previous* step's prediction —
+see causality note below) back in as an input feature for the current step. This is
+not a novel idea in isolation — it has direct precedent in both classical adaptive
+control and modern deep-RL/robotics (§5.3), and is lower-risk than full autoregressive
+"world model" planning (§5.2 explains why).
+
+### 5.1 Causality (must get this right)
+
+At each step the policy has only *just* produced a prediction for the *next* state —
+it cannot use that prediction as an input to itself in the same step. The residual
+available at time `t` is necessarily computed against the prediction made at `t-1`:
+
+```
+at t-1: policy(obs_{t-1}, residual_{t-1}) -> action_{t-1}, predicted_state_hat_t
+at t:   residual_t = state_t - predicted_state_hat_t     # now available
+        policy(obs_t, residual_t) -> action_t, predicted_state_hat_{t+1}
+```
+
+### 5.2 Why this is safe (unlike planning/imagined rollouts)
+
+This design uses the prediction **only as a single-step observation feature**, never
+rolled forward autoregressively to *plan* multiple steps ahead (Dreamer/MBRL-style
+imagined rollouts). This matters directly here: Phase C.2 (this session) showed that
+even our best-calibrated, physically-grounded MuJoCo model diverges badly under
+autoregressive (no-reset) rollout, especially on the low-inertia wrist-roll/
+shoulder-yaw axes (60°+ RMS by 60s). A *learned* forward model used for multi-step
+planning would very likely be worse, and any policy trusting imagined rollouts on
+exactly the axes we've already shown to be most sensitive would be actively misled.
+Using the residual as a single-step feature (this section) sidesteps that failure mode
+entirely — it never compounds.
+
+### 5.3 Theoretical/intuitive justification for why the residual should help
+
+Three complementary framings, all pointing the same direction:
+
+**(a) Control-theoretic — the residual is (to first order) linear in the unknown
+dynamics parameter.** Model true dynamics as depending on a hidden physical parameter
+`z` (e.g. the real `dof_damping`/`frictionloss`/armature — exactly what
+`optimal_calibration.md` fit offline): `x_{t+1} = f(x_t, a_t; z_true) + noise`. The
+predictor only knows a nominal model `f(x_t, a_t; z0)`. The residual is
+`r_t = f(x_{t-1}, a_{t-1}; z_true) - f(x_{t-1}, a_{t-1}; z0)`, which to first order
+(Taylor expansion around `z0`) is `r_t ≈ J_z(x_{t-1}, a_{t-1}) · (z_true - z0)` — i.e.
+the residual is approximately a **linear readout of exactly the unobservable parameter
+mismatch**, scaled by a known sensitivity `J_z = ∂f/∂z`. This is the same mechanism
+classical adaptive control (MRAC) and Neural-Fly's composite adaptation law exploit.
+It also connects directly to this session's Phase C.1 damping scan: the measured
+`corr(residual, dq)` there was an empirical instance of exactly this `J_z` sensitivity,
+for one specific `z` (viscous damping) we already characterized.
+
+**(b) Statistical/filtering — the residual is the Kalman-filter "innovation."** In a
+Kalman filter, the innovation (observed minus predicted) is *by construction* the only
+part of a new observation carrying information not already captured by the current
+belief. Feeding `r_t` back in asks the policy to perform an implicit Bayesian update
+of its internal estimate of the current dynamics regime — a plain RNN fed only raw
+history *could* in principle learn an equivalent computation, but handing it the
+innovation directly is more sample-efficient than making it rediscover
+subtraction+filtering from scratch (why RMA/Neural-Fly-style explicit designs tend to
+be more sample-efficient than fully implicit long-context RL like LocoFormer).
+
+**(c) Practical/inductive-bias — it removes a hard subtraction+alignment burden from a
+small, fast network.** Without the explicit residual, the network must internally
+learn to compute the same subtraction, correctly time-aligned, from raw stacked
+history — nontrivial for a small, low-latency decoder (the actual constraint here,
+per the 994D `sonic_pretrained` decoder). Precomputing `r_t` outside the network is a
+form of feature engineering matched to the network's limited capacity/latency budget.
+
+### 5.4 Design recommendation
+
+- **Predict a compact/targeted subset of state, not the full 58D `(q, dq)`.** Per
+  RMA's design choice, focus prediction+residual specifically on the joints flagged in
+  Phase C.2 (ankle pitch, waist pitch, wrist roll, shoulder yaw) — most other joints
+  already track well, and including them would just add uninformative noise to the
+  residual signal.
+- **Add an explicit auxiliary prediction loss**, not just a downstream-input-only
+  design (à la ICM) — relying purely on task reward to shape the predictor
+  indirectly is a weaker, slower training signal than a direct supervised loss on the
+  prediction itself.
+- **Run as an ablation against RMA's compact-latent-`ẑ` design** (predict a low-dim
+  physical-parameter-like latent instead of raw next-state) — cheaper, more
+  interpretable, and directly comparable against this session's already-fitted
+  `optimal_calibration.md` point estimates as a sanity check on whether the learned
+  latent converges near the manually-fitted values.
+
+### 5.5 References for this design
+
+- **RMA: Rapid Motor Adaptation for Legged Robots** (Kumar, Fu, Pathak, Malik, RSS
+  2021, arXiv:2107.04034) — closest match: trains an adaptation module to regress a
+  compact latent environment-extrinsics vector from history, conditioning the policy.
+- **Neural-Fly** (O'Connell, Shi, Shi, Azizzadenesheli, Anandkumar, Yue, Chung,
+  *Science Robotics* 2022) — online adaptive drone control using exactly a
+  prediction-error-driven composite adaptation law, with a stability (Lyapunov)
+  guarantee — direct formal precedent for the residual-feedback mechanism.
+- **Intrinsic Curiosity Module (ICM)** (Pathak, Agrawal, Efros, Darrell, ICML 2017) —
+  trains a forward model with an explicit prediction loss and uses the prediction
+  error as a signal (there, intrinsic reward) — precedent for "prediction error is
+  itself a useful learned signal," and for adding a direct auxiliary loss rather than
+  relying only on downstream task reward.
+- **RL²: Fast Reinforcement Learning via Slow Reinforcement Learning** (Duan et al.,
+  2016) — the fully implicit alternative (no explicit prediction/residual, just a
+  recurrent policy shaped by task reward alone) — useful as the "null hypothesis"
+  baseline to compare the explicit-residual design against.
+
 ## References
 
 - `sim2real/longcontext_adaptation_plan.md` — parent plan (steps 1-3).
 - `sim2real/online_deployment_eval_plan.md` — the measurement protocol every phase
   gate uses.
 - `sim2real/optimal_calibration.md` — current fitted damping/friction point estimates
-  (used as randomization centers, §2).
+  (used as randomization centers, §2, and as an ablation sanity-check target, §5.4).
 - `gear_sonic_deploy/policy/sonic_pretrained/observation_config.yaml` — the actual
   deployed checkpoint's observation schema (994D decoder / 1751D encoder / 64D token),
   showing the existing `his_*_10frame_step1` history mechanism this plan proposes
@@ -157,3 +263,8 @@ especially the wrist-roll/shoulder-yaw stress subset and disturbance-recovery me
   extending toward cross-episode persistence.
 - LocoFormer: Generalist Locomotion via Long-context Adaptation, CoRL 2025,
   arXiv:2509.23745.
+- RMA: Rapid Motor Adaptation for Legged Robots, RSS 2021, arXiv:2107.04034.
+- Neural-Fly, O'Connell et al., Science Robotics 2022.
+- Curiosity-driven Exploration by Self-supervised Prediction (ICM), Pathak et al.,
+  ICML 2017.
+- RL²: Fast Reinforcement Learning via Slow Reinforcement Learning, Duan et al., 2016.
