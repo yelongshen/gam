@@ -24,8 +24,15 @@ Used by run_sim_eval.py to drive per-clip simulation evaluation.
 
 CLI arguments:
   --path         (required) clip path: smpl_filtered .pkl, raw AMASS .npz, or LAFAN .bvh
+  --host         str, default '127.0.0.1'  ZMQ PUB bind address (loopback-only by
+                                        default; use '*' or '0.0.0.0' to bind all
+                                        interfaces for a remote g1_deploy_onnx_ref
+                                        subscriber, i.e. --zmq-host <this-machine-ip>)
   --port         int, default 5556      ZMQ publish port
   --fps          float, default 50.0    playback frame rate
+  --chunk-frames int, default 4         lookahead frames bundled per ZMQ message
+                                        (protocol v3 "NF"; must match what the
+                                        deploy binary expects)
   --loops        int, default 1         number of times to loop the clip
   --settle       float, default 1.0     seconds to hold the first frame before playing
                                         (lets the policy/robot settle into the pose)
@@ -311,16 +318,16 @@ def load_stream_data(path, fps, official=True):
     return joints, pose_aa, trans, root_quat, joints_world
 
 
-def build_frames(joints, pose_aa, trans, root_quat):
-    """joints:(T,24,3) meters. Return list of packed messages, 4-frame lookahead.
+def build_frames(joints, pose_aa, trans, root_quat, nf=4):
+    """joints:(T,24,3) meters. Return list of packed messages, `nf`-frame lookahead.
 
     NOTE: protocol v3 requires EVERY per-frame field to carry the same frame
-    count (4). Sending joint_vel as (1,29) or frame_index as (1,) makes the C++
+    count (nf). Sending joint_vel as (1,29) or frame_index as (1,) makes the C++
     decoder abort with "Version 3 frame count mismatch" and silently ignore the
     whole stream.
     """
     T = joints.shape[0]
-    NF = 4  # lookahead chunk size
+    NF = nf  # lookahead chunk size
     cache = []
     for i in range(T):
         idxs = [min(i + off, T - 1) for off in range(NF)]
@@ -359,8 +366,17 @@ def build_frames(joints, pose_aa, trans, root_quat):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--path', required=True)
+    ap.add_argument('--host', type=str, default='127.0.0.1',
+                    help="address to bind the ZMQ PUB socket to (default: 127.0.0.1, "
+                         "loopback-only). Use '*' or '0.0.0.0' to bind all interfaces "
+                         "so a remote g1_deploy_onnx_ref (--zmq-host <this-machine-ip>) "
+                         "can connect from another machine.")
     ap.add_argument('--port', type=int, default=5556)
     ap.add_argument('--fps', type=float, default=50.0)
+    ap.add_argument('--chunk-frames', type=int, default=4,
+                    help='number of lookahead frames bundled per ZMQ message '
+                         '(protocol v3 "NF"; must match what the deploy binary '
+                         'expects -- default 4)')
     ap.add_argument('--loops', type=int, default=1)
     ap.add_argument('--settle', type=float, default=1.0,
                     help='seconds to hold first frame so the robot can settle')
@@ -387,13 +403,14 @@ def main():
         except Exception as e:
             print(f"[viz] disabled ({e})")
 
-    cache = build_frames(joints, pose_aa, trans, root_quat)
+    cache = build_frames(joints, pose_aa, trans, root_quat, nf=args.chunk_frames)
     ctx = zmq.Context()
     sock = ctx.socket(zmq.PUB)
     sock.setsockopt(zmq.SNDHWM, 1)
     try:
-        sock.bind(f"tcp://127.0.0.1:{args.port}")
+        sock.bind(f"tcp://{args.host}:{args.port}")
     except Exception:
+        print(f"[zmq] bind to tcp://{args.host}:{args.port} failed, falling back to all interfaces")
         sock.bind(f"tcp://*:{args.port}")
     time.sleep(0.3)  # allow subscriber to connect
 

@@ -1,0 +1,97 @@
+# G1 Deploy - Observation Configuration (REUBEN sonic_no_vr_envs_16K, model_step_050000)
+# ===========================================================================
+# Exported from sonic_no_vr_envs_16K/model_step_050000.pt via
+#   python gear_sonic/eval_agent_trl.py checkpoint=<ckpt> +num_envs=1 +export_onnx_only=true
+#
+# Encoder input dimension: 1483   Decoder/policy dimension: 994   token: 64
+# 10-frame lookahead model (smpl step1, g1 step5). This checkpoint was trained
+# WITHOUT the teleop/VR encoder branch ("no_vr"), so it only has two encoder
+# modes: g1 and smpl. There is NO teleop mode / vr_3point_* observations,
+# unlike policy/sonic_pretrained which has 3 modes (g1, teleop, smpl).
+#
+# NOTE: uses "encoder_mode" (dim 3: 1 index + 2 zero-pad, supports modes 0-2),
+# NOT "encoder_mode_4" (dim 4, supports modes 0-3) -- since this checkpoint only
+# has 2 modes (g1=0, smpl=1), using encoder_mode_4 caused a dimension mismatch
+# at deploy runtime ("got 1484, expected 1483").
+#
+# Verified against deploy registry (g1_deploy_onnx_ref.cpp) that every
+# required term below is a registered observation with a dimension that
+# exactly matches the gear_sonic tokenizer term it was exported from:
+#   motion_joint_positions_10frame_step5 (290)  + motion_joint_velocities_10frame_step5 (290)
+#     == command_multi_future_nonflat (10 x 58)
+#   motion_anchor_orientation_10frame_step5 (60) == motion_anchor_ori_b_mf_nonflat (10 x 6)
+#   smpl_joints_10frame_step1 (720)             == smpl_joints_multi_future_local_nonflat (10 x 72)
+#   smpl_anchor_orientation_10frame_step1 (60)  == smpl_root_ori_b_multi_future (10 x 6)
+#   motion_joint_positions_wrists_10frame_step1 (60) == joint_pos_multi_future_wrist_for_smpl (10 x 6)
+
+observations:
+
+  - name: "token_state"
+    enabled: true
+
+  - name: "his_base_angular_velocity_10frame_step1"
+    enabled: true
+
+  - name: "his_body_joint_positions_10frame_step1"
+    enabled: true
+
+  - name: "his_body_joint_velocities_10frame_step1"
+    enabled: true
+
+  - name: "his_last_actions_10frame_step1"
+    enabled: true
+
+  - name: "his_gravity_dir_10frame_step1"
+    enabled: true
+
+encoder:
+  dimension: 64
+  use_fp16: false
+  encoder_observations:
+    - name: "encoder_mode"
+      enabled: true
+    - name: "motion_joint_positions_10frame_step5"
+      enabled: true
+    - name: "motion_joint_velocities_10frame_step5"
+      enabled: true
+    - name: "motion_anchor_orientation_10frame_step5"
+      enabled: true
+    - name: "smpl_joints_10frame_step1"
+      enabled: true
+    - name: "smpl_anchor_orientation_10frame_step1"
+      enabled: true
+    - name: "motion_joint_positions_wrists_10frame_step1"
+      enabled: true
+    # NOTE: no vr_3point_local_target / vr_3point_local_orn_target / motion_anchor_orientation
+    # (single-frame) here -- this checkpoint has NO teleop encoder mode.
+  encoder_modes:
+    - name: "g1"
+      mode_id: 0
+      required_observations:
+        - encoder_mode
+        - motion_joint_positions_10frame_step5
+        - motion_joint_velocities_10frame_step5
+        - motion_anchor_orientation_10frame_step5
+    - name: "smpl"
+      mode_id: 2
+      required_observations:
+        - encoder_mode
+        - smpl_joints_10frame_step1
+        - smpl_anchor_orientation_10frame_step1
+        - motion_joint_positions_wrists_10frame_step1
+    # NOTE: no "teleop" mode -- this checkpoint was trained without the VR/teleop
+    # encoder branch, so mode_id 1 (teleop in policy/sonic_pretrained) is simply
+    # unused/absent here. "smpl" is set to mode_id 2 (NOT 1) to match
+    # zmq_endpoint_interface.hpp's hardcoded `SetEncodeMode(2)` for incoming
+    # protocol v2/v3 (SMPL-based) ZMQ streams -- see
+    # gear_sonic_deploy/src/g1/g1_deploy_onnx_ref/include/input_interface/zmq_endpoint_interface.hpp
+    # around line 1710. The C++ side does not look up mode_id by name; it
+    # always tags streamed SMPL motion as encode_mode=2 regardless of which
+    # checkpoint/config is loaded, so "smpl" must be mode_id 2 in EVERY
+    # observation_config.yaml for ZMQ SMPL streaming to work at all. This was
+    # originally mode_id 1 here (matching this checkpoint's own 2-mode-only
+    # training setup), which silently broke ZMQ SMPL streaming: incoming
+    # data was tagged mode 2, found no matching encoder_modes entry, and the
+    # policy fell back to mode 0 (g1) with no real g1-space reference data,
+    # producing no movement at all.
+
