@@ -13,7 +13,7 @@ Version: **v10**, frozen 2026-09-11. Source dataset: `~/ego_dataset/eval_subset/
 | # | motion name | category | duration | reps on robot |
 |---|---|---|---|---|
 | 1 | `walk_180_R_003__A332_M` | Test-Repetition (ID) — basic locomotion | 11.20 s | 3 |
-| 2 | `walk   matched none of the fourteen manifest clips. With ~160 candidates in `eval_subset`, a bulksideway_045_stop_005__A042_M` | Test-Repetition (ID) — basic locomotion | 5.54 s | 2 |
+| 2 | `walk_sideway_045_stop_005__A042_M` | Test-Repetition (ID) — basic locomotion | 5.54 s | 2 |
 | 3 | `walk_backward_start_001__A030_M` | Test-Repetition (ID) — basic locomotion | 3.98 s | **0 — not yet replayed** |
 | 4 | `walk_sideway_135_loop_003__A022` | Test-Repetition (ID) — basic locomotion | 7.40 s | **0 — not yet replayed** |
 | 5 | `walk_ff_stop_225_R_002__A266_M` | Test-Repetition (ID) — basic locomotion | 4.80 s | **0 — not yet replayed** |
