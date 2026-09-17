@@ -120,12 +120,19 @@ def build_model(extra_damping):
     return m
 
 
-def one_step_predict(model, q_real, dq_real, q_target, dt):
+def one_step_predict(model, q_real, dq_real, q_target, dt, kp=None, kd=None):
     """For every t, RESET sim state to (q_real[t], dq_real[t]) [teacher
     forcing], apply the real command via the real PD law, step ONE dt, and
     return (q_sim_next, tau_sim) both of shape (T,29). q_sim_next[t] is the
     prediction for q_real[t+1]; tau_sim[t] is the sim-side commanded/realised
-    torque this step (compare to motor_torque[t])."""
+    torque this step (compare to motor_torque[t]).
+
+    `kp`/`kd`: optional (29,) arrays overriding the module-level KPS/KDS for
+    this call only (used to test e.g. `--motor-kp-scale`/`--motor-kd-scale`
+    style multiplicative gain changes -- see cand_sets in main()). Defaults
+    to the nominal KPS/KDS if not given."""
+    kp = KPS if kp is None else kp
+    kd = KDS if kd is None else kd
     data = mujoco.MjData(model)
     n_sub = max(1, int(round(dt / model.opt.timestep)))
     qadr = np.array([model.jnt_qposadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)]
@@ -145,7 +152,7 @@ def one_step_predict(model, q_real, dq_real, q_target, dt):
         data.qvel[dofadr] = dq_real[t]
         mujoco.mj_forward(model, data)
 
-        tau = KPS * (q_target[t] - q_real[t]) - KDS * dq_real[t]
+        tau = kp * (q_target[t] - q_real[t]) - kd * dq_real[t]
         tau = np.clip(tau, -EFFORT_LIMIT, EFFORT_LIMIT)
         data.ctrl[actadr] = tau
         tau_sim[t] = tau
@@ -155,6 +162,18 @@ def one_step_predict(model, q_real, dq_real, q_target, dt):
         q_sim_next[t] = data.qpos[qadr]
 
     return q_sim_next, tau_sim
+
+
+def scaled_gains(kp_scale=None, kd_scale=None):
+    """Build (kp, kd) arrays = KPS/KDS with per-joint-index multipliers
+    applied. kp_scale/kd_scale: dict {joint_index: multiplier}."""
+    kp = KPS.copy()
+    kd = KDS.copy()
+    for j, s in (kp_scale or {}).items():
+        kp[j] *= s
+    for j, s in (kd_scale or {}).items():
+        kd[j] *= s
+    return kp, kd
 
 
 def main():
@@ -184,47 +203,103 @@ def main():
     q_real, dq_real, tau_real, qt_real = q_real[:-1], dq_real[:-1], tau_real[:-1], qt_real[:-1]
     q_real_next = resample(r['t'], r['q'])[1:len(q_real) + 1]
 
+    # Each candidate: extra_damping (additive dof_damping, applied in build_model)
+    # and/or kp_scale/kd_scale (multiplicative, applied to the PD law itself via
+    # scaled_gains() -- this is what --motor-kp-scale/--motor-kd-scale do on the
+    # real deploy binary). See sim2real/phaseE_waist_roll_chatter.md and the
+    # discussion of upstream commit 087f9ac for why these specific candidates
+    # were chosen: joints 4/10 = L/R_ankle_pitch.
+    #
+    # FRAMING (corrected): `baseline (nominal)` -- nominal gains, UNCALIBRATED
+    # model -- is the GROUND TRUTH, because that is exactly the training-time
+    # dynamics the policy was optimized against (IsaacLab uses the same nominal
+    # Kp/Kd, see phaseB_actuator.md sec 3c). We never ran real hardware with
+    # scaled gains, so `q_real_next*` (what the real robot WOULD do under
+    # scaled gains) cannot be read from logs. Instead we PREDICT it using the
+    # calibrated model (dof_damping = Phase B fit, our best available proxy for
+    # real hardware's extra friction/damping, assumed independent of what gain
+    # is commanded) driven by the SCALED PD law. The question this answers:
+    # does that predicted real-with-scaled-gains state land closer to the
+    # training ground truth than the ACTUAL observed (unscaled) real state did?
     cand_sets = {
-        'baseline (b=0)': {},
-        'calibrated (Phase B)': {4: 1.19, 10: 1.09, 14: 0.98},
+        'baseline (nominal, = training ground truth)':
+            dict(extra_damping={}, kp_scale=None, kd_scale=None),
+        'Phase B calibrated (proxy for REAL, unscaled)':
+            dict(extra_damping={4: 1.19, 10: 1.09, 14: 0.98}, kp_scale=None, kd_scale=None),
+        'calibrated + scaled 1.5/1.5 (predicted REAL*, upstream)':
+            dict(extra_damping={4: 1.19, 10: 1.09, 14: 0.98},
+                 kp_scale={4: 1.5, 10: 1.5}, kd_scale={4: 1.5, 10: 1.5}),
+        'calibrated + scaled Kp=1.0/Kd=1.5 (predicted REAL*, measured)':
+            dict(extra_damping={4: 1.19, 10: 1.09, 14: 0.98},
+                 kp_scale=None, kd_scale={4: 1.5, 10: 1.5}),
     }
-    calibrated_joints = set(cand_sets['calibrated (Phase B)'].keys())
+    highlight_joints = {4, 10}
 
-    results = {}
-    for name, extra in cand_sets.items():
-        model = build_model(extra)
-        q_sim_next, tau_sim = one_step_predict(model, q_real, dq_real, qt_real, 1 / FS)
-
-        state_rms = np.degrees(np.sqrt(((q_sim_next - q_real_next) ** 2).mean(0)))
-        tau_rms = np.sqrt(((tau_sim - tau_real) ** 2).mean(0))
-        tau_corr = np.array([np.corrcoef(tau_sim[:, j], tau_real[:, j])[0, 1] for j in range(29)])
-        results[name] = (state_rms, tau_rms, tau_corr)
+    raw_q_sim_next = {}
+    for name, cfg in cand_sets.items():
+        model = build_model(cfg['extra_damping'])
+        kp, kd = scaled_gains(cfg['kp_scale'], cfg['kd_scale'])
+        q_sim_next, _tau_sim = one_step_predict(model, q_real, dq_real, qt_real, 1 / FS, kp=kp, kd=kd)
+        raw_q_sim_next[name] = q_sim_next
         print(f"  done: {name}")
 
     names = list(cand_sets)
-    b_state, b_tau, b_corr = results[names[0]]
-    c_state, c_tau, c_corr = results[names[1]]
+    ground_truth = raw_q_sim_next[names[0]]          # nominal-gain, uncalibrated: what training saw
 
-    print()
-    print(f"{'joint':16s} {'baseline q1step(deg)':>22s} {'calib q1step(deg)':>20s} "
-          f"{'delta':>10s} {'delta%':>8s}  {'calibrated?':>11s}")
+    def rms_deg(a, b):
+        return np.degrees(np.sqrt(((a - b) ** 2).mean(0)))
+
+    # error_before: the ACTUAL observed real robot (unscaled gains, real logged
+    # q_real_next) vs the training ground truth. This is the existing,
+    # already-measured sim2real gap -- no model needed, q_real_next is data.
+    error_before = rms_deg(q_real_next, ground_truth)
+
+    # error_after[name]: the PREDICTED real-robot-under-scaled-gains state
+    # (calibrated model + scaled PD law) vs the SAME training ground truth.
+    # Note this is compared against `ground_truth`, NOT against q_real_next --
+    # we have no real data for the scaled-gain case, so q_real_next cannot
+    # appear in this half of the comparison.
+    error_after = {name: rms_deg(raw_q_sim_next[name], ground_truth) for name in names[1:]}
+
+    print("\nAll values: q1step-style RMS (deg) vs the training ground truth "
+          "(nominal-gain, uncalibrated sim).")
+    print(f"{'joint':16s} {'q_real_next (actual, unscaled)':>32s} " +
+          " ".join(f"{n:>32s}" for n in names[1:]))
     for jname, j, _ in TEST_JOINTS:
-        delta = c_state[j] - b_state[j]
-        pct = 100 * delta / b_state[j] if b_state[j] > 1e-9 else 0.0
-        flag = '<-- YES' if j in calibrated_joints else ''
-        print(f"{jname:16s} {b_state[j]:22.4f} {c_state[j]:20.4f} "
-              f"{delta:10.4f} {pct:7.1f}%  {flag}")
+        if j not in highlight_joints:
+            continue
+        row = f"{jname:16s} {error_before[j]:32.4f} "
+        row += " ".join(f"{error_after[n][j]:32.4f}" for n in names[1:])
+        print(row)
+    print(f"{'ALL-29 MEAN':16s} {error_before.mean():32.4f} " +
+          " ".join(f"{error_after[n].mean():32.4f}" for n in names[1:]))
 
-    print(f"\nALL-29-JOINT MEAN   {b_state.mean():22.4f} {c_state.mean():20.4f} "
-          f"{c_state.mean()-b_state.mean():10.4f} "
-          f"{100*(c_state.mean()-b_state.mean())/b_state.mean():7.1f}%")
+    print("\nDoes scaling move the PREDICTED real-under-scaled-gains state CLOSER to "
+          "the training ground truth than the ACTUAL (unscaled) real state was?")
+    for jname, j, _ in TEST_JOINTS:
+        if j not in highlight_joints:
+            continue
+        for n in names[1:]:
+            delta = error_after[n][j] - error_before[j]
+            pct = 100 * delta / error_before[j]
+            verdict = "CLOSER to training (helps)" if delta < 0 else "FARTHER from training (hurts)"
+            print(f"  {jname:16s} | {n:55s} | {pct:+7.1f}%  -> {verdict}")
+    for n in names[1:]:
+        delta = error_after[n].mean() - error_before.mean()
+        pct = 100 * delta / error_before.mean()
+        verdict = "CLOSER to training (helps)" if delta < 0 else "FARTHER from training (hurts)"
+        print(f"  {'ALL-29 MEAN':16s} | {n:55s} | {pct:+7.1f}%  -> {verdict}")
 
-    print("\nq1step(deg) = one-step-ahead position prediction RMS error (teacher-forced,")
-    print("              stable for the full session, no drift). Lower = sim dynamics")
-    print("              better predicts the real robot's next state given the same")
-    print("              (q, dq, action) as input.")
-    print("tau_rms/corr  = sim commanded torque vs real tau_est (expected near-tautological")
-    print("              per Phase B; included for completeness, not the main signal here).")
+    print("\nInterpretation: q_sim_next[baseline] = ground truth = what the policy was")
+    print("trained against (nominal Kp/Kd, no friction -- matches IsaacLab, phaseB_actuator.md")
+    print("sec 3c). q_real_next = the ACTUAL logged real robot state under unscaled gains --")
+    print("this is the observed sim2real gap (error_before). We have NO real hardware log")
+    print("with scaled gains, so q_real_next* (what real WOULD do under scaled gains) is")
+    print("PREDICTED using the Phase-B-calibrated model (best available proxy for real")
+    print("dynamics/friction) driven by the scaled PD law (error_after). If error_after <")
+    print("error_before, that supports scaling as bringing real deployment BACK toward the")
+    print("training distribution; if error_after > error_before, scaling would predictably")
+    print("push real deployment FURTHER from what the policy was trained to expect.")
 
 
 if __name__ == '__main__':

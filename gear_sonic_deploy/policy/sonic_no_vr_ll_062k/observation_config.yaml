@@ -1,0 +1,101 @@
+# G1 Deploy - Observation Configuration (REUBEN sonic_no_vr_low_latency_envs_16K, model_step_062000)
+# ===================================================================================================
+# Exported from sonic_no_vr_low_latency_envs_16K/model_step_062000.pt via
+#   python gear_sonic/eval_agent_trl.py checkpoint=<ckpt> +num_envs=1 +export_onnx_only=true \
+#     +manager_env.commands.motion.motion_lib_cfg.motion_file=<any local robot dir> \
+#     +manager_env.commands.motion.motion_lib_cfg.smpl_motion_file=<any local smpl dir>
+#   (the motion_file overrides are only needed because the checkpoint's baked-in
+#    training paths point at the cluster and no longer exist locally)
+#
+# Encoder input dimension: 979   Decoder/policy dimension: 994   token: 64
+#
+# LOW-LATENCY + no-teleop model. Two differences vs policy/sonic_no_vr_050k:
+#   1. g1 lookahead is step1, not step5   (dt_future_ref_frames 0.02 @ 50fps = 1 frame)
+#   2. smpl lookahead is 4 frames, not 10 (smpl_num_future_frames: 4, step1)
+# Like sonic_no_vr_050k it was trained WITHOUT the teleop/VR encoder branch, so there
+# are only two encoder modes (g1, smpl) and no vr_3point_* observations.
+#
+# Uses "encoder_mode" (dim 3: 1 index + 2 zero-pad, modes 0-2), NOT "encoder_mode_4",
+# matching the 2-mode structure -- using encoder_mode_4 would make the encoder input
+# 980 and fail against the exported 979.
+#
+# Dimension accounting, verified against the exported ONNX (in = [1, 979]):
+#   encoder_mode                                  3
+#   motion_joint_positions_10frame_step1        290  \
+#   motion_joint_velocities_10frame_step1       290   >  == command_multi_future_nonflat (10 x 58)
+#   motion_anchor_orientation_10frame_step1      60  == motion_anchor_ori_b_mf_nonflat (10 x 6)
+#   smpl_joints_4frame_step1                    288  == smpl_joints_multi_future_local_nonflat (4 x 72)
+#   smpl_anchor_orientation_4frame_step1         24  == smpl_root_ori_b_multi_future (4 x 6)
+#   motion_joint_positions_wrists_4frame_step1   24  == joint_pos_multi_future_wrist_for_smpl (4 x 6)
+#                                              ----
+#                                               979
+#
+# NOTE: the smpl_*_4frame_step1 / *_10frame_step1 terms must exist in
+# GetObservationRegistry() (src/g1/g1_deploy_onnx_ref/src/g1_deploy_onnx_ref.cpp).
+# policy/low_latency/observation_config.yaml already relies on the 4frame_step1
+# entries, so if that policy loads on your build, these will too.
+
+observations:
+
+  - name: "token_state"
+    enabled: true
+
+  - name: "his_base_angular_velocity_10frame_step1"
+    enabled: true
+
+  - name: "his_body_joint_positions_10frame_step1"
+    enabled: true
+
+  - name: "his_body_joint_velocities_10frame_step1"
+    enabled: true
+
+  - name: "his_last_actions_10frame_step1"
+    enabled: true
+
+  - name: "his_gravity_dir_10frame_step1"
+    enabled: true
+
+encoder:
+  dimension: 64
+  use_fp16: false
+  encoder_observations:
+    - name: "encoder_mode"
+      enabled: true
+    # g1 encoder: command_multi_future_nonflat (positions + velocities), step1
+    - name: "motion_joint_positions_10frame_step1"
+      enabled: true
+    - name: "motion_joint_velocities_10frame_step1"
+      enabled: true
+    # g1 encoder: motion_anchor_ori_b_mf_nonflat (body, multi-frame), step1
+    - name: "motion_anchor_orientation_10frame_step1"
+      enabled: true
+    # smpl encoder: 4-frame lookahead  <-- LOW-LATENCY
+    - name: "smpl_joints_4frame_step1"
+      enabled: true
+    - name: "smpl_anchor_orientation_4frame_step1"
+      enabled: true
+    - name: "motion_joint_positions_wrists_4frame_step1"
+      enabled: true
+    # NOTE: no vr_3point_local_target / vr_3point_local_orn_target / motion_anchor_orientation
+    # (single-frame) here -- this checkpoint has NO teleop encoder mode.
+  encoder_modes:
+    - name: "g1"
+      mode_id: 0
+      required_observations:
+        - encoder_mode
+        - motion_joint_positions_10frame_step1
+        - motion_joint_velocities_10frame_step1
+        - motion_anchor_orientation_10frame_step1
+    - name: "smpl"
+      mode_id: 2
+      required_observations:
+        - encoder_mode
+        - smpl_joints_4frame_step1
+        - smpl_anchor_orientation_4frame_step1
+        - motion_joint_positions_wrists_4frame_step1
+    # NOTE: no "teleop" mode -- trained without the VR/teleop encoder branch, so
+    # mode_id 1 is unused here. "smpl" MUST be mode_id 2 to match
+    # zmq_endpoint_interface.hpp's hardcoded SetEncodeMode(2) for protocol v2/v3
+    # (SMPL-based) ZMQ streams; the C++ side never looks up mode_id by name, so a
+    # mode_id of 1 silently breaks ZMQ SMPL streaming (falls back to mode 0 = g1
+    # with no g1-space reference data => no movement).

@@ -1,0 +1,152 @@
+[
+ {
+  "clip": "walk_180_R_003__A332_M",
+  "category": "Test-Repetition (ID)",
+  "session": "streamed_073717",
+  "offset": 105,
+  "nframes": 560,
+  "run": "g1_deploy_run_09082026_run1",
+  "t0_ms": 72760.0,
+  "t1_ms": 83960.0
+ },
+ {
+  "clip": "walk_180_R_003__A332_M",
+  "category": "Test-Repetition (ID)",
+  "session": "streamed_074026",
+  "offset": 105,
+  "nframes": 560,
+  "run": "g1_deploy_run_09082026_run2",
+  "t0_ms": 24700.0,
+  "t1_ms": 35900.0
+ },
+ {
+  "clip": "walk_180_R_003__A332_M",
+  "category": "Test-Repetition (ID)",
+  "session": "streamed_074402",
+  "offset": 105,
+  "nframes": 560,
+  "run": "g1_deploy_run_09082026_run3",
+  "t0_ms": 50820.0,
+  "t1_ms": 62020.0
+ },
+ {
+  "clip": "walk_180_R_003__A332_M",
+  "category": "Test-Repetition (ID)",
+  "session": "streamed_074640",
+  "offset": 105,
+  "nframes": 560,
+  "run": "g1_deploy_run_09082026_run4",
+  "t0_ms": 18260.0,
+  "t1_ms": 29460.0
+ },
+ {
+  "clip": "walk_sideway_045_stop_005__A042_M",
+  "category": "Test-Repetition (ID)",
+  "session": "streamed_075106",
+  "offset": 104,
+  "nframes": 277,
+  "run": "g1_deploy_run_09082026_run5",
+  "t0_ms": 39660.0,
+  "t1_ms": 45200.0
+ },
+ {
+  "clip": "walk_sideway_045_stop_005__A042_M",
+  "category": "Test-Repetition (ID)",
+  "session": "streamed_075325",
+  "offset": 104,
+  "nframes": 277,
+  "run": "g1_deploy_run_09082026_run5",
+  "t0_ms": 35000.0,
+  "t1_ms": 40540.0
+ },
+ {
+  "clip": "jog_ff_start_180_R_002__A192_M",
+  "category": "Test-Repetition (ID) - jog",
+  "session": "streamed_075812",
+  "offset": 105,
+  "nframes": 252,
+  "run": "g1_deploy_run_09082026_run6",
+  "t0_ms": 60040.0,
+  "t1_ms": 65080.0
+ },
+ {
+  "clip": "jog_ff_start_180_R_002__A192_M",
+  "category": "Test-Repetition (ID) - jog",
+  "session": "streamed_081538",
+  "offset": 98,
+  "nframes": 252,
+  "run": "g1_deploy_run_09082026_run10",
+  "t0_ms": 48380.0,
+  "t1_ms": 53420.0
+ },
+ {
+  "clip": "jog_ff_start_180_R_002__A192_M",
+  "category": "Test-Repetition (ID) - jog",
+  "session": "streamed_081839",
+  "offset": 98,
+  "nframes": 252,
+  "run": "g1_deploy_run_09082026_run11",
+  "t0_ms": 50080.0,
+  "t1_ms": 55120.0
+ },
+ {
+  "clip": "reach_jump_R_001__A072_M",
+  "category": "Test-Content (OOD) - jump",
+  "session": "streamed_080124",
+  "offset": 104,
+  "nframes": 379,
+  "run": "g1_deploy_run_09082026_run7",
+  "t0_ms": 62800.0,
+  "t1_ms": 70380.0
+ },
+ {
+  "clip": "reach_jump_R_001__A072_M",
+  "category": "Test-Content (OOD) - jump",
+  "session": "streamed_082055",
+  "offset": 98,
+  "nframes": 379,
+  "run": "g1_deploy_run_09082026_run12",
+  "t0_ms": 23280.0,
+  "t1_ms": 30860.0
+ },
+ {
+  "clip": "kneeling_start_101__A063_M",
+  "category": "Test-Content (OOD) - descent",
+  "session": "streamed_080809",
+  "offset": 104,
+  "nframes": 260,
+  "run": "g1_deploy_run_09082026_run8",
+  "t0_ms": 104800.0,
+  "t1_ms": 110000.0
+ },
+ {
+  "clip": "kneeling_start_101__A063_M",
+  "category": "Test-Content (OOD) - descent",
+  "session": "streamed_082249",
+  "offset": 99,
+  "nframes": 260,
+  "run": "g1_deploy_run_09082026_run14",
+  "t0_ms": 25800.0,
+  "t1_ms": 31000.0
+ },
+ {
+  "clip": "kneeling_stop_002__A051_M",
+  "category": "Test-Content (OOD) - recovery",
+  "session": "streamed_080809",
+  "offset": 1821,
+  "nframes": 137,
+  "run": "g1_deploy_run_09082026_run8",
+  "t0_ms": 139140.0,
+  "t1_ms": 141880.0
+ },
+ {
+  "clip": "kneeling_stop_002__A051_M",
+  "category": "Test-Content (OOD) - recovery",
+  "session": "streamed_082249",
+  "offset": 1261,
+  "nframes": 137,
+  "run": "g1_deploy_run_09082026_run14",
+  "t0_ms": 49040.0,
+  "t1_ms": 51780.0
+ }
+]

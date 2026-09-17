@@ -218,10 +218,146 @@ RMSE/correlation/gain** as the primary objective when selecting or scanning `dof
 any future `frictionloss`) values — it is closer to the physical quantity being fit and is far
 less prone to being gamed by numerically-unstable but position-metric-favorable damping.
 
-## 6. Reproduction
+## 6. Testing upstream's `--motor-kp-scale`/`--motor-kd-scale` proposal
+
+Upstream commit `087f9ac` ("Add SONIC control and adaptive sampling fixes") adds a runtime
+flag pair to the deploy binary, `--motor-kp-scale 4,10=1.5 --motor-kd-scale 4,10=1.5`
+(joints 4/10 = `L/R_ankle_pitch`), described as "increasing their control gains improves
+whole-body stability and, in practice, wrist tracking." This section asks: **does this scaling
+make sim's one-step dynamics *prediction* better or worse**, using the same teacher-forced
+one-step-ahead machinery as §1–§5 above?
+
+### 6.1 First attempt (wrong framing) — comparing every candidate against the real trajectory
+
+The naive test swaps `KPS`/`KDS` for the scaled values inside `one_step_predict()`'s PD law and
+scores the result against `q_real_next` (the logged real state), exactly like §1's
+baseline-vs-Phase-B comparison:
+
+| joint | baseline (nominal) | Phase B (`dof_damping`) | scaled 1.5/1.5 (upstream) | scaled `Kp`=1.0/`Kd`=1.5 |
+|---|---|---|---|---|
+| `L_ankle_pitch` | 12.99° | 7.94° (−38.8%) | **16.54° (+27.3%)** | 12.98° (−0.0%) |
+| `R_ankle_pitch` | 9.37° | 6.19° (−34.0%) | **11.92° (+27.1%)** | 9.36° (−0.1%) |
+| ALL-29 MEAN | 3.549° | 3.249° (−8.4%) | 3.730° (+5.1%) | 3.551° (+0.1%) |
+
+Torque domain (unclipped `tau_sim` vs. real `tau_est`), same test:
+
+| joint | baseline RMS/corr | scaled 1.5/1.5 RMS/corr |
+|---|---|---|
+| `L_ankle_pitch` | 1.117 / 0.998 | 5.914 / 0.987 |
+| `R_ankle_pitch` | 1.080 / 0.997 | 5.598 / 0.992 |
+
+By this test, `1.5/1.5` looks strictly worse (+27% `q1step`, ~5× worse torque RMS). **This
+framing is wrong, and the reason matters:** `q_real_next` is the state the real robot reached
+*under unscaled gains*. Scoring a scaled-gain PD law against a trajectory that was never
+generated under scaled gains is not a fair test — of course a mismatched control law predicts
+someone else's trajectory poorly. This is the same category of mistake as fitting `Kp_eff`
+against data the model wasn't run on.
+
+### 6.2 Corrected framing — what is the actual counterfactual we want to answer?
+
+The real question is: **if the real robot HAD been commanded with scaled gains, would its
+actual next state (call it `q_real_next*` — never observed, since no hardware log in this
+dataset used scaled gains) have landed closer to what the policy was *trained* to expect, than
+the real robot's *actual, unscaled* behavior did?**
+
+Three quantities, precisely defined:
+
+- **`q_sim_next`** — one MuJoCo step, **nominal** `Kp`/`Kd`, **uncalibrated** model (no
+  `dof_damping`, no friction). This is the **training ground truth** — IsaacLab uses the
+  identical nominal gains (`phaseB_actuator.md` §3c), so this is exactly the dynamics the
+  policy was optimized against.
+- **`q_real_next`** — the actual logged real-robot state at `t+1`. Ground truth from data, not
+  a model. This reflects the **unscaled** deployment, which is all we have hardware logs for.
+- **`q_real_next*`** — the *counterfactual*: what the real robot's state at `t+1` would have
+  been **if it had been commanded with scaled gains**. **Never observed** — no such hardware
+  run exists — so it must be **predicted**, not read from a log.
+
+The comparison that actually answers the question is:
+
+```
+error_before = RMS( q_real_next          − q_sim_next )   # already-observed sim2real gap
+error_after  = RMS( q_real_next*_pred    − q_sim_next )   # predicted gap, under scaling
+```
+
+both measured against the **same** ground truth (`q_sim_next`, nominal/uncalibrated) — never
+against each other, and `q_real_next` never appears in `error_after` at all, since we have no
+real data for the scaled-gain case.
+
+### 6.3 How to estimate `q_real_next*_predicted`
+
+We cannot observe `q_real_next*` directly, but we have a validated **model of real hardware's
+extra dynamics**: the Phase B `dof_damping` calibration (`{4: 1.19, 10: 1.09, 14: 0.98}`,
+§1 above), which already reproduces the real robot's one-step response far better than the
+nominal (uncalibrated) model — that is precisely what "calibrated" means in §1's table. This
+term represents a **physical property of the hardware** (extra viscous friction the motor
+delivers, beyond the ideal PD law) — and is treated as **independent of what gain is commanded**
+noise/friction in the drivetrain does not know what `Kp`/`Kd` the software asked for.
+
+So the prediction procedure is:
+
+1. **Build the calibrated model** — nominal MuJoCo model **plus** the Phase B `dof_damping`
+   correction (`build_model({4: 1.19, 10: 1.09, 14: 0.98})`). This is our best available proxy
+   for "how the real joint's physical dynamics actually behave," independent of commanded gain.
+2. **Drive it with the *scaled* PD law**, not nominal — i.e. inside `one_step_predict()`, use
+   `kp = KPS` with `kp[4] *= 1.5, kp[10] *= 1.5` and likewise for `kd`, instead of the unscaled
+   `KPS`/`KDS`. This captures the counterfactual *command*.
+3. **Teacher-force from the same real `(q_real[t], dq_real[t])`** as every other candidate in
+   this document, so the comparison stays apples-to-apples with §1–§5.
+4. The resulting `q_sim_next` from this calibrated+scaled model **is** `q_real_next*_predicted`
+   — our best estimate of what the real robot's next state would have been, had it been
+   commanded with scaled gains, given everything else about the real trajectory held fixed.
+
+```python
+# model_eval/sim2real_phaseC1_onestep_prediction.py
+model = build_model({4: 1.19, 10: 1.09, 14: 0.98})       # calibrated: proxy for real hardware
+kp, kd = scaled_gains(kp_scale={4: 1.5, 10: 1.5},         # counterfactual commanded gain
+                       kd_scale={4: 1.5, 10: 1.5})
+q_real_next_star_predicted, _ = one_step_predict(model, q_real, dq_real, qt_real, 1/FS,
+                                                  kp=kp, kd=kd)
+```
+
+### 6.4 Result
+
+| joint | `q_real_next` (actual, unscaled) vs. training | calibrated only (unscaled) vs. training | **calibrated + scaled 1.5/1.5 (predicted `q_real_next*`) vs. training** | calibrated + scaled `Kp`=1.0/`Kd`=1.5 vs. training |
+|---|---|---|---|---|
+| `L_ankle_pitch` | 12.99° | 5.54° (−57.4%) | **2.95° (−77.3%)** | 5.56° (−57.2%) |
+| `R_ankle_pitch` | 9.37° | 3.71° (−60.5%) | **1.82° (−80.6%)** | 3.74° (−60.1%) |
+| ALL-29 MEAN | 3.55° | 1.03° (−70.8%) | **0.87° (−75.6%)** | 1.09° (−69.4%) |
+
+Percentages are relative to `error_before` (the actual observed, unscaled real-robot gap).
+
+**With the corrected framing, `1.5/1.5` wins decisively** — the *predicted* scaled-gain real
+state lands **77–81% closer** to the training ground truth than the *actual* unscaled real
+robot did, clearly ahead of calibration alone (−57–61%) or the `Kd`-only, measurement-derived
+1.5× scaling (−57–60%). This reverses §6.1's naive conclusion, and the reversal is itself the
+lesson: §6.1 asked "does this PD law reproduce what unscaled hardware already did" (wrong
+question, mechanically must penalize any change); §6.3–6.4 asks "does this PD law's predicted
+behavior move toward what training expected" (the actual question), and the same numbers say
+something close to the opposite.
+
+**Two caveats inherent to this method, not fixable by more analysis of existing logs:**
+
+1. **This is a model-based prediction, not a hardware measurement.** It assumes the
+   Phase B friction calibration (fit at nominal gains) remains a valid proxy for real
+   friction/backlash *at the new, higher commanded stiffness* — an extrapolation. If real
+   friction is itself gain-dependent (plausible — see the `waist_roll` chatter investigation in
+   `sim2real/phaseE_waist_roll_chatter.md`, which shows this actuator family's dynamics can
+   shift qualitatively under different excitation), the prediction could be optimistic.
+2. **One-step teacher-forcing cannot see closed-loop stability** (the same C.1-vs-C.2
+   distinction as `phaseC2_discussion.md`) — this result says the *local* dynamics move toward
+   training, not that a continuously-scaled-gain rollout stays stable, nor that it doesn't
+   change the excitation reaching `waist_roll`'s chatter mode.
+
+This result is a genuine, mechanistic point in favor of testing `1.5/1.5` on real hardware
+(§ from `sim2real/phaseE_waist_roll_chatter.md`'s discussion of the same flag) — but it remains
+a **prediction**, and should be validated against an actual scaled-gain deployment before being
+treated as confirmed.
+
+## 7. Reproduction
 
 ```bash
-# main C.1 baseline-vs-phaseB comparison (position domain, q1step)
+# main C.1 baseline-vs-phaseB comparison (position domain, q1step), and the
+# --motor-kp-scale/--motor-kd-scale test (sec 6) -- all cand_sets run in one pass:
 .venv_sim/bin/python model_eval/sim2real_phaseC1_onestep_prediction.py --duration 439.6
 
 # per-joint damping scan (position domain, q1step)
@@ -236,7 +372,7 @@ less prone to being gamed by numerically-unstable but position-metric-favorable 
     --joints 4 10 14 --lo 0.0 --hi 3.0 --steps 7 --duration 439.6
 ```
 
-## 7. Combined optimal config (damping + friction)
+## 8. Combined optimal config (damping + friction)
 
 See `sim2real/optimal_calibration.md` for the final least-squares-optimal
 `dof_damping`/`dof_frictionloss` combination (derived from this torque-domain analysis), the
