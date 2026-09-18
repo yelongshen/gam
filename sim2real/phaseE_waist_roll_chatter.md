@@ -29,7 +29,9 @@ limits, from `g1_29dof.xml`), `model_eval/sim2real_phaseB_refit.py` (per-session
 `model_eval/sim2real_phaseB_tau_compare.py` (`tau_est` vs. nominal `tau_sim`
 MSE/RMSE/corr), `model_eval/sim2real_phaseE_dq_aliasing.py` (the `dq_logged` vs.
 `dq_fd` diagnostic developed in this investigation),
-`model_eval/sim2real_phaseE_qtarget_overshoot.py` (§12's out-of-range `q_target` check).
+`model_eval/sim2real_phaseE_qtarget_overshoot.py` (§12's out-of-range `q_target` check),
+`model_eval/sim2real_phaseE_gain_refit_per_run.py` (§13's per-run `Kp`/`Kd` free-fit,
+which separates §1's known gain-model error from genuine chatter).
 
 ---
 
@@ -74,6 +76,11 @@ checked. Every other joint (including the "2× 5020" siblings) stayed within the
 established by §1's gain fit. This is a distinct, larger phenomenon, isolated almost
 entirely to `waist_roll`, and almost entirely inside `g1_run_0914`.
 
+> ⚠️ **See §13.** This table uses *nominal* gains, which §1 already showed are wrong for
+> the roll subgroup (`Kd_eff ≈ 0.5×` nominal). Re-fitting per run shows that a large part
+> of `run8`'s contribution to this pooled number is that known gain-model error, not a
+> chatter episode. `run20` survives the refit; `run8` largely does not.
+
 ## 3. Which runs? Only 2 of 9 usable runs in `g1_run_0914`
 
 Per-run breakdown (`model_eval/sim2real_phaseB_per_run.py`,
@@ -83,8 +90,8 @@ Per-run breakdown (`model_eval/sim2real_phaseB_per_run.py`,
 |---|---|---|---|---|
 | run1, run2, run3, run4, run6, run7 | 853–1151 | 0.29–0.66 | 0.988–0.998 | normal |
 | run12 | 1045 | 0.94 | 0.986 | mildly elevated |
-| **run8** | 2282 | **3.92** | **0.736** | **outlier** |
-| **run20** | 1004 | **7.93** | **0.734** | **outlier** |
+| **run8** | 2282 | **3.92** | **0.736** | **outlier** (⚠️ *nominal-gain artifact — see §13*) |
+| **run20** | 1004 | **7.93** | **0.734** | **outlier** (confirmed, survives refit — §13) |
 | run5, run11 | — | — | — | too few Mode-2 samples for the full `q`/`dq`/`action`/`motor_torque` fit |
 
 `run8` (2,282 samples, the largest single run) and `run20` alone account for the
@@ -350,7 +357,106 @@ command" (many do, routinely) — it's "what does this joint's mechanism do in r
 which is exactly the differential fragility documented in §9–§10 (`waist_roll` and its
 "2× 5020" siblings vs. the robust single-motor control joints).
 
-## 13. Conclusion
+## 13. ⚠️ CORRECTION — `run8`'s *torque* outlier status is a nominal-gain artifact (its *aliasing* status stands)
+
+§2/§3 rank runs by `tau_est` vs. **nominal**-gain `tau_sim`. But §1 of this same
+document already established that the roll subgroup needs `Kd_eff ≈ 0.5×` nominal. A
+nominal-gain residual therefore conflates two unrelated things: **(a)** the known,
+session-invariant "2× 5020" gain-model error, and **(b)** genuine chatter episodes.
+Re-fitting `(Kp, Kd)` per run separates them
+(`model_eval/sim2real_phaseE_gain_refit_per_run.py`).
+
+| run | n | `Kp_fit` | `Kp`/nom | `Kd_fit` | `Kd`/nom | R² | RMSE (nom) | **RMSE (refit)** | \|dq\| p99 |
+|---|---|---|---|---|---|---|---|---|---|
+| run1 | 1128 | 28.56 | 1.002 | 1.009 | 0.556 | 0.989 | 0.39 | 0.23 | 1.60 |
+| run2 | 1118 | 29.37 | 1.031 | 1.044 | 0.576 | 0.990 | 0.29 | 0.23 | 0.75 |
+| run3 | 933 | 27.18 | 0.954 | 0.795 | 0.438 | 0.985 | 0.35 | 0.27 | 0.88 |
+| run4 | 853 | 26.96 | 0.946 | 0.790 | 0.435 | 0.990 | 0.35 | 0.22 | 0.98 |
+| run6 | 1115 | 28.81 | 1.011 | 1.068 | 0.589 | 0.995 | 0.47 | 0.22 | 2.37 |
+| run7 | 1151 | 29.04 | 1.019 | 1.241 | 0.684 | 0.985 | 0.66 | 0.48 | 1.30 |
+| run12 | 1045 | 28.14 | 0.987 | 0.964 | 0.531 | 0.992 | 0.94 | 0.47 | 4.08 |
+| **run8** | 2282 | **29.67** | **1.041** | **0.922** | **0.508** | **0.995** | **3.92** | **0.36** | **19.93** |
+| **run20** | 1004 | **25.75** | **0.903** | **0.761** | **0.419** | **0.975** | **7.93** | **1.85** | **21.33** |
+
+**`run8` is fully explained by the §1 gain model.** Its own best-fit gains
+(`Kp`/nom = 1.041, `Kd`/nom = 0.508, R² = 0.995) are *indistinguishable from every
+normal run in the session*, and refitting collapses its residual **3.92 → 0.36 (≈11×)**,
+straight back into the 0.22–0.48 band of the untroubled runs. Its §2/§3 "outlier" status
+came entirely from being scored against a `Kd` that is ~2× too large — an error that is
+amplified precisely when `|dq|` is large, which is exactly what `run8` has.
+
+**`run20` is the genuine torque-domain outlier.** Even given its own best-fit gains it
+retains RMSE 1.85 — 4–8× every other run — and its fit quality degrades (R² 0.975, the
+worst in the session; `Kp`/nom falls to 0.903, `Kd`/nom to 0.419, both outside the range
+spanned by all other runs). A PD law with *any* constant gains cannot describe `run20`.
+
+This pattern is session-invariant, confirming it is (a) and not (b): the same refit on
+`g1_run_0905`/`g1_run_0908` collapses their nominal-gain residuals too (pooled
+0.553 → 0.245 and 0.554 → 0.279), and the previously-alarming `0908 run10`
+(RMSE_nom 1.53) drops to 0.58 with ordinary gains (`Kd`/nom = 0.479).
+
+### The deployed gains were identical in all three sessions
+
+For completeness — `g1_run_0914` did **not** run different PD gains, so none of §2/§3's
+elevated numbers can be attributed to a deployment change:
+
+- `gear_sonic_deploy/src/g1/g1_deploy_onnx_ref/include/policy_parameters.hpp` sets
+  `kps[13] = 2.0 * STIFFNESS_5020 = 28.5012` and `kds[13] = 2.0 * DAMPING_5020 = 1.8144`
+  for `waist_roll_joint`, and `git log` shows that header has **one commit (2026-02-19)** —
+  untouched across all three sessions.
+- The control loop writes those constants unconditionally
+  (`motor_command_tmp.kp.at(i) = kps[i]`); there was no per-run override path at the time.
+  (The `--kp-scale`/`--kd-scale` runtime scaling in `motor_gain_scaling.hpp` was added
+  *after* these sessions and defaults to 1.0.)
+- `metadata.json` differs between sessions only in policy checkpoint
+  (`sonic_no_vr_ll_062k` vs. `low_latency`); same `control_frequency: 50`, same `dt: 0.02`.
+- The refit confirms this empirically: pooled `Kp_fit`/nominal is **1.000 / 0.982 / 0.956**
+  for 0905 / 0908 / 0914, and `Kd_fit`/nominal is **0.510 / 0.504 / 0.456** — i.e. the
+  commanded `Kp` is recovered in all three, and the ~0.5× `Kd` discrepancy is the same
+  session-invariant actuator/firmware property already captured in
+  `gear_sonic/utils/mujoco_sim/sim2real_gain_correction.py`
+  (`"waist_roll_joint": (0.981, 0.49)`).
+
+### ❗ What this does *not* retract
+
+**`run8` remains a genuine chatter/aliasing episode.** §6 measures something different
+and independent: `corr(dq_logged, dq_fd) = −0.958` for `run8` — the single worst value
+of any joint in any run in the entire study — with a 3.37× magnitude excess. That
+finding is untouched here.
+
+The two results are consistent, and their combination is actually *more* diagnostic than
+either alone:
+
+- The PD fit uses `dq_logged` on **both** sides (the firmware computes `tau` from the
+  same velocity estimate it logs), so it will fit cleanly whenever the firmware is
+  internally self-consistent — **even while `dq_logged` is aliased nonsense relative to
+  the position trace.** `run8` is exactly this case: internally consistent, externally
+  aliased.
+- `run20` fails **both** tests (RMSE_fit 1.85 *and* corr −0.818), i.e. its torque is not
+  even consistent with its own logged velocity.
+
+So the corrected reading of `run8` vs `run20` is:
+
+| | `run8` | `run20` |
+|---|---|---|
+| nominal-gain torque residual | high (3.92) | high (7.93) |
+| **refit torque residual** | **normal (0.36)** | **still high (1.85)** |
+| `corr(dq_logged, dq_fd)` (§6) | **−0.958 (worst in study)** | **−0.818** |
+| interpretation | **velocity aliasing only** — firmware self-consistent | **velocity aliasing + torque inconsistency** — more severe |
+
+Both runs are real chatter episodes; **`run20` is the more severe of the two**, not (as
+§2/§3's nominal-gain ranking implied) merely 2× worse than a comparable `run8`.
+
+### Consequences for other sections
+
+- **§11's good/bad split is unaffected.** It splits on `run8`+`run20` using the §6
+  `dq`-aliasing metric, under which both runs are correctly classified as bad.
+- **§7's per-run gradient is unaffected** — same metric.
+- **§2/§3's framing should be read as "nominal-gain residual", not "chatter severity".**
+  As a chatter-severity ranking, use §7/§10's `corr(dq_logged, dq_fd)` instead; the
+  torque residual is only a valid severity proxy *after* refitting.
+
+## 14. Conclusion
 
 1. ✅ **Not a hardware fault.** Zero `motor_error.csv` flags, normal
    `motor_temperature.csv`, in every run checked.
@@ -380,7 +486,16 @@ which is exactly the differential fragility documented in §9–§10 (`waist_rol
    action values (§10's single-dip joints) do not. The differential fragility of the
    joint's mechanism, not the presence of a large command, remains the best-supported
    explanation for *why waist_roll specifically fails*; *why these two runs specifically
-   trigger it* is still open.
+   trigger it* is still open. The one property that cleanly separates both outliers from
+   every other run is **`|dq|` p99 ≈ 20 rad/s vs. ≤ 4.1 rad/s everywhere else** (§13) —
+   a ~5× gap with no overlap, which makes high-velocity excitation the leading candidate
+   trigger, though the two severe runs are too few to establish a threshold.
+7. ⚠️ **`run8` and `run20` are not equally severe, and differ in kind** (§13). After
+   correcting for §1's known gain error, `run8` is a *velocity-aliasing-only* episode
+   (torque still fits a normal PD law, RMSE 0.36), while `run20` is aliasing **plus**
+   torque inconsistent with its own logged velocity (RMSE 1.85 even with best-fit
+   gains). Any severity ranking should use §7/§10's `corr(dq_logged, dq_fd)` or the
+   *refit* residual — never the nominal-gain residual of §2/§3.
 
 **Most likely physical mechanism** (consistent with, not separately proven beyond, the
 evidence above): `waist_roll`'s two-motor "2× 5020" drive shares torque through a
@@ -420,6 +535,11 @@ chatter mode" from "this robot's `waist_roll` is miscalibrated."
 
 # Per-run breakdown, find outlier runs within a session (§3):
 .venv_sim/bin/python model_eval/sim2real_phaseB_per_run.py g1_run_0914 --joint waist_roll
+
+# Per-run (Kp, Kd) free-fit, separating the §1 gain-model error from real chatter (§13).
+# This is what shows run8's torque residual collapsing 3.92 -> 0.36 while run20 stays high:
+.venv_sim/bin/python model_eval/sim2real_phaseE_gain_refit_per_run.py \
+    --sessions g1_run_0905 g1_run_0908 g1_run_0914 --joint waist_roll
 
 # dq_logged vs dq_fd aliasing diagnostic (§6-§11):
 .venv_sim/bin/python model_eval/sim2real_phaseE_dq_aliasing.py \
