@@ -122,6 +122,24 @@ def up_from_livox_accel(accel_livox):
     return T_TORSO_LIVOX[:3, :3] @ (a / np.linalg.norm(a))
 
 
+def estimate_floor_z(points_level, search=0.3, bin_size=0.01, refine=0.03):
+    """Floor height in a levelled frame: the most populated 1 cm z-bin within
+    `search` m above the 2nd-percentile z, refined by the median of points
+    within `refine` m of it. Assumes the floor is the dominant low surface.
+    (Taking a low percentile directly lands in the noise tail: ~7-9 cm below
+    the true floor for D435 depth at 2.5 m, ~2.5 cm for the MID-360.)"""
+    z = np.asarray(points_level)[:, 2]
+    z = z[np.isfinite(z)]
+    if z.size == 0:
+        return float("nan")
+    lo = np.percentile(z, 2)
+    zl = z[z < lo + search]
+    hist, edges = np.histogram(zl, bins=np.arange(lo - bin_size, lo + search + bin_size, bin_size))
+    hist = np.convolve(hist, np.ones(5) / 5.0, mode="same")
+    peak = edges[np.argmax(hist)] + bin_size / 2
+    return float(np.median(zl[np.abs(zl - peak) < refine]))
+
+
 def lidar_to_level(points_livox, accel_livox, min_range=LIDAR_MIN_RANGE):
     """Raw livox points -> cleaned, gravity-levelled torso frame (N, 3)."""
     p = transform_points(T_TORSO_LIVOX, clean_lidar(points_livox, min_range))

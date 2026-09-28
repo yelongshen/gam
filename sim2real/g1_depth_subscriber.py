@@ -13,15 +13,31 @@ Examples:
     # record to an .npz for offline heightmap work
     .venv_sim/bin/python sim2real/g1_depth_subscriber.py --frames 300 --save /tmp/g1_depth.npz
 
+    # live median height map in the torso frame, levelled with the MID-360 IMU
+    # (needs g1_lidar_publisher.py running on the robot for --imu-port)
+    .venv_sim/bin/python sim2real/g1_depth_subscriber.py --height-map --imu-port 5558
+
+Geometry: points are deprojected in the camera optical frame and moved to the
+torso frame with `g1_frames.T_TORSO_OPTICAL` (D435 pitch re-calibrated to
+~51.3 deg against the MID-360; the URDF's 47.6 deg makes the floor appear to
+rise ~10 cm at 3-4 m). Levelling needs gravity, taken from the MID-360 IMU
+stream; without it heights are in the (possibly tilted) torso frame.
+
 Keys in the viewer window: q / ESC to quit.
 """
 import argparse
 import json
 import struct
+import sys
 import time
+from pathlib import Path
 
 import numpy as np
 import zmq
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "gear_sonic_deploy" / "scripts"))
+import g1_frames  # noqa: E402
+from height_map import HeightMapConfig, build_height_map, print_height_map  # noqa: E402
 
 try:
     import lz4.frame as lz4frame
@@ -57,6 +73,36 @@ def deproject(img, hdr, stride=4):
     return np.stack([x, y, z], axis=1)
 
 
+LIDAR_HEADER_SIZE = 1280  # g1_lidar_publisher.py / view_lidar_client.py wire format
+
+
+def parse_lidar_imu_accel(raw, topic=b"lidar_imu"):
+    """linear_acceleration (3,) from a g1_lidar_publisher.py IMU message."""
+    hdr = json.loads(raw[len(topic):len(topic) + LIDAR_HEADER_SIZE].rstrip(b"\x00"))
+    pos = len(topic) + LIDAR_HEADER_SIZE
+    sizes = {"f32": 4, "f64": 8, "i32": 4, "i64": 8, "bool": 1}
+    for f in hdr["fields"]:
+        n = int(np.prod(f["shape"])) * sizes[f["dtype"]]
+        if f["name"] == "linear_acceleration":
+            return np.frombuffer(raw[pos:pos + n], dtype=np.float32).astype(np.float64)
+        pos += n
+    return None
+
+
+def depth_height_map(img, hdr, accel, max_range):
+    """Median height map (11x11, 2 m square starting 0.5 m ahead) from one depth frame."""
+    pts = g1_frames.clean_depth(deproject(img, hdr, stride=2), max_range)
+    if accel is not None:
+        pts = g1_frames.depth_to_level(pts, accel, max_range)
+        pts[:, 2] -= g1_frames.estimate_floor_z(pts)  # floor = lowest large surface in view
+        frame = "levelled, m above floor"
+    else:
+        pts = g1_frames.transform_points(g1_frames.T_TORSO_OPTICAL, pts)
+        frame = "torso frame, NOT levelled: no IMU"
+    cfg = HeightMapConfig(grid_size=11, half_extent=1.0, center_x=1.5, agg="median")
+    return build_height_map(pts, cfg), frame
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--host", default="192.168.8.122")
@@ -65,6 +111,12 @@ def main():
     ap.add_argument("--frames", type=int, default=0, help="0 = run forever")
     ap.add_argument("--visualize", action="store_true")
     ap.add_argument("--save", help="write received frames to this .npz")
+    ap.add_argument("--height-map", action="store_true",
+                    help="print a median height map (torso frame, z up) with the stats")
+    ap.add_argument("--imu-port", type=int, default=0,
+                    help="g1_lidar_publisher.py port (e.g. 5558) to level with the MID-360 IMU; 0 = off")
+    ap.add_argument("--max-range", type=float, default=g1_frames.DEPTH_MAX_RANGE,
+                    help="ignore depth beyond this for --height-map (m; 0 = no limit)")
     ap.add_argument("--timeout", type=float, default=10.0,
                     help="seconds to wait for the first frame")
     args = ap.parse_args()
@@ -80,6 +132,15 @@ def main():
     poller = zmq.Poller()
     poller.register(sock, zmq.POLLIN)
 
+    imu_sock = None
+    accel = None  # EMA of MID-360 IMU linear_acceleration
+    accel_log = []
+    if args.imu_port:
+        imu_sock = ctx.socket(zmq.SUB)
+        imu_sock.setsockopt(zmq.SUBSCRIBE, b"lidar_imu")
+        imu_sock.connect(f"tcp://{args.host}:{args.imu_port}")
+        print(f"[sub] levelling with MID-360 IMU from tcp://{args.host}:{args.imu_port}")
+
     saved = []
     last_hdr = None
     n = 0
@@ -94,6 +155,15 @@ def main():
                   f"on the robot, and is port {args.port} reachable?")
             break
         first_wait = 5.0
+
+        while imu_sock is not None:
+            try:
+                a = parse_lidar_imu_accel(imu_sock.recv(zmq.NOBLOCK))
+            except zmq.Again:
+                break
+            if a is not None:
+                accel = a if accel is None else 0.95 * accel + 0.05 * a
+                accel_log.append(a)
 
         _topic, msg = sock.recv_multipart()
         hdr, img = decode(msg)
@@ -123,6 +193,10 @@ def main():
                   f"latency {latency_ms:6.1f} ms  valid {valid:5.1f}%  {rng}")
             fps_count = 0
             t_stat = now
+            if args.height_map:
+                grid, frame = depth_height_map(img, hdr, accel, args.max_range)
+                print(f"[sub] height map ({frame}), z [m], +x fwd to the right, +y up:")
+                print_height_map(grid)
 
         if args.visualize:
             import cv2
@@ -146,6 +220,8 @@ def main():
             depth=np.stack(saved),
             depth_scale=last_hdr["depth_scale"],
             intrinsics=json.dumps(last_hdr["intrinsics"]),
+            T_torso_optical=g1_frames.T_TORSO_OPTICAL,
+            imu_accel=np.array(accel_log) if accel_log else np.zeros((0, 3)),
         )
         print(f"[sub] wrote {len(saved)} frames -> {args.save}")
 
