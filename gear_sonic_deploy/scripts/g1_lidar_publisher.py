@@ -11,9 +11,13 @@ on the workstation (analogous to how `g1_depth_publisher.py` pairs with
 Sensor path (see `dev_notes/heightmap_architecture_analysis.md` and the URDF at
 `gear_sonic/data/assets/robot_description/urdf/g1/main.urdf`):
     mid360_link is mounted on torso_link at xyz=(0.0002835, 0.00003, 0.41618),
-    rpy=(0, 3.101, 3.1415) -- i.e. ~0.46m above the pelvis, roughly upright
-    (pitch/yaw near pi is the standard "flip Z to point up" convention for a
-    dome-mounted 360-degree LiDAR).
+    rpy=(0, 3.101, 3.1415) -- i.e. ~0.42m above the pelvis and mounted UPSIDE
+    DOWN (pitch ~pi plus yaw pi is equivalent to a ~180 deg roll, with ~2.3 deg
+    of residual pitch). The points published here are in the raw
+    `livox_frame`, so the floor sits at z ~ +1.3 m; consumers must transform
+    them (see `g1_frames.py`, verified against the MID-360 IMU and the depth
+    camera) before building a height map. The `mid360_joint` in the repo's
+    decoupled_wbc/**/g1*.urdf (rpy=(0, 0.04, 0)) does NOT match this data.
 
 Unitree exposes the Mid-360 over the SAME DDS/CycloneDDS bus used by the
 rest of the low-level SDK (see `external_dependencies/unitree_sdk2_python`),
@@ -252,6 +256,9 @@ def main():
                      help="throttle publishing to this rate (0 = every message)")
     ap.add_argument("--max-range", type=float, default=5.0,
                      help="drop points farther than this (metres, 3D) from the sensor before publishing")
+    ap.add_argument("--min-range", type=float, default=0.35,
+                     help="drop points closer than this (metres, 3D): removes the MID-360's (0,0,0) "
+                          "no-return points and head/shoulder self-hits. Applied in --fastlio mode too.")
     ap.add_argument("--fastlio", action="store_true",
                      help="FAST-LIO mode: forward the FULL cloud with per-point time/"
                           "intensity/ring fields (needed to synthesize Livox CustomMsg on "
@@ -302,16 +309,20 @@ def main():
 
         if xyz.shape[0] == 0:
             return
+        # Always drop points inside --min-range: the MID-360 reports no-returns
+        # as exact (0, 0, 0) (~30% of each frame here), which would otherwise
+        # show up as a phantom obstacle at the sensor origin.
+        dist = np.linalg.norm(xyz, axis=1)
+        keep = dist > args.min_range
         if args.max_range > 0:
-            dist = np.linalg.norm(xyz, axis=1)
-            keep = dist <= args.max_range
-            xyz = xyz[keep]
-            if xyz.shape[0] == 0:
-                return
-            if decoded is not None:
-                for k in ("time", "intensity", "ring"):
-                    if decoded[k] is not None:
-                        decoded[k] = decoded[k][keep]
+            keep &= dist <= args.max_range
+        xyz = xyz[keep]
+        if xyz.shape[0] == 0:
+            return
+        if decoded is not None:
+            for k in ("time", "intensity", "ring"):
+                if decoded[k] is not None:
+                    decoded[k] = decoded[k][keep]
 
         payload = {
             "points": xyz,

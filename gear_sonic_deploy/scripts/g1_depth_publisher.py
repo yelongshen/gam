@@ -136,6 +136,10 @@ def main():
     ap.add_argument("--decimate", type=int, default=2,
                     help="RealSense decimation magnitude (1 = off). 2 halves each axis.")
     ap.add_argument("--no-compress", action="store_true", help="send raw uint16")
+    ap.add_argument("--max-range", type=float, default=0.0,
+                    help="zero out depth pixels / points whose depth (distance along the optical axis) exceeds this, in metres (0 = off). "
+                         "D435i noise is 5-8 cm beyond ~2.5 m at 320x240; 2.5 is a sensible value "
+                         "for height mapping, and the zeros also shrink the LZ4 payload.")
     ap.add_argument("--hole-filling", action="store_true",
                     help="apply RealSense hole-filling filter (denser, but invents data)")
     ap.add_argument("--stats-every", type=float, default=5.0)
@@ -204,6 +208,9 @@ def main():
                 depth = f.process(depth)
 
             img = np.asanyarray(depth.as_frame().get_data())  # uint16, raw units
+            if args.max_range > 0:
+                img = img.copy()
+                img[img > args.max_range / depth_scale] = 0  # 0 = RealSense "no data"
             intr = depth.as_frame().profile.as_video_stream_profile().intrinsics
 
             raw = img.tobytes()
@@ -226,6 +233,9 @@ def main():
                 # depth frame -- i.e. already "organized".
                 vtx = np.asanyarray(points.get_vertices()).view(np.float32)
                 vtx = vtx.reshape(img.shape[0], img.shape[1], 3)
+                if args.max_range > 0:
+                    vtx = vtx.copy()
+                    vtx[img == 0] = 0.0  # same invalid pixels as the depth image
 
                 pts_raw = vtx.tobytes()
                 pts_payload = lz4frame.compress(pts_raw) if compress == "lz4" else pts_raw
