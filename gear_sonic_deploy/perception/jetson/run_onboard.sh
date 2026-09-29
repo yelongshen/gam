@@ -62,6 +62,8 @@ case "${1:-start}" in
   status)
     pgrep -fa "$SCRIPTS/g1_(lidar|depth)_publisher.py" | cut -c1-120 || echo "publishers: not running"
     docker ps --filter name=g1_perception --format "container: {{.Status}}" | grep . || echo "container: not running"
-    for f in bridge dlio emc; do [ -f "$LOG/$f.log" ] && { echo "--- $f"; tail -2 "$LOG/$f.log" | cut -c1-160; }; done
+    [ -f "$LOG/bridge.log" ] && { echo "--- bridge"; tail -1 "$LOG/bridge.log" | cut -c1-200; }
+    [ -f "$LOG/dlio.log" ] && { echo "--- dlio"; grep -E "Sensor Rates|Distance to Origin|Computation Time" "$LOG/dlio.log" | tail -3; }
+    [ -f "$LOG/emc.log" ] && { echo "--- emc"; grep -iE "error|warn|Traceback" "$LOG/emc.log" | tail -2 | cut -c1-200; echo "(emc warnings shown above, if any)"; }
     ;;
 esac

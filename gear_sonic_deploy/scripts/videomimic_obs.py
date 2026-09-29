@@ -24,8 +24,9 @@ torso is at the origin with yaw 0, which is the default.
 
 Gantry filter: while the robot hangs on the gantry, its uprights sit inside
 or next to the 1 m window and read as walls ~0.3 m above the torso, which the
-policy never saw in training. `remove_boxes()` drops points inside axis-aligned
-boxes given in the levelled torso frame (z relative to the floor).
+policy never saw in training. The robot yaws within the gantry, so the live
+mode's --gantry uses g1_frames.near_tall_mask (tall points near the torso);
+`remove_boxes()` / GANTRY_BOXES (fixed boxes measured once) remain for offline use.
 
 Usage (live, needs g1_lidar_publisher.py and g1_depth_publisher.py on the robot):
     python3 videomimic_obs.py --host 192.168.8.227 --gantry
@@ -149,7 +150,7 @@ def _live(args):
     dep = ctx.socket(zmq.SUB)
     dep.setsockopt(zmq.RCVHWM, 2)
     dep.connect(f"tcp://{args.host}:{args.depth_port}")
-    dep.setsockopt(zmq.SUBSCRIBE, b"points")
+    dep.setsockopt(zmq.SUBSCRIBE, b"depth")    # depth image (works with the publisher's --no-points)
     poller = zmq.Poller()
     poller.register(lid, zmq.POLLIN)
     poller.register(dep, zmq.POLLIN)
@@ -183,7 +184,10 @@ def _live(args):
                 if hdr["compress"] == "lz4":
                     body = lz4frame.decompress(body)
                 if accel is not None:
-                    vtx = np.frombuffer(body, dtype=hdr["dtype"]).reshape(hdr["shape"])
+                    z = np.frombuffer(body, dtype=hdr["dtype"]).reshape(hdr["shape"]).astype(np.float32) * hdr["depth_scale"]
+                    k = hdr["intrinsics"]
+                    v, u = np.mgrid[0:z.shape[0], 0:z.shape[1]].astype(np.float32)
+                    vtx = np.stack([(u - k["ppx"]) / k["fx"] * z, (v - k["ppy"]) / k["fy"] * z, z], axis=-1)
                     depth_pts = g1_frames.depth_to_level(vtx, accel)
         if time.time() - t_print < args.period or lidar_pts is None:
             continue
@@ -191,7 +195,7 @@ def _live(args):
         pts = lidar_pts if depth_pts is None else np.vstack([lidar_pts, depth_pts])
         floor_z = g1_frames.estimate_floor_z(lidar_pts)
         if args.gantry:
-            pts = remove_boxes(pts, floor_z=floor_z)
+            pts = pts[~g1_frames.near_tall_mask(pts, floor_z)]
         obs, seen = terrain_obs(pts, return_mask=True)
         print(f"[videomimic] torso {-floor_z:.3f} m above floor; seen {seen.mean()*100:.0f}% "
               f"(ideal flat floor = {-floor_z:.2f}; '*' = filled with {DEFAULT_HEIGHT})")
@@ -203,6 +207,7 @@ if __name__ == "__main__":
     ap.add_argument("--host", default="192.168.8.227")
     ap.add_argument("--lidar-port", type=int, default=5558)
     ap.add_argument("--depth-port", type=int, default=5557)
-    ap.add_argument("--gantry", action="store_true", help="remove the measured gantry parts (GANTRY_BOXES)")
+    ap.add_argument("--gantry", action="store_true",
+                    help="drop points > 0.45 m above the floor within 0.8 m of the torso (g1_frames.near_tall_mask)")
     ap.add_argument("--period", type=float, default=1.0, help="seconds between printouts")
     _live(ap.parse_args())
