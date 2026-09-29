@@ -72,12 +72,14 @@ def query_points(torso_xy=(0.0, 0.0), torso_yaw=0.0):
 
 
 def terrain_obs(points, torso_pos=(0.0, 0.0, 0.0), torso_yaw=0.0,
-                default=DEFAULT_HEIGHT, return_mask=False):
+                default=DEFAULT_HEIGHT, return_mask=False, tree=None):
     """VideoMimic terrain_height observation, shape (11, 11) as obs[y][x].
 
     points: (N, 3) terrain points in a gravity-aligned frame.
     torso_pos, torso_yaw: torso position / heading in that frame.
     Cells whose nearest point is > 0.15 m away get `default` (as deployed).
+    tree: optional prebuilt cKDTree over points[:, :2] (points must then be all-finite), to reuse
+    one tree across many calls on the same map (e.g. sampling at 50 Hz from a 5 Hz map).
     """
     if cKDTree is None:
         raise ImportError("terrain_obs needs scipy (cKDTree)")
@@ -86,9 +88,10 @@ def terrain_obs(points, torso_pos=(0.0, 0.0, 0.0), torso_yaw=0.0,
     obs = np.full(len(q), float(default))
     seen = np.zeros(len(q), dtype=bool)
     points = np.asarray(points, dtype=np.float64)
-    points = points[np.all(np.isfinite(points), axis=1)]
+    if tree is None:
+        points = points[np.all(np.isfinite(points), axis=1)]
     if len(points) >= KNN_K:
-        dist, idx = cKDTree(points[:, :2]).query(q, k=KNN_K)
+        dist, idx = (tree if tree is not None else cKDTree(points[:, :2])).query(q, k=KNN_K)
         seen = dist[:, 0] <= KNN_MAX_DISTANCE
         w = 1.0 / (dist + 1e-6)
         z = (points[idx, 2] * w).sum(1) / w.sum(1)

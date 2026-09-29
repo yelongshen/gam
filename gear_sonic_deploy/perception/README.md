@@ -85,6 +85,8 @@ Tools (run inside the container, workspace sourced):
   scan-matching (ICP) check of DLIO's pose change.
 - `find_attached.py <bag>` - voxels that move with the robot (gantry/self) during a recording.
 - `watch_pose.py <secs>` - live torso height (from the LiDAR floor) and roll/pitch/yaw (DLIO).
+- `terrain_publisher.py` - the policy-facing `terrain` ZMQ topic (50 Hz; layout in QUICKSTART.md);
+  test it with `../scripts/terrain_subscriber.py`.
 - `calib_depth.py <bag> <out.npz>` - fit the D435 extrinsic (and optional range models) against the
   LiDAR from a bag with the robot held still at several heights/headings; reports
   leave-one-pose-out floor errors so a fit is only adopted if it generalises.

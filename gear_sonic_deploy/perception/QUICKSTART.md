@@ -70,8 +70,42 @@ python3 /perception/dump_gridmap.py /logs/map     # -> ~/g1_perception_logs/map.
 `videomimic_obs.gridmap_to_points()` turns a dumped layer back into points; the policy window is
 then `videomimic_obs.terrain_obs(points, torso_xyz, torso_yaw)`.
 
-Nothing in gam consumes the height map yet: no policy input, no deploy-binary observation. The
-output interface is still to be decided.
+### From the `terrain` ZMQ topic (for policies; no ROS needed)
+
+`run_emc.sh` (so also `run_onboard.sh start`) starts `terrain_publisher.py`. At 50 Hz, gear_sonic's
+control rate, it samples the latest fused map around the **current** DLIO torso pose and publishes
+on `tcp://127.0.0.1:5559` (`TERRAIN_BIND` to change), topic prefix `terrain`. The format is
+gear_sonic's ZMQ packed message: a 1280-byte JSON header, then the fields. That is what
+`ZMQPackedMessageSubscriber` in g1_deploy_onnx_ref parses; `scripts/zmq_packed.py` does it in Python.
+
+| Field | dtype, shape | Meaning |
+|---|---|---|
+| `height_grid` | f32 [50, 50] | terrain z - torso z (m), gravity-aligned, yaw-aligned with the torso; 4 cm cells, centres -0.98..+0.98 m; `[y][x]`, index 0 = most negative; NaN = unseen |
+| `height_grid_valid` | bool [50, 50] | cell observed |
+| `terrain_height` | f32 [11, 11] | VideoMimic window: 0.1 m, +-0.5 m, torso_z - terrain_z, `[y][x]`, 0.85 = unseen |
+| `terrain_height_valid` | bool [11, 11] | window cell observed |
+| `grid_resolution`, `grid_origin` | f32 [1], f32 [2] | 0.04; x, y of `height_grid[0][0]` in the torso heading frame |
+| `torso_pos`, `torso_quat` | f64 [3], f64 [4] | DLIO pose used (robot/odom), quaternion x y z w |
+| `timestamp`, `map_stamp` | f64 [1] | sample time, and the stamp of the map it came from (local clock, s) |
+
+- A new policy resamples `height_grid` (plus its mask) into its own scan pattern. VideoMimic uses
+  `terrain_height` as-is.
+- `python3 gear_sonic_deploy/scripts/terrain_subscriber.py --show` checks a live stream: rate,
+  staleness, coverage, and a cross-check that `height_grid` reproduces `terrain_height`.
+- Measured on the gantry:
+  - 50 Hz, about 1 ms from publish to receive.
+  - `timestamp - map_stamp` is about 230-360 ms median: the LiDAR's own latency, the map's 5 Hz
+    cycle, and where the sample falls in it.
+  - The two fields agree within about 2 mm.
+  - Against a window computed straight from the raw streams: median difference 0 mm, and the same
+    cells seen.
+- Caveat: cells mapped once and then rarely re-observed keep their old height. A person or the
+  gantry near the robot's front corners, at the camera's edge and inside the LiDAR's blind ring,
+  showed up as a 16-36 cm "obstacle" minutes after it was gone. The validity mask doesn't catch
+  this, because the cell *was* observed. Restart the stack, or clear the map, before a policy test.
+
+No policy in gam consumes this yet. Wiring one up means a matching training observation plus a
+`Gather*` entry in g1_deploy_onnx_ref that subscribes to this topic.
 
 ## 2. Deploy
 

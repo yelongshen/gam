@@ -3,7 +3,8 @@
 # + desktop overrides), and with ODOM_SOURCE=dlio also DLIO odometry. See README.md in this folder.
 #   ODOM_SOURCE=static|dlio GANTRY_FILTER=true|false ROBOT_HOST=192.168.8.227 \
 #   EMC_WS=~/ros_ws LOG_DIR=/tmp/g1_perception_logs [EMC_EXTRA_PARAMS=<yaml>]  gear_sonic_deploy/perception/run_emc.sh
-# Stop with: pkill -f "[g]1_zmq_bridge.py"; pkill -f "[e]levation_mapping_node"; pkill -f "[d]lio_odom_node"
+# TERRAIN_PUB=true|false (default true): ZMQ terrain topic on TERRAIN_BIND (default tcp://127.0.0.1:5559).
+# Stop with: pkill -f "[g]1_zmq_bridge.py"; pkill -f "[e]levation_mapping_node"; pkill -f "[d]lio_odom_node"; pkill -f "[t]errain_publisher.py"
 set -eo pipefail
 source "${ROS_SETUP:-/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash}"
 HERE=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
@@ -28,6 +29,12 @@ if [ "$ODOM_SOURCE" = "dlio" ]; then
     -r pointcloud:=/g1/lidar/points -r imu:=/g1/imu \
     -r odom:=/dlio/odom -r pose:=/dlio/pose -r path:=/dlio/path -r deskewed:=/dlio/deskewed \
     > "$LOG/dlio.log" 2>&1 &
+fi
+
+if [ "${TERRAIN_PUB:-true}" = "true" ]; then
+  # policy-agnostic terrain input over ZMQ (see terrain_publisher.py for the message layout)
+  nohup python3 "$HERE"/terrain_publisher.py --ros-args -p bind:=${TERRAIN_BIND:-tcp://127.0.0.1:5559} \
+    > "$LOG/terrain.log" 2>&1 &
 fi
 
 nohup ros2 run elevation_mapping_cupy elevation_mapping_node.py --ros-args \
