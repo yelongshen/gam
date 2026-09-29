@@ -7,11 +7,16 @@ height_grid resampled at the VideoMimic window's cell centres must reproduce ter
 
     python3 gear_sonic_deploy/scripts/terrain_subscriber.py                 # on the robot
     python3 gear_sonic_deploy/scripts/terrain_subscriber.py --show          # also print the 11x11 window
+    python3 gear_sonic_deploy/scripts/terrain_subscriber.py --seconds 600 --record walk_terrain.npz
+                                         # save every message (for the walking test; Ctrl-C saves too)
 """
 import argparse
 import time
 
-import numpy as np
+import os
+
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")   # else numpy's OpenBLAS spins a busy thread per core
+import numpy as np  # noqa: E402
 import zmq
 
 import zmq_packed
@@ -23,6 +28,7 @@ def main():
     ap.add_argument("--topic", default="terrain")
     ap.add_argument("--seconds", type=float, default=5.0)
     ap.add_argument("--show", action="store_true", help="print the last VideoMimic window")
+    ap.add_argument("--record", help="save every message's fields (plus receive time) to this .npz")
     a = ap.parse_args()
 
     sock = zmq.Context().socket(zmq.SUB)
@@ -30,12 +36,24 @@ def main():
     sock.setsockopt(zmq.SUBSCRIBE, a.topic.encode())
     sock.setsockopt(zmq.RCVTIMEO, 3000)
     msgs, t0 = [], time.time()
-    while time.time() - t0 < a.seconds:
-        try:
-            raw = sock.recv()
-            msgs.append((time.time(), zmq_packed.unpack(raw, a.topic)))   # receive time taken after recv
-        except zmq.Again:
-            raise SystemExit(f"no '{a.topic}' messages on {a.connect} - is terrain_publisher running?")
+    try:
+        while time.time() - t0 < a.seconds:
+            try:
+                raw = sock.recv()
+                msgs.append((time.time(), zmq_packed.unpack(raw, a.topic)))   # receive time taken after recv
+            except zmq.Again:
+                if not msgs:
+                    raise SystemExit(f"no '{a.topic}' messages on {a.connect} - is terrain_publisher running?")
+                print("[terrain_subscriber] stream paused >3 s", flush=True)
+    except KeyboardInterrupt:
+        print(f"[terrain_subscriber] interrupted after {len(msgs)} msgs", flush=True)
+    if not msgs:
+        raise SystemExit("no messages")
+    if a.record:
+        names = [f["name"] for f in msgs[0][1][0]["fields"]]
+        np.savez_compressed(a.record, recv_time=np.array([t for t, _ in msgs]),
+                            **{n: np.stack([m[n] for _, (_, m) in msgs]) for n in names})
+        print(f"[terrain_subscriber] saved {len(msgs)} msgs -> {a.record}", flush=True)
     t_recv = np.array([t for t, _ in msgs])
     last_h, d = msgs[-1][1]
     print(f"{len(msgs)} msgs in {t_recv[-1]-t_recv[0]:.1f} s -> {(len(msgs)-1)/(t_recv[-1]-t_recv[0]):.1f} Hz; "

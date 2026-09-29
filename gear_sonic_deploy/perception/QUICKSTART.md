@@ -124,6 +124,7 @@ gear_sonic_deploy/perception/jetson/run_onboard.sh status        # rates, DLIO, 
 gear_sonic_deploy/perception/jetson/run_onboard.sh stop
 ```
 - Keep the robot still for about 5 s after `start`, for DLIO's IMU calibration.
+- Walking the robot with the stack running: follow [WALKING_TEST.md](WALKING_TEST.md).
 - `GANTRY_FILTER=true` is for gantry tests only. It drops everything taller than 0.45 m within
   0.8 m of the torso.
 - The container is pinned to cores 4-7. gear_sonic's walking controller pins its control thread to

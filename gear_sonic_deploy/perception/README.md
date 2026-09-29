@@ -2,6 +2,8 @@
 
 **New here? Start with [QUICKSTART.md](QUICKSTART.md)**: how to use the corrected depth/LiDAR data, and how to deploy on this robot, another G1 or a workstation.
 
+**Walking test:** [WALKING_TEST.md](WALKING_TEST.md), step-by-step protocol with recording and analysis commands.
+
 Desktop-side pipeline that turns the G1's MID-360 LiDAR and D435i depth streams (published by
 `../scripts/g1_lidar_publisher.py` and `../scripts/g1_depth_publisher.py` on the robot) into a
 fused elevation map (elevation_mapping_cupy) with LiDAR-inertial odometry (DLIO), and from that

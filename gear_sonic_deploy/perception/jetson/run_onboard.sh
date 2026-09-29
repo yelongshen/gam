@@ -18,6 +18,9 @@ IMAGE=${IMAGE:-g1_perception:humble-r35.3.1}
 CPUS=${CPUS:-4-7}
 PUB_TIMEOUT=${PUB_TIMEOUT:-3600}
 LOG=${LOG_DIR:-/tmp/g1_perception_logs}; mkdir -p "$LOG"
+# Host-side publishers: one OpenBLAS thread (numpy otherwise spins a busy thread on every core,
+# including CPU 0 where gear_sonic's control thread runs).
+export OPENBLAS_NUM_THREADS=${OPENBLAS_NUM_THREADS:-1}
 
 start_publishers() {
   pkill -f "$SCRIPTS/g1_lidar_publisher.py" || true
