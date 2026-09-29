@@ -17,7 +17,9 @@
         ray_source_frame: "d435_optical"
     publishers:
       elevation_map_raw:
-        layers: ["elevation", "variance"]
+        # "time" = seconds since each cell was last updated; terrain_publisher.py forgets cells
+        # older than max_cell_age with it.
+        layers: ["elevation", "variance", "time"]
         basic_layers: ["elevation"]
         fps: 2.0
       filtered_elevation_map:

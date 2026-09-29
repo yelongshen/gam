@@ -20,6 +20,13 @@ and publishes one message per sample on ZMQ PUB `bind` (default tcp://127.0.0.1:
   timestamp            f64 [1]       when this sample was taken (local clock, s)
   map_stamp            f64 [1]       stamp of the map it was sampled from; staleness = timestamp - map_stamp
 
+Forgetting: cells not updated for more than `max_cell_age` seconds (default 20; 0 = off) are treated
+as unseen, using the mapper's "time" layer (seconds since each cell's last update; it must be in the
+map_topic's published layers - see g1_desktop_overrides.yaml). elevation_mapping_cupy itself never
+expires a cell that no later ray passes through, so something that stood in the LiDAR's blind ring
+(a person, the gantry) would otherwise stay in the policy input indefinitely. While walking, cells
+under the feet were seen ~1-3 s earlier, well inside the default.
+
 Run inside the perception container (run_emc.sh starts it).
 """
 import sys
@@ -46,7 +53,8 @@ class TerrainPublisher(Node):
             ("map_topic", "/elevation_mapping_node/elevation_map_raw"), ("layer", "elevation"),
             ("map_frame", "robot/odom"), ("base_frame", "torso_link"),
             ("bind", "tcp://127.0.0.1:5559"), ("topic", "terrain"), ("rate", 50.0),
-            ("grid_size", 50), ("grid_resolution", 0.04)]}
+            ("grid_size", 50), ("grid_resolution", 0.04),
+            ("max_cell_age", 20.0), ("age_layer", "time")]}
         self.p = p
         n, res = int(p["grid_size"]), float(p["grid_resolution"])
         c = (np.arange(n) - (n - 1) / 2.0) * res
@@ -73,11 +81,23 @@ class TerrainPublisher(Node):
         if self.p["layer"] not in msg.layers:
             self.get_logger().warn(f"layer {self.p['layer']!r} not in {list(msg.layers)}", throttle_duration_sec=5.0)
             return
-        E = decode_multiarray_to_rows_cols(self.p["layer"], msg.data[list(msg.layers).index(self.p["layer"])])
+        layers = list(msg.layers)
+        E = decode_multiarray_to_rows_cols(self.p["layer"], msg.data[layers.index(self.p["layer"])])
+        n_stale = 0
+        if float(self.p["max_cell_age"]) > 0:
+            if self.p["age_layer"] in layers:
+                age = decode_multiarray_to_rows_cols(self.p["age_layer"], msg.data[layers.index(self.p["age_layer"])])
+                stale = np.isfinite(E) & (age > float(self.p["max_cell_age"]))
+                n_stale = int(stale.sum())
+                E = np.where(stale, np.nan, E)
+            else:
+                self.get_logger().warn(f"max_cell_age set but layer {self.p['age_layer']!r} not published "
+                                       f"(have {layers}); not forgetting", throttle_duration_sec=30.0)
         res = float(msg.info.resolution)
         cx, cy = msg.info.pose.position.x, msg.info.pose.position.y
         pts = vo.gridmap_to_points(E, res, (cx, cy))
         self.map = dict(E=E, res=res, cx=cx, cy=cy, stamp=msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9,
+                        n_stale=n_stale,
                         points=pts, tree=cKDTree(pts[:, :2]) if len(pts) >= vo.KNN_K else None)
 
     def tick(self):
@@ -126,7 +146,8 @@ class TerrainPublisher(Node):
         now = time.time()
         if now - self.t_stat >= 10.0:
             self.get_logger().info(f"{self.n_sent / (now - self.t_stat):.1f} Hz; grid {valid.mean()*100:.0f}% valid, "
-                                   f"window {seen.mean()*100:.0f}% seen; map age {now - m['stamp']:.2f} s")
+                                   f"window {seen.mean()*100:.0f}% seen; map age {now - m['stamp']:.2f} s; "
+                                   f"{m['n_stale']} map cells forgotten (> {self.p['max_cell_age']} s old)")
             self.n_sent, self.t_stat = 0, now
 
 

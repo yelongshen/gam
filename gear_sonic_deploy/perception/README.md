@@ -86,7 +86,8 @@ Tools (run inside the container, workspace sourced):
 - `find_attached.py <bag>` - voxels that move with the robot (gantry/self) during a recording.
 - `watch_pose.py <secs>` - live torso height (from the LiDAR floor) and roll/pitch/yaw (DLIO).
 - `terrain_publisher.py` - the policy-facing `terrain` ZMQ topic (50 Hz; layout in QUICKSTART.md);
-  test it with `../scripts/terrain_subscriber.py`.
+  forgets cells not updated for `max_cell_age` (20 s) using the mapper's `time` layer; test it with
+  `../scripts/terrain_subscriber.py`.
 - `calib_depth.py <bag> <out.npz>` - fit the D435 extrinsic (and optional range models) against the
   LiDAR from a bag with the robot held still at several heights/headings; reports
   leave-one-pose-out floor errors so a fit is only adopted if it generalises.
@@ -109,7 +110,7 @@ docker build -t g1_perception:humble-r35.3.1 gear_sonic_deploy/perception/jetson
 # once: workspace (same pins as the desktop) + the two patches in jetson/
 mkdir -p ~/g1_perception_ws/src && cd ~/g1_perception_ws/src
 git clone -b dev/mheyrman/g1 https://github.com/leggedrobotics/elevation_mapping_cupy.git   # 449f7d4
-git -C elevation_mapping_cupy apply <repo>/gear_sonic_deploy/perception/jetson/elevation_mapping_cupy_py38.patch
+git -C elevation_mapping_cupy apply <repo>/gear_sonic_deploy/perception/jetson/elevation_mapping_cupy_g1.patch
 git clone -b feature/ros2 https://github.com/vectr-ucla/direct_lidar_inertial_odometry.git dlio  # c8acc37
 git -C dlio apply <repo>/gear_sonic_deploy/perception/jetson/dlio_pcl110.patch
 git clone -b humble https://github.com/Box-Robotics/ros2_numpy.git
@@ -121,8 +122,9 @@ GANTRY_FILTER=true gear_sonic_deploy/perception/jetson/run_onboard.sh start   # 
 - `ROS_DOMAIN_ID=42` + `cyclonedds_lo.xml` keep all ROS traffic on loopback, off `eth0`, which
   carries Unitree's low-level control DDS.
 - `onboard_overrides.yaml`: map published at 5 Hz.
-- Patches: `elevation_mapping_cupy_py38.patch` (one `from __future__ import annotations`; JetPack 5
-  is Python 3.8) and `dlio_pcl110.patch` (`std::make_shared` -> `pcl::make_shared`; Ubuntu 20.04's
+- Patches: `elevation_mapping_cupy_g1.patch` (a `from __future__ import annotations` for JetPack 5's
+  Python 3.8, and the time layer counting real elapsed seconds instead of a fixed 0.1 per timer tick,
+  which ran at ~0.5x real time under load; apply it on the desktop too) and `dlio_pcl110.patch` (`std::make_shared` -> `pcl::make_shared`; Ubuntu 20.04's
   PCL 1.10 uses boost::shared_ptr). Both still build on the desktop.
 - Image notes: the base image's ROS apt key had expired (refreshed in the Dockerfile); scipy comes
   from pip because focal's apt scipy breaks on numpy 1.24.

@@ -99,10 +99,17 @@ gear_sonic's ZMQ packed message: a 1280-byte JSON header, then the fields. That 
   - The two fields agree within about 2 mm.
   - Against a window computed straight from the raw streams: median difference 0 mm, and the same
     cells seen.
-- Caveat: cells mapped once and then rarely re-observed keep their old height. A person or the
-  gantry near the robot's front corners, at the camera's edge and inside the LiDAR's blind ring,
-  showed up as a 16-36 cm "obstacle" minutes after it was gone. The validity mask doesn't catch
-  this, because the cell *was* observed. Restart the stack, or clear the map, before a policy test.
+- Forgetting: elevation_mapping_cupy never expires a cell that no later measurement updates, and
+  it tends to reject a floor reading far below an existing obstacle as an outlier. So a person or
+  object that has gone can linger even where the camera sees; one such cell went un-updated for
+  212 s. `terrain_publisher.py` therefore treats cells older than `max_cell_age` (default 20 s)
+  as unseen, using the mapper's `time` layer. That layer is only true seconds with
+  `jetson/elevation_mapping_cupy_g1.patch` applied; unpatched it ran at 0.5x under load.
+  - Tested: after an object and the arm removing it were gone, the window's 2 obstacle cells and
+    ~70 grid cells vanished in one step ~21 s later.
+  - While walking, cells under the feet were seen ~1-3 s earlier, well inside the limit.
+  - A robot standing still for longer than the limit loses its under-foot cells. They then read
+    as unseen (0.85 in the window, masked out), the same as at startup.
 
 No policy in gam consumes this yet. Wiring one up means a matching training observation plus a
 `Gather*` entry in g1_deploy_onnx_ref that subscribes to this topic.

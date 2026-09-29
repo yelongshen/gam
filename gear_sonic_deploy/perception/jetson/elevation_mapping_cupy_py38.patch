@@ -1,9 +1,0 @@
-diff --git a/elevation_mapping_cupy/elevation_mapping_cupy/plugins/positive_spike_filter.py b/elevation_mapping_cupy/elevation_mapping_cupy/plugins/positive_spike_filter.py
-index fa94bf2..8cb7f94 100644
---- a/elevation_mapping_cupy/elevation_mapping_cupy/plugins/positive_spike_filter.py
-+++ b/elevation_mapping_cupy/elevation_mapping_cupy/plugins/positive_spike_filter.py
-@@ -1,3 +1,4 @@
-+from __future__ import annotations
- import cupy as cp
- import cupyx.scipy.ndimage as ndimage
- from typing import List
