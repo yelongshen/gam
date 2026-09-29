@@ -1,0 +1,26 @@
+# Overrides on top of config/setups/g1/*.yaml (dev/mheyrman/g1) for the desktop
+# test: clouds come from g1_zmq_bridge.py instead of DLIO, and there are no
+# ankle TFs (no robot_state_publisher), so the feet-based initializer is off.
+/elevation_mapping_node:
+  ros__parameters:
+    map_frame: "robot/odom"
+    base_frame: "torso_link"
+    use_initializer_at_start: false
+    subscribers:
+      Livox:
+        topic_name: "/g1/lidar/points"
+        data_type: "pointcloud"
+        ray_source_frame: "mid360_link"
+      Depth:
+        topic_name: "/g1/depth/points"
+        data_type: "pointcloud"
+        ray_source_frame: "d435_optical"
+    publishers:
+      elevation_map_raw:
+        layers: ["elevation", "variance"]
+        basic_layers: ["elevation"]
+        fps: 2.0
+      filtered_elevation_map:
+        layers: ["inpaint", "min_smooth_filter"]
+        basic_layers: ["inpaint"]
+        fps: 2.0

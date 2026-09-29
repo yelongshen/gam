@@ -1,0 +1,110 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid (1 m)
+      Enabled: true
+      Cell Size: 1
+      Plane Cell Count: 10
+      Reference Frame: robot/odom
+      Color: 160; 160; 164
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Marker Scale: 0.4
+      Show Names: true
+      Show Arrows: false
+      Show Axes: true
+    - Class: grid_map_rviz_plugin/GridMap
+      Name: Elevation (fused)
+      Enabled: true
+      Topic:
+        Value: /elevation_mapping_node/elevation_map_raw
+        Depth: 5
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+        History Policy: Keep Last
+      Height Layer: elevation
+      Height Transformation: Layer
+      Color Transformation: IntensityLayer
+      Color Layer: elevation
+      Use Rainbow: true
+      Autocompute Intensity Bounds: false
+      Min Intensity: -0.1
+      Max Intensity: 1.2
+      Show Grid Lines: false
+      Alpha: 1
+    - Class: grid_map_rviz_plugin/GridMap
+      Name: Filtered (inpaint)
+      Enabled: false
+      Topic:
+        Value: /elevation_mapping_node/filtered_elevation_map
+        Depth: 5
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+        History Policy: Keep Last
+      Height Layer: inpaint
+      Height Transformation: Layer
+      Color Transformation: IntensityLayer
+      Color Layer: inpaint
+      Use Rainbow: true
+      Autocompute Intensity Bounds: false
+      Min Intensity: -0.1
+      Max Intensity: 1.2
+      Show Grid Lines: false
+      Alpha: 1
+    - Class: rviz_default_plugins/PointCloud2
+      Name: LiDAR (MID-360)
+      Enabled: true
+      Topic:
+        Value: /g1/lidar/points
+        Depth: 5
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+        History Policy: Keep Last
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: FlatColor
+      Color: 255; 255; 255
+      Alpha: 0.6
+      Decay Time: 0
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Depth (D435i)
+      Enabled: true
+      Topic:
+        Value: /g1/depth/points
+        Depth: 5
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+        History Policy: Keep Last
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: FlatColor
+      Color: 255; 0; 255
+      Alpha: 0.4
+      Decay Time: 0
+  Global Options:
+    Fixed Frame: robot/odom
+    Background Color: 48; 48; 48
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 9
+      Focal Point:
+        X: 1
+        Y: 0
+        Z: 0
+      Pitch: 0.75
+      Yaw: 3.6
+      Target Frame: <Fixed Frame>
+Window Geometry:
+  Width: 1400
+  Height: 900

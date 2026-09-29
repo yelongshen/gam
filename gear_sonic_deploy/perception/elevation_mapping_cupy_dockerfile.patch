@@ -1,0 +1,13 @@
+diff --git a/docker/Dockerfile.x64 b/docker/Dockerfile.x64
+index a34483c..b25b43a 100644
+--- a/docker/Dockerfile.x64
++++ b/docker/Dockerfile.x64
+@@ -74,7 +74,7 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages -U --extra-ind
+     torch torchvision torchaudio
+ 
+ RUN python3 -m pip install --no-cache-dir --break-system-packages \
+-    cupy-cuda12x \
++    "cupy-cuda12x<14" \
+     simple-parsing
+ 
+ # Non-root user (so mounted workspaces behave).

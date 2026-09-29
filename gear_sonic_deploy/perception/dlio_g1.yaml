@@ -1,0 +1,25 @@
+# DLIO overrides for the G1 (applied after dlio's cfg/dlio.yaml + cfg/params.yaml).
+# Extrinsics from gear_sonic_deploy/scripts/g1_frames.py (T_TORSO_LIVOX, verified 2026-09-28);
+# IMU offset in the point-cloud frame from the Livox MID-360 spec (+11.0, +23.29, -44.12 mm).
+# The bridge (g1_zmq_bridge.py, odom_source:=dlio) publishes /g1/lidar/points with a per-point
+# `time` field in seconds and /g1/imu in m/s^2 (the MID-360 reports g).
+/**:
+  ros__parameters:
+    use_sim_time: false
+    frames/odom: robot/odom
+    frames/baselink: torso_link
+    frames/lidar: mid360_link
+    frames/imu: mid360_imu
+
+    extrinsics/baselink2lidar/t: [ 0.000284, 0.000030, 0.416180 ]
+    extrinsics/baselink2lidar/R: [ 0.999176, -0.000093, -0.040582,
+                                   -0.000093, -1.000000, 0.000004,
+                                   -0.040582, 0.000000, -0.999176 ]
+    extrinsics/baselink2imu/t: [ 0.013063, -0.023261, 0.459817 ]
+    extrinsics/baselink2imu/R: [ 0.999176, -0.000093, -0.040582,
+                                 -0.000093, -1.000000, 0.000004,
+                                 -0.040582, 0.000000, -0.999176 ]
+
+    # the robot is static during the 3 s IMU calibration at startup
+    odom/imu/calibration/time: 3.0
+    odom/imu/approximateGravity: false

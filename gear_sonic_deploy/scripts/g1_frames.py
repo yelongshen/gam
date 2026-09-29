@@ -140,6 +140,15 @@ def estimate_floor_z(points_level, search=0.3, bin_size=0.01, refine=0.03):
     return float(np.median(zl[np.abs(zl - peak) < refine]))
 
 
+def near_tall_mask(points_level, floor_z, radius=0.8, min_height=0.45):
+    """True for points within `radius` m (horizontally) of the torso and more than `min_height` m
+    above the floor. On the gantry that is the gantry frame, harness and the people handling the
+    robot; the gantry does not stay fixed relative to the torso (the robot yaws on its harness), so
+    fixed boxes are not enough. Terrain the policy cares about (steps, curbs) is lower than this."""
+    p = np.asarray(points_level)
+    return (np.hypot(p[:, 0], p[:, 1]) < radius) & (p[:, 2] - floor_z > min_height)
+
+
 def lidar_to_level(points_livox, accel_livox, min_range=LIDAR_MIN_RANGE):
     """Raw livox points -> cleaned, gravity-levelled torso frame (N, 3)."""
     p = transform_points(T_TORSO_LIVOX, clean_lidar(points_livox, min_range))
