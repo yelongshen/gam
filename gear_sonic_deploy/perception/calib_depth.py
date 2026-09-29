@@ -35,7 +35,7 @@ N_DEPTH_FRAMES = 12
 
 bag, out = sys.argv[1], sys.argv[2]
 reader = rosbag2_py.SequentialReader()
-reader.open(rosbag2_py.StorageOptions(uri=bag, storage_id="mcap"), rosbag2_py.ConverterOptions("", ""))
+reader.open(rosbag2_py.StorageOptions(uri=bag, storage_id=""), rosbag2_py.ConverterOptions("", ""))
 types = {t.name: t.type for t in reader.get_all_topics_and_types()}
 reader.set_filter(rosbag2_py.StorageFilter(topics=["/dlio/odom", "/g1/lidar/points", "/g1/depth/points"]))
 odom, lidar, depth = [], [], []

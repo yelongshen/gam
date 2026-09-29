@@ -133,6 +133,9 @@ cost the bridge ~3.5 cores, delayed the IMU/LiDAR stream and made DLIO diverge.
 Onboard numbers (robot on the gantry): bridge 10 Hz LiDAR / 15 Hz depth / ~175 Hz IMU, ~0.4 cores;
 DLIO 9 ms per scan (max 27), 0.2 cores, static drift 4.8 mm / 0.11 deg over 90 s; mapper ~0.8 cores,
 5 Hz, 48 ms map latency; ~6.5 GB RAM in use system-wide; policy window from depth 1.2 cm high.
+Onboard motion test (gantry pushed ~1 m, turned ~90 deg, returned; 4 min; `eval_motion.py` checks
+each static segment against the first by ICP on the raw scans): DLIO error 4.1 mm / 0.34 deg after
+the 1.02 m push, 10.3 mm / 0.19 deg after the turn, 2.5 mm / 0.24 deg back at the start.
 
 ## Validation (2026-09-28, robot on the gantry)
 

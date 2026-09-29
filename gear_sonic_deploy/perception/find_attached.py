@@ -15,7 +15,7 @@ import g1_frames as gf
 
 VOX = 0.05
 reader = rosbag2_py.SequentialReader()
-reader.open(rosbag2_py.StorageOptions(uri=sys.argv[1], storage_id="mcap"), rosbag2_py.ConverterOptions("", ""))
+reader.open(rosbag2_py.StorageOptions(uri=sys.argv[1], storage_id=""), rosbag2_py.ConverterOptions("", ""))
 types = {t.name: t.type for t in reader.get_all_topics_and_types()}
 reader.set_filter(rosbag2_py.StorageFilter(topics=["/dlio/odom", "/g1/lidar/points"]))
 odom_t, odom_q, odom_p, scans = [], [], [], []

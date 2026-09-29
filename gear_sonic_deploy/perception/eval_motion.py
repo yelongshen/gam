@@ -17,7 +17,7 @@ import g1_frames as gf
 
 bag, out = sys.argv[1], sys.argv[2]
 reader = rosbag2_py.SequentialReader()
-reader.open(rosbag2_py.StorageOptions(uri=bag, storage_id="mcap"), rosbag2_py.ConverterOptions("", ""))
+reader.open(rosbag2_py.StorageOptions(uri=bag, storage_id=""), rosbag2_py.ConverterOptions("", ""))
 types = {t.name: t.type for t in reader.get_all_topics_and_types()}
 reader.set_filter(rosbag2_py.StorageFilter(topics=["/dlio/odom", "/g1/lidar/points", "/g1/imu"]))
 odom, scans, imu = [], [], []
@@ -107,6 +107,22 @@ if len(segs) >= 2 or (baseline and segs):
     # DLIO's relative lidar pose: T_l0_l1 = inv(T_o_t0 T_t_l) (T_o_t1 T_t_l)
     Tl = gf.T_TORSO_LIVOX
     T_dlio = np.linalg.inv(T_start @ Tl) @ (mean_pose(a1, b1) @ Tl)
+    if not baseline and len(segs) > 2:
+        # every later static segment against the first: checks real displacements, not just a return
+        print("\nper-segment check vs the first static segment (ICP seeded with identity, i.e. independent of DLIO):")
+        for (a2, b2) in segs[1:]:
+            C2 = gf.clean_lidar(seg_cloud(a2, b2))
+            C2 = C2[np.random.default_rng(2).choice(len(C2), min(60000, len(C2)), replace=False)]
+            T_d = np.linalg.inv(T_start @ Tl) @ (mean_pose(a2, b2) @ Tl)
+            T_i, frac, med = icp(C2, C0, np.eye(4))
+            if frac < 0.6:   # large rotations can leave the identity seed outside the basin
+                T_i, frac, med = icp(C2, C0, T_d)
+                seed = "DLIO seed"
+            else:
+                seed = "identity seed"
+            dT = np.linalg.inv(T_i) @ T_d
+            print(f"   {a2-t0:6.1f}s: moved {np.linalg.norm(T_i[:3,3])*1000:5.0f} mm / {np.degrees(R.from_matrix(T_i[:3,:3]).magnitude()):5.1f} deg (ICP, {seed}, "
+                  f"inliers {frac:.2f}) -> DLIO error {np.linalg.norm(dT[:3,3])*1000:.1f} mm, {np.degrees(R.from_matrix(dT[:3,:3]).magnitude()):.2f} deg")
     for name, init in [("init=DLIO", T_dlio), ("init=identity", np.eye(4))]:
         T_icp, frac, med = icp(C1, C0, init)
         dT = np.linalg.inv(T_icp) @ T_dlio
