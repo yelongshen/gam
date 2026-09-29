@@ -28,11 +28,15 @@ Provenance of the constants (verified 2026-09-28 on the gantry, see
     1.7 m along +x. NOTE: the `mid360_joint` in the repo's
     decoupled_wbc/**/g1*.urdf (rpy=(0, 0.0401, 0)) does NOT describe the
     livox_frame point data -- using it leaves the cloud upside down.
-  * T_TORSO_D435_LINK: URDF d435_joint was rpy=(0, 0.8308, 0) (47.6 deg
-    pitch). Re-fitted against the MID-360 by point-to-plane ICP
-    (rotation + z free, x/y held at URDF); pitch is ~51.3 deg. With the URDF
-    value the depth floor rose +75..+100 mm at 2.5-4 m range; with the fitted
-    value it is within ~30 mm out to 4 m.
+  * T_TORSO_D435_LINK: URDF d435_joint is rpy=(0, 0.8308, 0) (47.6 deg
+    pitch), which makes the depth floor rise +25..+30 mm at 1.5-2.5 m.
+    Re-fitted against the MID-360 (perception/calib_depth.py, 2026-09-28) on
+    7 static poses at torso heights 0.83-1.05 m and two headings, with
+    rotation + z free (x/y are not observable from this scene): pitch 49.7
+    deg, z 0.4437 m. Leave-one-pose-out floor error: 2-5 mm mean per distance
+    bin from 0.2 to 2.5 m. (An earlier fit from a single height, pitch 51.3
+    deg / z 0.4893, traded height against pitch and read the near-field floor
+    ~4 cm high at other heights. No range-bias model is needed.)
 """
 
 import numpy as np
@@ -62,7 +66,7 @@ R_D435_LINK_OPTICAL = np.array([[0.0, 0.0, 1.0],
                                 [0.0, -1.0, 0.0]])
 
 T_TORSO_LIVOX = make_transform([0.0002835, 0.00003, 0.41618], [0.0, 3.101, 3.1415])
-T_TORSO_D435_LINK = make_transform([0.0862, 0.0238, 0.4893], [-0.0123, 0.8952, 0.0258])
+T_TORSO_D435_LINK = make_transform([0.0862, 0.0238, 0.4437], [0.0019, 0.8677, 0.0159])
 T_TORSO_D435_LINK_URDF = make_transform([0.0576235, 0.01753, 0.41987], [0.0, 0.8307767239493009, 0.0])
 
 T_TORSO_OPTICAL = T_TORSO_D435_LINK.copy()

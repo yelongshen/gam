@@ -14,8 +14,8 @@ g1_depth_publisher.py --no-points --ZMQ 5557->                   --> /g1/depth/p
                                                   elevation_mapping_node --> /elevation_mapping_node/*
 ```
 
-All sensor geometry comes from `../scripts/g1_frames.py` (MID-360 mounted upside down; D435 pitch
-re-fitted to ~51.3 deg). The bridge maps the sensor clock (~18 min off the Jetson) and the Jetson
+All sensor geometry comes from `../scripts/g1_frames.py` (MID-360 mounted upside down; D435
+extrinsic re-fitted with `calib_depth.py`: pitch 49.7 deg). The bridge maps the sensor clock (~18 min off the Jetson) and the Jetson
 clock onto the desktop clock, and converts the MID-360 IMU from g to m/s^2 and its per-point time
 from ns to s.
 
@@ -82,6 +82,17 @@ Tools (run inside the container, workspace sourced):
 - `eval_motion.py <bag> <prefix> [baseline_capture.npz]` - static segments + an independent
   scan-matching (ICP) check of DLIO's pose change.
 - `find_attached.py <bag>` - voxels that move with the robot (gantry/self) during a recording.
+- `watch_pose.py <secs>` - live torso height (from the LiDAR floor) and roll/pitch/yaw (DLIO).
+- `calib_depth.py <bag> <out.npz>` - fit the D435 extrinsic (and optional range models) against the
+  LiDAR from a bag with the robot held still at several heights/headings; reports
+  leave-one-pose-out floor errors so a fit is only adopted if it generalises.
+
+### Re-calibrating the depth camera
+Record `/g1/lidar/points /g1/imu /g1/depth/points /dlio/odom /tf /tf_static` while the robot is held
+still ~15 s at each of several torso heights (>= 20 cm spread) and a few headings, then run
+`calib_depth.py`. A single height is not enough: camera pitch, mounting height and any range bias
+are then indistinguishable (an earlier single-height fit read the near-field floor ~4 cm high at
+other heights).
 
 ## Validation (2026-09-28, robot on the gantry)
 
@@ -93,18 +104,19 @@ Tools (run inside the container, workspace sourced):
 | mapper vs offline height map (static) | median |dz| 2.8 cm; chair 0.94 vs 0.96 m |
 | VideoMimic window coverage | ~30% static (front columns only), 100% after the robot moved |
 | window cells mapped by LiDAR | within ~1 cm of the true torso height |
+| D435 extrinsic, leave-one-pose-out (7 poses, 0.83-1.05 m) | floor error 2-5 mm mean per bin, 0.2-2.5 m |
+| window cells from depth, live (new extrinsic) | raw depth +8.6 mm, through the mapper ~+1.9 cm (was ~+7.7 cm) |
 
 ## Known limitations
 
-- **D435 near-field bias:** the floor within ~1.5 m reads 2-8 cm high, above the ~2 cm offset
-  noise VideoMimic trained with. The camera extrinsic was fitted at a single robot height, where
-  pitch, height offset and range bias cannot be separated (a fit at 0.90 m fails at 0.82 m); needs a
-  multi-height/tilt recording. The RealSense on-chip calibration fails with `HW not ready` on this
-  unit (firmware 5.15.1.55), also with Unitree's videohub stopped.
+- **D435 near-field:** resolved by the multi-height extrinsic fit; no range-bias model is needed
+  (every range model tested generalised worse). The mapper adds ~1 cm on top of the raw depth in
+  the near field. The RealSense on-chip calibration fails with `HW not ready` on this unit
+  (firmware 5.15.1.55), also with Unitree's videohub stopped; it turned out not to be needed.
 - **Blind-ring memory:** anything seen inside the LiDAR's ~1 m blind ring (e.g. a person next to the
   robot) stays in the map, because no later ray passes through those cells. Keep people away or
   call the mapper's clear-map service before a policy test.
 - **Odometry over Wi-Fi:** fine on the gantry, but a walking deployment should run DLIO on the
   robot (the elevation_mapping_cupy G1 branch assumes onboard DLIO under the `robot` namespace).
-- The repo URDFs' `mid360_joint` (upright) and `d435_joint` (47.6 deg) do not match the hardware; use
-  `g1_frames.py`.
+- The repo URDFs' `mid360_joint` (upright) and `d435_joint` (47.6 deg; 49.7 measured) do not match
+  the hardware; use `g1_frames.py`.
