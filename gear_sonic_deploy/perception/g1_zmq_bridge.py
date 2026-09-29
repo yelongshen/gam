@@ -28,6 +28,7 @@ depth stamps from the Jetson clock. Each is mapped onto this machine's clock wit
 offset = min(receive time - sensor time) over a sliding window, i.e. the least-delayed
 message defines the offset, so relative timing between lidar and IMU is preserved.
 """
+import array
 import collections
 import json
 import struct
@@ -44,7 +45,6 @@ from geometry_msgs.msg import TransformStamped
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation
 from sensor_msgs.msg import Imu, PointCloud2, PointField
-from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 
@@ -55,6 +55,24 @@ DTYPES = {"f32": np.float32, "f64": np.float64, "i32": np.int32, "i64": np.int64
 GRAVITY = 9.80665
 XYZT_FIELDS = [PointField(name=n, offset=4 * i, datatype=PointField.FLOAT32, count=1)
                for i, n in enumerate(["x", "y", "z", "time"])]
+XYZ_FIELDS = XYZT_FIELDS[:3]
+
+
+def make_cloud(header, fields, pts):
+    """PointCloud2 straight from an (N, len(fields)) float32 array. sensor_msgs_py's create_cloud
+    packs point by point in Python on Humble (~3 cores at our rates on the Jetson; vectorised on
+    Jazzy), which backed messages up and made DLIO diverge."""
+    pts = np.ascontiguousarray(pts, dtype=np.float32)
+    msg = PointCloud2()
+    msg.header = header
+    msg.height, msg.width = 1, pts.shape[0]
+    msg.fields = fields
+    msg.is_bigendian = False
+    msg.point_step = 4 * len(fields)
+    msg.row_step = msg.point_step * pts.shape[0]
+    msg.is_dense = True
+    msg.data = array.array("B", pts.tobytes())
+    return msg
 
 
 def parse_lidar(msg, topic):
@@ -208,10 +226,10 @@ class G1ZmqBridge(Node):
         if "time" in d:
             # --fastlio: per-point offset from scan start in ns -> s (DLIO "Velodyne" convention)
             cloud = np.column_stack([pts[keep], d["time"][keep].astype(np.float64) * 1e-9]).astype(np.float32)
-            self.pub_lidar.publish(point_cloud2.create_cloud(header, XYZT_FIELDS, cloud))
+            self.pub_lidar.publish(make_cloud(header, XYZT_FIELDS, cloud))
             self.counts["timed"] += 1
         else:
-            self.pub_lidar.publish(point_cloud2.create_cloud_xyz32(header, np.ascontiguousarray(pts[keep], dtype=np.float32)))
+            self.pub_lidar.publish(make_cloud(header, XYZ_FIELDS, pts[keep]))
         self.counts["lidar"] += 1
         if level is not None:
             # Track the torso height every frame (EMA, ~1 s at 6 Hz): the robot can be raised or
@@ -242,7 +260,7 @@ class G1ZmqBridge(Node):
             self.counts["gantry_dropped"] += int(near.sum())
             pts = pts[~near]
         header = Header(stamp=to_time_msg(self.jetson_clock(float(hdr["stamp_host"]))), frame_id="d435_optical")
-        self.pub_depth.publish(point_cloud2.create_cloud_xyz32(header, np.ascontiguousarray(pts, dtype=np.float32)))
+        self.pub_depth.publish(make_cloud(header, XYZ_FIELDS, pts))
         self.counts["depth"] += 1
 
     def publish_static_odom(self):

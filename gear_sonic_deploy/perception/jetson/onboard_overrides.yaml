@@ -1,0 +1,9 @@
+# Onboard (Jetson) overrides, applied after g1_desktop_overrides.yaml: publish at the G1 branch's
+# own 5 Hz for walking (the desktop override uses 2 Hz for inspection).
+/elevation_mapping_node:
+  ros__parameters:
+    publishers:
+      elevation_map_raw:
+        fps: 5.0
+      filtered_elevation_map:
+        fps: 5.0
