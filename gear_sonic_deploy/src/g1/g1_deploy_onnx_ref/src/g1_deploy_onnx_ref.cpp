@@ -112,6 +112,7 @@
 #include "../include/input_interface/interface_manager.hpp"
 #include "../include/input_interface/gamepad_manager.hpp"
 #include "../include/input_interface/zmq_manager.hpp"
+#include "../include/input_interface/terrain_input.hpp"
 
 // Output interface and output handlers
 #include "../include/output_interface/output_interface.hpp"
@@ -400,6 +401,12 @@ class G1Deploy {
     
     // Active observation functions (validated and ready for runtime)
     std::vector<ActiveObservation> active_obs_functions_;
+
+    // Pelvis height map (height_map_flat / height_map_valid_flat): onboard terrain input and
+    // this control step's scan, computed once in GatherObservations().
+    std::unique_ptr<TerrainInput> terrain_input_;
+    terrain_scan::Scan terrain_scan_ = terrain_scan::EmptyScan();
+    TerrainInput::Status terrain_status_ = TerrainInput::Status::kNoMessage;
     
     // Active encoder observation functions (for encoder input)
     std::vector<ActiveObservation> active_encoder_obs_functions_;
@@ -1610,6 +1617,45 @@ class G1Deploy {
       return true;
     }
 
+    /// Copy this step's height-map scan (points, or validity) into the observation buffer.
+    bool GatherHeightMap(std::vector<double>& target_buffer, size_t offset, bool validity) {
+      const auto& src = validity ? terrain_scan_.valid : terrain_scan_.points;
+      std::copy(src.begin(), src.end(), target_buffer.begin() + static_cast<std::ptrdiff_t>(offset));
+      return true;
+    }
+
+    /// Recompute the height-map scan from the latest terrain message and the current waist
+    /// angles. No usable map (none yet, stopped, stale) -> every ray invalid, which the policy
+    /// was trained on; never hold old heights.
+    void UpdateTerrainScan() {
+      if (!terrain_input_) return;
+      terrain_scan::TerrainMessage msg;
+      const auto status = terrain_input_->Latest(msg);
+      if (status != terrain_status_) {
+        std::cout << "[HeightMap] " << TerrainInput::StatusName(status) << std::endl;
+        terrain_status_ = status;
+      }
+      if (status != TerrainInput::Status::kOk || !state_logger_) {
+        terrain_scan_ = terrain_scan::EmptyScan();
+        return;
+      }
+      const auto hist = state_logger_->GetLatest(1, control_dt_, false);
+      if (hist.empty() || hist[0].body_q.size() != mujoco_to_isaaclab.size()) {
+        terrain_scan_ = terrain_scan::EmptyScan();
+        return;
+      }
+      // body_q is in IsaacLab order with default angles subtracted; the waist joints are found
+      // by their hardware (MuJoCo) index.
+      auto waist = [&](int mujoco_index) {
+        for (size_t i = 0; i < mujoco_to_isaaclab.size(); ++i)
+          if (mujoco_to_isaaclab[i] == mujoco_index) return hist[0].body_q[i] + default_angles[mujoco_index];
+        return 0.0;
+      };
+      terrain_scan_ = terrain_scan::ScanFromTerrainMessage(msg, waist(G1JointIndex::WaistYaw),
+                                                           waist(G1JointIndex::WaistRoll),
+                                                           waist(G1JointIndex::WaistPitch));
+    }
+
     bool GatherHisGravityDir(std::vector<double>& target_buffer, size_t offset, int num_frames = 5, int step_size = 1, bool newest_first = false) {
       if (!state_logger_) { return false; }
       double sample_dt = control_dt_ * step_size;
@@ -1711,6 +1757,23 @@ class G1Deploy {
       return {{"token_state", token_dim, [this](std::vector<double>& buf, size_t offset) { return GatherTokenState(buf, offset); }},
               {"encoder_mode", 3, [this](std::vector<double>& buf, size_t offset) { return GatherEncoderMode(buf, offset, 2); }},
               {"encoder_mode_4", 4, [this](std::vector<double>& buf, size_t offset) { return GatherEncoderMode(buf, offset, 3); }},
+              // --- Aliases for sonic_release observation config (from upstream NVlabs/GR00T-WholeBodyControl) ---
+              // policy/release/observation_config_sonic_release.yaml uses the
+              // current Python-side observation names, while this registry uses
+              // the legacy names. Each entry below is a pure alias to an existing,
+              // already-validated gatherer. Dimensions sum to 1750; with the leading
+              // encoder-index scalar consumed by the ONNX wrapper this yields the
+              // 1751-dim encoder input that sonic_release-derived models expect.
+              // (Models with two encoders, e.g. no_teleop, use "encoder_mode": 3 wide.)
+              {"encoder_index", 4, [this](std::vector<double>& buf, size_t offset) { return GatherEncoderMode(buf, offset, 3); }},
+              {"command_multi_future_nonflat", 580, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointPositionsMultiFrame(buf, offset, 10, 5) && GatherMotionJointVelocitiesMultiFrame(buf, offset + 290, 10, 5); }},
+              {"motion_anchor_ori_b_mf_nonflat", 60, [this](std::vector<double>& buf, size_t offset) { return GatherMotionAnchorOrientationMutiFrame(buf, offset, 10, 5); }},
+              {"command_multi_future_lower_body", 240, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointPositionsMultiFrame(buf, offset, 10, 5, lower_body_joint_mujoco_order_in_isaaclab_index) && GatherMotionJointVelocitiesMultiFrame(buf, offset + 120, 10, 5, lower_body_joint_mujoco_order_in_isaaclab_index); }},
+              {"motion_anchor_ori_b", 6, [this](std::vector<double>& buf, size_t offset) { return GatherMotionAnchorOrientationMutiFrame(buf, offset, 1, 1); }},
+              {"smpl_joints_multi_future_local_nonflat", 720, [this](std::vector<double>& buf, size_t offset) { return GatherMotionSmplJointsMultiFrame(buf, offset, 10, 1); }},
+              {"smpl_root_ori_b_multi_future", 60, [this](std::vector<double>& buf, size_t offset) { return GatherMotionAnchorOrientationMutiFrame(buf, offset, 10, 1); }},
+              {"joint_pos_multi_future_wrist_for_smpl", 60, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointPositionsMultiFrame(buf, offset, 10, 1, wrist_joint_isaaclab_order_in_isaaclab_index); }},
+              // --- end sonic_release aliases --------------------------------------
               {"motion_joint_positions", 29, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointPositionsMultiFrame(buf, offset, 1, 1); }},
               {"motion_joint_velocities", 29, [this](std::vector<double>& buf, size_t offset) { return GatherMotionJointVelocitiesMultiFrame(buf, offset, 1, 1); }},
               {"motion_anchor_orientation", 6, [this](std::vector<double>& buf, size_t offset) { return GatherMotionAnchorOrientationMutiFrame(buf, offset, 1, 1); }},
@@ -1798,7 +1861,9 @@ class G1Deploy {
               {"his_body_joint_velocities_10frame_step1", 290, [this](std::vector<double>& buf, size_t offset) { return GatherHisBodyJointVelocities(buf, offset, 10, 1); }},
               {"his_last_actions_10frame_step1", 290, [this](std::vector<double>& buf, size_t offset) { return GatherHisLastActions(buf, offset, 10, 1); }},
               {"his_base_angular_velocity_10frame_step1", 30, [this](std::vector<double>& buf, size_t offset) { return GatherHisBaseAngularVelocity(buf, offset, 10, 1); }},
-              {"his_gravity_dir_10frame_step1", 30, [this](std::vector<double>& buf, size_t offset) { return GatherHisGravityDir(buf, offset, 10, 1); }}};
+              {"his_gravity_dir_10frame_step1", 30, [this](std::vector<double>& buf, size_t offset) { return GatherHisGravityDir(buf, offset, 10, 1); }},
+              {"height_map_flat", terrain_scan_.points.size(), [this](std::vector<double>& buf, size_t offset) { return GatherHeightMap(buf, offset, false); }},
+              {"height_map_valid_flat", terrain_scan_.valid.size(), [this](std::vector<double>& buf, size_t offset) { return GatherHeightMap(buf, offset, true); }}};
     }
     
     // Initialize observation functions
@@ -1836,6 +1901,10 @@ class G1Deploy {
         // Add to active functions (get function directly from registry)
         active_obs_functions_.emplace_back(config.name, registry_it->function, current_offset, dimension);
         current_offset += dimension;
+        if (config.name.rfind("height_map", 0) == 0 && !terrain_input_) {
+          terrain_input_ = std::make_unique<TerrainInput>(GlobalTerrainInputOptions());
+          terrain_input_->Start();
+        }
       }
       
       // Validate total dimension matches model input
@@ -1989,6 +2058,7 @@ class G1Deploy {
     bool GatherObservations() {
       // Clear observation buffer
       std::fill(obs_buffer_.begin(), obs_buffer_.end(), 0.0);
+      UpdateTerrainScan();
       
       // Process observations using pre-built active functions (no map lookup needed!)
       for (const auto& active_obs : active_obs_functions_) {
@@ -4187,6 +4257,10 @@ int main(int argc, char const* argv[]) {
     std::cout << "  --policy-input-logfile <path>: write policy input tensors to a csv file if provided" << std::endl;
     std::cout << "  --disable-crc-check: disable CRC validation for MuJoCo simulation" << std::endl;
     std::cout << "  --obs-config <path>: specify observation configuration YAML file" << std::endl;
+    std::cout << "  --terrain-host <host> / --terrain-port <port> / --terrain-topic <topic>: onboard terrain map for the"
+                 " height_map_* observations (default 127.0.0.1:5559 'terrain')" << std::endl;
+    std::cout << "  --terrain-max-msg-age <s> / --terrain-max-map-age <s>: treat the map as missing past these ages"
+                 " (default 0.1 / 0.6)" << std::endl;
     std::cout << "  --encoder-file <path>: specify encoder ONNX file (optional)" << std::endl;
     std::cout << "  --planner-precision <16|32>: specify precision to run the planner model at (default: 16)" << std::endl;
     std::cout << "  --policy-precision <16|32>: specify precision to run the policy model at (default: 32)" << std::endl;
@@ -4426,6 +4500,16 @@ int main(int argc, char const* argv[]) {
       zmq_conflate = true;
     } else if (std::string(argv[i]) == "--zmq-verbose") {
       zmq_verbose = true;
+    } else if (std::string(argv[i]) == "--terrain-host") {
+      if (i + 1 < argc) { GlobalTerrainInputOptions().host = argv[i + 1]; i++; }
+    } else if (std::string(argv[i]) == "--terrain-port") {
+      if (i + 1 < argc) { GlobalTerrainInputOptions().port = std::stoi(argv[i + 1]); i++; }
+    } else if (std::string(argv[i]) == "--terrain-topic") {
+      if (i + 1 < argc) { GlobalTerrainInputOptions().topic = argv[i + 1]; i++; }
+    } else if (std::string(argv[i]) == "--terrain-max-msg-age") {
+      if (i + 1 < argc) { GlobalTerrainInputOptions().max_msg_age_s = std::stod(argv[i + 1]); i++; }
+    } else if (std::string(argv[i]) == "--terrain-max-map-age") {
+      if (i + 1 < argc) { GlobalTerrainInputOptions().max_map_age_s = std::stod(argv[i + 1]); i++; }
     } else if (std::string(argv[i]) == "--enable-motion-recording") {
       enableMotionRecording = true;
       std::cout << "[INFO] Motion recording enabled" << std::endl;
