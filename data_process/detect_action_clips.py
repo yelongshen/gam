@@ -40,9 +40,18 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # sibling import
 import classify_motions as C  # reuse LOWER_JOINTS/UPPER_JOINTS/FOOT_JOINTS/PELVIS
 
 
-def load_sequence(d):
+def load_sequence(d, fps_override=None):
     """Load frame-0-of-each-chunk smpl_joints + fps, same convention as
-    visualize_pico.py's load_sequence() (but only what we need here)."""
+    visualize_pico.py's load_sequence() (but only what we need here).
+
+    NOTE on fps: the returned sequence has ONE sample per chunk, so its true
+    rate is the recorder's chunk rate (`--target_fps` of
+    pico_manager_thread_server.py, typically 50 Hz), NOT `pico_fps`, which is
+    the headset's source rate (~90 Hz). Using `pico_fps` here makes every
+    reported duration wrong by that ratio (1.8x at 90 Hz, 6.8x on a stalled
+    7.3 Hz capture). `pico_fps` is kept only as a legacy fallback; pass
+    --fps 50 for recordings made with `--target_fps 50`.
+    """
     files = sorted(glob.glob(os.path.join(d, "pose_*.npz")))
     if not files:
         raise SystemExit(f"no pose_*.npz in {d}")
@@ -50,7 +59,13 @@ def load_sequence(d):
     for f in files:
         z = np.load(f, allow_pickle=True)
         joints.append(z['smpl_joints'][0])  # (24,3), first of the 4-frame chunk
-    fps = float(np.load(files[0])['pico_fps'][0])
+    if fps_override is not None:
+        fps = float(fps_override)
+    else:
+        fps = float(np.load(files[0])['pico_fps'][0])
+        print(f"  [warn] using pico_fps={fps:.1f} as the chunk rate; this is the "
+              f"headset SOURCE rate, not the per-chunk rate. Pass --fps 50 if this "
+              f"was recorded with --target_fps 50.")
     return np.asarray(joints), fps, len(files)
 
 
@@ -72,6 +87,8 @@ def sliding_window_features(joints, fps, window_s):
     airborne_frac = np.zeros(T)
     upper_lower_ratio = np.zeros(T)
     pelvis_low_frac = np.zeros(T)
+    knee_flex = np.zeros(T)
+    seated_frac = np.zeros(T)
 
     # Global floor estimate (5th percentile of foot heights across the WHOLE
     # stream) -- more robust than per-window floor for a long, mostly-static
@@ -100,13 +117,33 @@ def sliding_window_features(joints, fps, window_s):
         airborne_frac[t] = float((feet_h > 0.15).mean())
         pelvis_low_frac[t] = float((z[:, C.PELVIS] < 0.55).mean())
 
+        # Seated detection. `airborne_frac` alone cannot tell a jump from a
+        # sit/crouch: in BOTH cases the feet rise above the floor estimate in
+        # these root-relative captures. The discriminator is the KNEE: sitting
+        # holds a deep, sustained flexion (~90-110 deg) while the pelvis stays
+        # low, whereas a jump is a brief extension-then-flight with the knees
+        # relatively straight. Knee angle is computed geometrically from
+        # hip->knee->ankle, so it needs no axis-angle convention.
+        hip, knee, ankle = seg[:, [1, 2]], seg[:, [4, 5]], seg[:, [7, 8]]
+        v1 = hip - knee
+        v2 = ankle - knee
+        cosang = ((v1 * v2).sum(-1)
+                  / np.clip(np.linalg.norm(v1, axis=-1) * np.linalg.norm(v2, axis=-1),
+                            1e-9, None))
+        flex = 180.0 - np.degrees(np.arccos(np.clip(cosang, -1, 1)))   # 0 = straight
+        knee_flex[t] = float(flex.mean())
+        # pelvis->ankle vertical distance: collapses when seated
+        drop = -(seg[:, 7, 2] + seg[:, 8, 2]) / 2.0
+        seated_frac[t] = float(((flex.mean(axis=1) > 60.0) & (drop < 0.70)).mean())
+
         upper_e = np.linalg.norm(vel[:, C.UPPER_JOINTS], axis=2).mean() if len(vel) else 0.0
         lower_e = np.linalg.norm(vel[:, C.LOWER_JOINTS], axis=2).mean() + 1e-6 if len(vel) else 1e-6
         upper_lower_ratio[t] = float(upper_e / lower_e)
 
     return dict(limb_energy=limb_energy, root_speed=root_speed,
                 airborne_frac=airborne_frac, upper_lower_ratio=upper_lower_ratio,
-                pelvis_low_frac=pelvis_low_frac)
+                pelvis_low_frac=pelvis_low_frac, knee_flex=knee_flex,
+                seated_frac=seated_frac)
 
 
 def segment_active_spans(active_mask, fps, gap_s, min_dur_s, max_dur_s):
@@ -189,6 +226,8 @@ def label_segment(joints, feats, start, end, fps):
     mean_root_speed = float(feats['root_speed'][start:end].mean())
     mean_airborne = float(feats['airborne_frac'][start:end].mean())
     mean_ulr = float(feats['upper_lower_ratio'][start:end].mean())
+    mean_seated = float(feats['seated_frac'][start:end].mean())
+    mean_knee = float(feats['knee_flex'][start:end].mean())
 
     # Foot-height periodicity (gait signal) and wrist-position periodicity
     # (waving signal), each checked in the walking/waving-relevant band.
@@ -197,7 +236,14 @@ def label_segment(joints, feats, start, end, fps):
     wrist_x = joints[start:end, 20:22, 0].mean(axis=1)  # wrists, horizontal
     wave_periodicity = _periodicity_score(wrist_x, fps, band_hz=(0.5, 3.0))
 
-    if mean_airborne > 0.08:
+    # NOTE: `sitting` MUST be tested before `jumping`. Both raise the feet off
+    # the floor estimate, so `airborne_frac` alone mislabels every sit/crouch as
+    # a jump (this is why the 2026-09-25 / 09-27 chair sessions came back as
+    # "jumping" with air% up to 97). Deep sustained knee flexion + low pelvis
+    # disambiguates them.
+    if mean_seated > 0.5 and mean_knee > 60.0:
+        label = "sitting"
+    elif mean_airborne > 0.08:
         label = "jumping"
     elif mean_root_speed > 0.5 and gait_periodicity > 0.3:
         label = "walking"
@@ -217,7 +263,8 @@ def label_segment(joints, feats, start, end, fps):
     return label, coarse, dict(
         mean_root_speed=mean_root_speed, mean_airborne=mean_airborne,
         mean_ulr=mean_ulr, gait_periodicity=gait_periodicity,
-        wave_periodicity=wave_periodicity)
+        wave_periodicity=wave_periodicity,
+        mean_seated=mean_seated, mean_knee=mean_knee)
 
 
 def snap_to_base(start, end, base, n_total):
@@ -248,6 +295,11 @@ def merge_overlapping(spans):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--dir', required=True, help='directory of pose_*.npz files')
+    ap.add_argument('--fps', type=float, default=None,
+                    help='sample rate of the chunk sequence (one sample per '
+                         'pose_*.npz). Use the recorder\'s --target_fps, e.g. 50. '
+                         'Defaults to the npz pico_fps, which is the headset SOURCE '
+                         'rate and gives wrong durations.')
     ap.add_argument('--window_s', type=float, default=1.5, help='sliding window size (s)')
     ap.add_argument('--energy_pct', type=float, default=60.0,
                      help='percentile of limb_energy above which a frame is "active"')
@@ -262,7 +314,7 @@ def main():
     args = ap.parse_args()
 
     print(f"Loading {args.dir} ...")
-    joints, fps, n = load_sequence(args.dir)
+    joints, fps, n = load_sequence(args.dir, args.fps)
     print(f"  {n} frames @ {fps:.1f} fps  ({n / fps:.1f}s)  joints={joints.shape}")
 
     print(f"Computing sliding-window features (window={args.window_s}s) ...")
@@ -309,10 +361,12 @@ def main():
           f"frame_base={args.frame_base}):")
     print(f"{'=' * 90}")
     print(f"{'frame_range':>18s}  {'dur(s)':>7s}  {'label':12s} {'coarse_category':24s} "
-          f"{'root_v':>7s} {'air%':>6s} {'ulr':>5s} {'gait_p':>7s} {'wave_p':>7s}")
+          f"{'root_v':>7s} {'air%':>6s} {'sit%':>6s} {'knee':>6s} {'ulr':>5s} "
+          f"{'gait_p':>7s} {'wave_p':>7s}")
     for r in selected:
         print(f"[{r['start']:6d},{r['end']:6d})  {r['dur_s']:7.2f}  {r['label']:12s} "
               f"{r['coarse']:24s} {r['mean_root_speed']:7.3f} {r['mean_airborne'] * 100:6.1f} "
+              f"{r['mean_seated'] * 100:6.1f} {r['mean_knee']:6.1f} "
               f"{r['mean_ulr']:5.2f} {r['gait_periodicity']:7.3f} {r['wave_periodicity']:7.3f}")
     print(f"{'=' * 90}")
 

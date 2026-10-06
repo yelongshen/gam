@@ -19,6 +19,14 @@ GR00T-WholeBodyControl's `eval_agent_trl.py`.
 > All numbers below now use the retargeted G1 reference (`dof`) — the same ground truth
 > the sim eval uses — over all 5 episodes. §5.4 records what changed.
 
+> **Follow-up session.** `sim2real/online_eval_20260922_report.md` applies the same metric
+> suite to the 2026-09-22 session (`policy/sonic_no_vr_050k`, one clip replay per run, clip
+> identity confirmed from both the streamed SMPL and the executed robot state):
+> `walk_180_R_003__A332_M` improves from **45.6 ± 16.2 mm** here to **24.2 ± 5.4 mm** there.
+
+> **Cross-session comparison:** `sim2real/online_eval_policy_comparison.md` pools all
+> 8 sessions and compares the deployed policies on matched clips.
+
 ---
 
 ## 1. Problem: three data sources, no shared key

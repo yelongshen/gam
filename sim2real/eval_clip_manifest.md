@@ -4,7 +4,8 @@ Frozen clip list for the real-robot online deployment evaluation
 (`sim2real/online_deployment_eval_plan.md` §0, §6). **Do not resample this list** — every
 policy comparison must reuse exactly these clips, or results become incomparable.
 
-Version: **v10**, frozen 2026-09-11. Source dataset: `~/ego_dataset/eval_subset/`.
+Version: **v11**, frozen 2026-09-11, **replay records corrected 2026-09-29**.
+Source dataset: `~/ego_dataset/eval_subset/`.
 
 ---
 
@@ -12,20 +13,20 @@ Version: **v10**, frozen 2026-09-11. Source dataset: `~/ego_dataset/eval_subset/
 
 | # | motion name | category | duration | reps on robot |
 |---|---|---|---|---|
-| 1 | `walk_180_R_003__A332_M` | Test-Repetition (ID) — basic locomotion | 11.20 s | 3 |
-| 2 | `walk_sideway_045_stop_005__A042_M` | Test-Repetition (ID) — basic locomotion | 5.54 s | 2 |
-| 3 | `walk_backward_start_001__A030_M` | Test-Repetition (ID) — basic locomotion | 3.98 s | **0 — not yet replayed** |
+| 1 | `walk_180_R_003__A332_M` | Test-Repetition (ID) — basic locomotion | 11.20 s | **10** |
+| 2 | `walk_sideway_045_stop_005__A042_M` | Test-Repetition (ID) — basic locomotion | 5.54 s | **5** |
+| 3 | `walk_backward_start_001__A030_M` | Test-Repetition (ID) — basic locomotion | 3.98 s | **5** |
 | 4 | `walk_sideway_135_loop_003__A022` | Test-Repetition (ID) — basic locomotion | 7.40 s | **0 — not yet replayed** |
 | 5 | `walk_ff_stop_225_R_002__A266_M` | Test-Repetition (ID) — basic locomotion | 4.80 s | **0 — not yet replayed** |
 | 6 | `warm_up_chest_003__A359_M` | **Wrist/shoulder-yaw stress (plan §0.1)** — in-place upper body | 9.58 s | **0 — not yet replayed** |
 | 7 | `jog_ff_start_180_R_002__A265` | Test-Repetition (ID) — **dynamic locomotion (jog)** | 4.70 s | **0 — not yet replayed** |
-| 8 | `jog_ff_start_180_R_002__A192_M` | Test-Repetition (ID) — **same motion as clip 7, different performer** | 5.04 s | **0 — not yet replayed** |
-| 9 | `reach_jump_R_001__A072_M` | **Test-Content (OOD)** — agility / jump with flight phase | 7.58 s | **0 — not yet replayed** |
-| 10 | `kneeling_start_101__A063_M` | **Test-Content (OOD)** — stand → kneel descent | 5.20 s | **0 — not yet replayed** |
-| 11 | `kneeling_stop_002__A051_M` | **Test-Content (OOD)** — kneel → stand recovery | 2.74 s | **0 — not yet replayed** |
-| 12 | `high_jump_R_103__A389_M` | **Test-Content (OOD)** — maximal-effort vertical jump | 2.60 s | **0 — not yet replayed** |
-| 13 | `dance_vouge_shake_it_babe_360_R_002__A318_M` | **Test-Content (OOD)** — vogue dance, 360° turn while travelling | 6.38 s | **0 — not yet replayed** |
-| 14 | `dance_hiphop_mike_tyson_R_fast_001__A319_M` | **Test-Content (OOD)** — hip-hop dance, in-place, fast tempo | 4.84 s | **0 — not yet replayed** |
+| 8 | `jog_ff_start_180_R_002__A192_M` | Test-Repetition (ID) — **same motion as clip 7, different performer** | 5.04 s | **4** |
+| 9 | `reach_jump_R_001__A072_M` | **Test-Content (OOD)** — agility / jump with flight phase | 7.58 s | **3** |
+| 10 | `kneeling_start_101__A063_M` | **Test-Content (OOD)** — stand → kneel descent | 5.20 s | **3** |
+| 11 | `kneeling_stop_002__A051_M` | **Test-Content (OOD)** — kneel → stand recovery | 2.74 s | **3** |
+| 12 | `high_jump_R_103__A389_M` | **Test-Content (OOD)** — maximal-effort vertical jump | 2.60 s | **5** |
+| 13 | `dance_vouge_shake_it_babe_360_R_002__A318_M` | **Test-Content (OOD)** — vogue dance, 360° turn while travelling | 6.38 s | **2** |
+| 14 | `dance_hiphop_mike_tyson_R_fast_001__A319_M` | **Test-Content (OOD)** — hip-hop dance, in-place, fast tempo | 4.84 s | **1** |
 
 Clips 1–5, 7 and 8 are **ID / Test-Repetition** locomotion; clips 7–8 are the first **jogs**
 (~2× the root speed of any walk clip) and form a **matched pair** — same motion, same take,
@@ -36,11 +37,17 @@ the feet — they form a **descent/recovery pair** (§3) — and clips 13–14 a
 manifest's two fastest clips by mean joint speed and a **travelling/in-place dance pair**
 (§3). Clip 12 is the shortest and by far the most violent clip in the manifest (§3).
 
-> **Clips 3–14 have no robot data yet.** Clips 3–11 were streamed on 2026-09-08 and clips
-> 12–14 on 2026-09-11, all over **loopback only** (no `--host`), so nothing reached the
-> robot at `192.168.8.192`. A sliding-window search confirms none appears in any of the
-> 2026-09-04 sessions. They are listed here as committed members of the eval set, but
-> contribute no measurements until replayed.
+> **Correction (2026-09-29): 10 of the 14 clips DO have robot data.** Every version up to
+> v10 stated that clips 3–14 were streamed over loopback only and never reached the robot.
+> That is **wrong**. A bulk sweep of `sim2real/bulk_locate_manifest_clips.py` over all 61
+> `streamed_*` sessions in `~/g1_robot_data/` finds **41 confirmed replays across 10 clips**,
+> in sessions dated 2026-09-05 through 2026-09-24 — including the kneels, both jumps and
+> both dances. Only clips **4, 5, 6 and 7** remain unreplayed. Full window table in §4.
+>
+> The claim was never re-checked after the 09-09/09-12/09-15 sessions were recorded; it
+> described the state of the data on 2026-09-11 and silently went stale. Any analysis that
+> assumed "twelve fourteenths of the manifest is unmeasured" (old §5.3, §5.4) was working
+> from a false premise.
 
 ---
 
@@ -535,17 +542,121 @@ Source recordings live under `~/ego_dataset/smpl_bones_seed/230418/` and
 
 ## 4. Where these clips were replayed on the robot
 
-Session 2026-09-04 (`~/g1_robot_data/`). Episode windows located by
-`sim2real/locate_clip_in_session.py`; full derivation in
-`sim2real/online_eval_20260904_report.md` §2.
+**41 confirmed replays across 10 clips**, in 6 session groups under `~/g1_robot_data/`.
+Windows located by `sim2real/bulk_locate_manifest_clips.py` (bulk) and
+`sim2real/locate_clip_in_session.py` (single clip); the 2026-09-04 rows are carried over
+from `sim2real/online_eval_20260904_report.md` §2.
 
-| # | clip | stream session @offset | policy run | run-relative window |
+All offsets are **session-relative**, in 50 fps stream frames. The ~103–105 frame offset on
+most rows is the 2 s `--settle` lead-in and is excluded from metrics.
+
+### Clip 1 — `walk_180_R_003__A332_M` (10 reps)
+
+| session | frames | window | err |
+|---|---|---|---|
+| `20260915/streamed_083556` | [105, 665) | 2.10–13.30 s | 5.43 mm |
+| `20260905/streamed_091340` | [105, 665) | 2.10–13.30 s | 5.59 mm |
+| `20260922/20260922/streamed_085420` | [104, 664) | 2.08–13.28 s | 6.03 mm |
+| `20260909/streamed_073717` | [105, 665) | 2.10–13.30 s | 6.41 mm |
+| `20260905/streamed_091541` | [104, 664) | 2.08–13.28 s | 6.48 mm |
+| `20260905/streamed_091118` | [105, 665) | 2.10–13.30 s | 6.67 mm |
+| `20260909/streamed_074026` | [105, 665) | 2.10–13.30 s | 7.93 mm |
+| `20260924/20260924/streamed_075632` | [105, 665) | 2.10–13.30 s | 8.45 mm |
+| `20260909/streamed_074402` | [105, 665) | 2.10–13.30 s | 8.49 mm |
+| `20260909/streamed_074640` | [105, 665) | 2.10–13.30 s | 16.91 mm |
+
+### Clip 2 — `walk_sideway_045_stop_005__A042_M` (5 reps)
+
+| session | frames | window | err |
+|---|---|---|---|
+| `20260909/streamed_075325` | [104, 381) | 2.08–7.62 s | 3.82 mm |
+| `20260915/streamed_083926` | [103, 380) | 2.06–7.60 s | 3.84 mm |
+| `20260909/streamed_075106` | [104, 381) | 2.08–7.62 s | 4.01 mm |
+| `20260905/streamed_092422` | [5547, 5824) | 110.94–116.48 s | 4.60 mm |
+| `20260905/streamed_092026` | [104, 381) | 2.08–7.62 s | 4.70 mm |
+
+### Clip 3 — `walk_backward_start_001__A030_M` (5 reps)
+
+| session | frames | window | err |
+|---|---|---|---|
+| `20260915/streamed_084209` | [103, 302) | 2.06–6.04 s | 1.18 mm |
+| `20260915/streamed_084407` | [103, 302) | 2.06–6.04 s | 3.83 mm |
+| `20260912/streamed_083541` | [103, 302) | 2.06–6.04 s | 4.43 mm |
+| `20260922/20260922/streamed_085658` | [103, 302) | 2.06–6.04 s | 6.16 mm |
+| `20260924/20260924/streamed_075948` | [104, 303) | 2.08–6.06 s | 18.86 mm |
+
+### Clip 8 — `jog_ff_start_180_R_002__A192_M` (4 reps)
+
+| session | frames | window | err |
+|---|---|---|---|
+| `20260915/streamed_084914` | [104, 356) | 2.08–7.12 s | 7.55 mm |
+| `20260909/streamed_081538` | [98, 350) | 1.96–7.00 s | 7.95 mm |
+| `20260909/streamed_081839` | [98, 350) | 1.96–7.00 s | 9.66 mm |
+| `20260909/streamed_075812` | [105, 357) | 2.10–7.14 s | 12.17 mm |
+
+### Clip 9 — `reach_jump_R_001__A072_M` (3 reps)
+
+| session | frames | window | err |
+|---|---|---|---|
+| `20260909/streamed_080124` | [104, 483) | 2.08–9.66 s | 1.30 mm |
+| `20260909/streamed_082055` | [98, 477) | 1.96–9.54 s | 1.57 mm |
+| `20260915/streamed_085159` | [104, 483) | 2.08–9.66 s | 2.10 mm |
+
+### Clips 10 & 11 — the kneel pair (3 reps each)
+
+Both members appear in the **same two sessions**, so `20260909/streamed_080809` and
+`20260909/streamed_082249` each contain a complete stand → kneel → stand cycle.
+
+| clip | session | frames | window | err |
 |---|---|---|---|---|
-| 1 | `walk_sideway_045_stop_005__A042_M` | `streamed_092422` @5547 | `g1_deploy_run_09042026_run5` | 127.56–133.10 s |
-| 2 | `walk_sideway_045_stop_005__A042_M` | `streamed_092026` @104 | `g1_deploy_run_09042026_run5` | 38.52–44.06 s |
-| 3 | `walk_180_R_003__A332_M` | `streamed_091340` @105 | `g1_deploy_run_09042026_run3` | 18.02–29.22 s |
-| 4 | `walk_180_R_003__A332_M` | `streamed_091541` @104 | `g1_deploy_run_09042026_run4` | 37.20–48.40 s |
-| 5 | `walk_180_R_003__A332_M` | `streamed_091118` @105 | `g1_deploy_run_09042026_run2` | 20.50–31.70 s |
+| 10 | `20260909/streamed_080809` | [104, 364) | 2.08–7.28 s | 1.34 mm |
+| 10 | `20260915/streamed_085511` | [105, 365) | 2.10–7.30 s | 1.35 mm |
+| 10 | `20260909/streamed_082249` | [99, 359) | 1.98–7.18 s | 1.97 mm |
+| 11 | `20260909/streamed_080809` | [1821, 1958) | 36.42–39.16 s | 0.59 mm |
+| 11 | `20260909/streamed_082249` | [1261, 1398) | 25.22–27.96 s | 0.86 mm |
+| 11 | `20260919/streamed_080453` | [1982, 2119) | 39.64–42.38 s | 17.95 mm |
+
+### Clip 12 — `high_jump_R_103__A389_M` (5 reps)
+
+| session | frames | window | err |
+|---|---|---|---|
+| `20260912/streamed_082831` | [103, 233) | 2.06–4.66 s | 1.71 mm |
+| `20260912/streamed_084538` | [103, 233) | 2.06–4.66 s | 2.49 mm |
+| `20260915/streamed_091220` | [104, 234) | 2.08–4.68 s | 3.96 mm |
+| `20260912/streamed_083110` | [104, 234) | 2.08–4.68 s | 4.70 mm |
+| `20260912/streamed_084118` | [102, 232) | 2.04–4.64 s | 5.80 mm |
+
+### Clips 13 & 14 — the dances (2 and 1 reps)
+
+| clip | session | frames | window | err |
+|---|---|---|---|---|
+| 13 | `20260915/streamed_092520` | [97, 416) | 1.94–8.32 s | 11.51 mm |
+| 13 | `20260912/streamed_085741` | [105, 424) | 2.10–8.48 s | 14.61 mm |
+| 14 | `20260912/streamed_084929` | [104, 346) | 2.08–6.92 s | 11.87 mm |
+
+### Not yet replayed
+
+Clips **4** (`walk_sideway_135_loop_003__A022`), **5** (`walk_ff_stop_225_R_002__A266_M`),
+**6** (`warm_up_chest_003__A359_M`) and **7** (`jog_ff_start_180_R_002__A265`). Their best
+matches across all 61 sessions are 150.6 / 114.5 / 142.4 / **62.3 mm** — all far outside the
+0.6–18.9 mm confirmed band, i.e. genuine absences rather than weak matches.
+
+> **Clip 7 is the notable gap.** Its pair-partner clip 8 has 4 reps, so the manifest's
+> central performer-variation comparison (§3) cannot be made until clip 7 is replayed.
+> Its 62.3 mm best non-match is also the tightest in the manifest — unsurprising, since the
+> nearest candidate is clip 8, the same motion by another performer.
+
+### Matching methodology and confidence
+
+A replay is **CONFIRMED** when the sliding-window mean per-joint error is ≤ 20 mm *and* the
+nearest non-matching session is ≥ 3× further away. Observed separations are 4.0× (clip 1)
+to 174× (clip 11); the true-match band is 0.6–18.9 mm against non-matches at 21–209 mm.
+
+> **Do not use the runner-up session as the separation baseline.** Because most clips were
+> replayed several times, the second-best session is usually *another true replay* of the
+> same clip, which makes a correct identification look ambiguous (separation ≈ 1.0). The
+> baseline must be the nearest session that is clearly *not* the clip. An earlier version
+> of the bulk sweep made this error and reported almost every clip as "unconfirmed".
 
 Streaming command used (mode 2, ZMQ to the robot):
 
@@ -558,6 +669,11 @@ Streaming command used (mode 2, ZMQ to the robot):
 
 `--settle 2.0` holds the first frame for 2 s; the resulting ~104-frame lead-in is excluded
 from all metrics.
+
+> **These windows locate the *streamed reference*, not the robot's response.** A confirmed
+> match proves the clip went out on the wire during that session; it says nothing about
+> whether the robot tracked it or fell. Pair each window with the corresponding
+> `g1_deploy_run_*` policy log before reporting any tracking metric.
 
 ---
 
@@ -575,36 +691,48 @@ from all metrics.
    ~190°, `wrist_roll` 44–60°. Clip 12 adds `wrist_roll` 68–76° and clip 13 the manifest
    maximum at **86°** (`right_wrist_roll`), the latter under leg load — but in both cases
    as a by-product of the motion rather than as an isolated probe (clip 14 is milder at
-   38–59°). These are **four clips with no robot data yet**, and none isolates forearm
+   38–59°). Clips 12–14 now **do** have robot data (5 / 2 / 1 reps), but **clip 6 — the
+   only deliberate twist probe — still does not**, and none of the four isolates forearm
    twist. A dedicated twist clip is still worth adding; candidates already in the dataset:
    `mid_small_valve_ccw_002`, `nailing_floor_R_004`, `brush_of_dust_002`, `itching_*`.
-3. **Clips 3–14 have no robot episodes yet** (§1) — all must be replayed with
-   `--host 192.168.8.192` before they contribute anything. **Twelve fourteenths of the
-   manifest is currently unmeasured**, and the gap widens with each addition: the measured
-   portion is still only the two clips from 2026-09-04.
-4. **Only 2 clips with data, 2–3 reps each.** The plan calls for 5–10 clips per category.
-   Observed rep-to-rep variance is large (`walk_180` spans 29.8–67.8 mm `mpjpe_l`), so
-   both more clips and more reps are needed before per-policy differences resolve. Note
-   the clip 7/8 pair and the clip 13/14 pair each need ≥3 reps *per member* to be
-   interpretable (§3), and clip 12's 2.60 s duration makes it the noisiest per-rep entry
-   in the manifest.
+3. **Four clips still have no robot episodes** (§1, §4): clips **4, 5, 6, 7**. They must be
+   replayed with `--host 192.168.8.192` before they contribute anything. The other ten have
+   **41 replays between them**, spread over sessions dated 09-05 through 09-24.
+   **Clip 7 is the priority** — without it the clip 7/8 performer-variation comparison,
+   one of the manifest's two designed contrasts, cannot be computed at all.
+4. **Rep counts are now adequate for several clips, but the metrics have not been
+   computed.** Clips 1 (10 reps), 2 (5), 3 (5), 12 (5) and 8 (4) all clear the ≥3-reps bar
+   that §3 sets for the paired comparisons; clips 13 (2) and 14 (1) do not, so the
+   travelling-vs-in-place dance contrast is still underpowered, and clip 12's 2.60 s
+   duration keeps it the noisiest per-rep entry despite having 5 reps. Observed
+   rep-to-rep variance is large (`walk_180` spans 29.8–67.8 mm `mpjpe_l` on the three
+   09-04 reps), so the remaining work is **scoring the existing episodes**, not collecting
+   more — a change from every previous version of this manifest.
 5. **The fall detector is not valid for clips 9, 10, 11 or 12.** The plan's §3 pelvis-height
    threshold and the evaluator's 35° tilt proxy were both tuned on walking. A jump's flight
    phase (0.58 m of vertical excursion on clip 12), and a kneel's legitimate 0.35 m pelvis
-   height, will both trip them spuriously. Fix before scoring these clips (§3).
+   height, will both trip them spuriously. **This is now blocking rather than hypothetical:
+   all four of these clips have been replayed** (3 / 3 / 3 / 5 reps), so the episodes exist
+   and cannot be scored until the detector is fixed (§3).
 6. **Crawl is still unreachable.** Clips 10/11 reach a kneel (0.35–0.40 m) but true crawl
    clips start prone at 0.082–0.087 m, and the kneel → prone splice costs 121° of
    single-frame discontinuity. Options: retarget a bridging clip, or modify
    `InitControl()` in `g1_deploy_onnx_ref.cpp` to ramp toward the reference motion's first
    frame instead of `default_angles` (with the robot physically pre-placed).
-7. **A sixth streamed session (`streamed_090954`, 27.9 s) is still unidentified** — it
-   matched none of the twelve manifest clips. With ~160 candidates in `eval_subset`, a bulk
-   sweep of `locate_clip_in_session.py` over the whole directory would identify it — but
-   **the safety margin is narrower than it first appeared**. Observed best-non-match
-   distances have fallen steadily as clips were added: 675 → 437 → 142 → 120 → **62 mm**
-   (clip 9), against a 4.6–6.7 mm true-match band. That is still ~10×, but a bulk sweep
-   must report the **top-k matches and their separation**, not the argmin alone, and should
-   treat any match above ~20 mm as unconfirmed.
+7. **`streamed_090954` (27.9 s) remains unidentified** — it matched none of the fourteen
+   manifest clips in the 2026-09-29 bulk sweep. With ~160 candidates in `eval_subset`, a
+   sweep of `bulk_locate_manifest_clips.py` over the whole directory would identify it.
+   The separation margins measured in that sweep are **much healthier than v10 feared**:
+   confirmed matches sit at 0.6–18.9 mm against nearest non-matches at 21–209 mm
+   (separation 4.0×–174×). The v10 worry that margins were collapsing toward 62 mm was an
+   artefact of comparing against the runner-up *session* rather than the nearest
+   non-matching clip. Still report top-k and separation, not the argmin alone.
+8. **This manifest's replay records went stale for ~18 days without anyone noticing.**
+   Versions v7–v10 asserted that clips 3–14 had no robot data; by 2026-09-09 that was
+   already false, and by 2026-09-24 ten clips had 41 replays. The `reps on robot` column
+   is not derived from the data — it was hand-maintained. **Re-run
+   `sim2real/bulk_locate_manifest_clips.py` and regenerate §1/§4 before trusting this
+   document**, especially after any new hardware session.
 
 ---
 
@@ -622,6 +750,7 @@ from all metrics.
 | v8 | 2026-09-08 | Added `reach_jump_R_001__A072_M` (no robot episodes yet) — first Test-Content (OOD) clip and the only one with a flight phase (root height range 0.316 m, 3.5x the next clip). Added a root-height row to the §3 table; flagged that the fall detector is invalid for this clip. |
 | v9 | 2026-09-08 | Added `kneeling_start_101__A063_M` and `kneeling_stop_002__A051_M` (no robot episodes yet) — the only stand<->ground transitions in the dataset and the only route to ground contact from the robot's mandatory standing init pose. Transposed the §3 property table to clip-per-row. |
 | v10 | 2026-09-11 | Added `high_jump_R_103__A389_M` (clip 12), `dance_vouge_shake_it_babe_360_R_002__A318_M` (clip 13) and `dance_hiphop_mike_tyson_R_fast_001__A319_M` (clip 14), none replayed. Clip 12 sets manifest records for root-height range (0.579 m) and peak joint speed (1901 °/s); clips 13/14 are the two fastest by *mean* joint speed (126.1 / 108.7 °/s) and form a travelling-vs-in-place dance pair. Added `sim2real/clip_stats.py`, which regenerates the §3 table rows. |
+| v11 | 2026-09-29 | **Replay-record correction — no clip list change.** A bulk sweep over all 61 `streamed_*` sessions found **41 confirmed replays across 10 clips**; v7–v10 had claimed clips 3–14 were never replayed, which was already false by 2026-09-09. Rewrote §1 rep counts (clip 1: 3→10, 2: 2→5, 3: 0→5, 8: 0→4, 9–14: 0→3/3/3/5/2/1) and replaced §4 with per-clip window tables. Corrected §5.3–§5.5 and §5.7, which were premised on the missing data. Added `sim2real/bulk_locate_manifest_clips.py`. **Clip-list version is unchanged from v10, so v10 and v11 numbers remain comparable.** |
 
 When adding clips, bump the version, append here, and **re-run all policies** on the new
 list — never compare numbers computed against different manifest versions.

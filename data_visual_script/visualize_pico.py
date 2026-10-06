@@ -31,7 +31,7 @@ SMPL_LINKS = [
 ]
 
 
-def load_sequence(d):
+def load_sequence(d, fps_override=None):
     files = sorted(glob.glob(os.path.join(d, "pose_*.npz")))
     if not files:
         raise SystemExit(f"no pose_*.npz in {d}")
@@ -44,7 +44,14 @@ def load_sequence(d):
                      float(z['left_grip'][0]), float(z['right_grip'][0])])
         fidx.append(int(z['frame_index'][0]))
         ts.append(float(z['timestamp_monotonic'][0]))
-    fps = float(np.load(files[0])['pico_fps'][0])
+    if fps_override is not None:
+        fps = float(fps_override)
+    else:
+        # NOTE: `pico_fps` is the HEADSET source rate (~90 Hz). This sequence has
+        # one sample per chunk, so its true rate is the recorder's --target_fps
+        # (typically 50 Hz). Using pico_fps here plays the video back at the
+        # wrong speed; pass --fps 50 for --target_fps 50 recordings.
+        fps = float(np.load(files[0])['pico_fps'][0])
     return (np.asarray(joints), np.asarray(vr).reshape(-1, 3, 3),
             np.asarray(trig), np.asarray(fidx), np.asarray(ts), fps, len(files))
 
@@ -54,15 +61,26 @@ def main():
     ap.add_argument('--dir', required=True)
     ap.add_argument('--out', required=True)
     ap.add_argument('--stride', type=int, default=3)
-    ap.add_argument('--max_frames', type=int, default=900)
+    ap.add_argument('--max_frames', type=int, default=900,
+                    help='max number of RENDERED frames (after striding)')
+    ap.add_argument('--start', type=int, default=0, help='first chunk index')
+    ap.add_argument('--end', type=int, default=None, help='last chunk index (exclusive)')
+    ap.add_argument('--fps', type=float, default=None,
+                    help="chunk-sequence rate; use the recorder's --target_fps (e.g. 50). "
+                         'Defaults to the npz pico_fps (headset source rate).')
     args = ap.parse_args()
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
 
-    J, VR, TRIG, FI, TS, fps, n = load_sequence(args.dir)
+    J, VR, TRIG, FI, TS, fps, n = load_sequence(args.dir, args.fps)
     dur = (TS[-1] - TS[0])
     print(f"[pico] {n} frames @ {fps:.1f} fps  ({dur:.1f}s)  joints={J.shape}")
 
-    frames = list(range(0, min(len(J), args.max_frames), args.stride))
+    end = len(J) if args.end is None else min(args.end, len(J))
+    # max_frames caps the RENDERED frame count, so a large stride still spans
+    # the whole requested range instead of only its first max_frames samples.
+    frames = list(range(args.start, end, args.stride))[:args.max_frames]
+    print(f"[pico] rendering chunks [{args.start}:{end}) stride={args.stride} "
+          f"-> {len(frames)} frames, playback {max(5, int(fps / args.stride))} fps")
     fig = plt.figure(figsize=(12, 6))
     axs = fig.add_subplot(121, projection='3d')
     axv = fig.add_subplot(122, projection='3d')
