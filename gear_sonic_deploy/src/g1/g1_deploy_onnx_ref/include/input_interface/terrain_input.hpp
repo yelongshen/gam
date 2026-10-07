@@ -63,6 +63,13 @@ class TerrainInput {
                const std::vector<ZMQPackedMessageSubscriber::BufferView>& buffers) { OnMessage(header, buffers); });
   }
 
+  // The receive thread writes into msg_ under mutex_. Members are destroyed in reverse order, so
+  // without this the thread could still be running after msg_ and mutex_ are gone (seen as
+  // "free(): invalid size" when the runner exits; AddressSanitizer: double-free in the thread).
+  ~TerrainInput() { subscriber_.Stop(); }
+  TerrainInput(const TerrainInput&) = delete;
+  TerrainInput& operator=(const TerrainInput&) = delete;
+
   /// Connects and starts the background receive thread (errors are logged by the subscriber;
   /// until messages arrive, Latest() reports kNoMessage and the scan is all invalid).
   void Start() {
