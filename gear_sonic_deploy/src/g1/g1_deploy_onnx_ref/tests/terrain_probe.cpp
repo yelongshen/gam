@@ -7,7 +7,10 @@
 // Waist angles are taken as 0 (the probe does not read joint states), so the pelvis sits 5.4 cm
 // below the torso. On a gantry, start perception with GANTRY_FILTER=true.
 //
-//   ./target/release/terrain_probe [seconds=20] [port=5559]
+//   ./target/release/terrain_probe [seconds=20] [port=5559] [host=127.0.0.1]
+//
+// From another machine (e.g. the workstation running the policy over Wi-Fi), pass the robot's
+// address as host; the robot's perception stack must then publish with TERRAIN_BIND=tcp://0.0.0.0:5559.
 //
 // Built with -DBUILD_TESTS=ON (needs libzmq). First gantry run (2026-10-08): floor 0.82 m below the
 // torso / 0.755 m below the pelvis, 35/121 scan rays and ~200/441 grid cells seen standing still
@@ -27,6 +30,7 @@ static double median(std::vector<double> v) {
 int main(int argc, char** argv) {
   const double seconds = argc > 1 ? std::atof(argv[1]) : 20.0;
   if (argc > 2) GlobalTerrainInputOptions().port = std::atoi(argv[2]);
+  if (argc > 3) GlobalTerrainInputOptions().host = argv[3];
   TerrainInput in(GlobalTerrainInputOptions());
   in.Start();
   terrain_scan::TerrainMessage last;
