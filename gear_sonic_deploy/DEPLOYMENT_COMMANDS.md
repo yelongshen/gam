@@ -325,6 +325,12 @@ cd .. && ./target/release/terrain_probe 10 5559 <ROBOT_WIFI_IP>     # expect "ok
   --terrain-host <ROBOT_WIFI_IP> \
   2>&1 | tee /tmp/hm_run.log
 ```
+**Policy on the Jetson instead** (next to the perception stack): drop `--terrain-host` (the map is
+on localhost) and add **`--zmq-out-port 5560`**. The perception publishers hold 5557 (depth) and
+5558 (LiDAR) and the terrain topic 5559, so the default debug port 5557 fails with
+`zmq::error_t: Address already in use` (checked 2026-10-08). Anything that reads the `g1_debug`
+stream must then use 5560.
+
 `[HeightMap]` lines report the input state (`ok`, `no terrain message yet`, `terrain messages stopped
 arriving`, `terrain map is stale`). `--terrain-max-msg-age` (default 0.1 s) and `--terrain-max-map-age`
 (0.6 s) set when the map counts as missing.
