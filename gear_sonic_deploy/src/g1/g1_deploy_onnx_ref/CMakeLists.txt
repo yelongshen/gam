@@ -170,6 +170,21 @@ if(BUILD_TESTS AND ZMQ_INCLUDE_DIR AND ZMQ_LIBRARY)
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF)
   message(STATUS "✅ Added zmq_python_sender_test (ZMQ found)")
+
+  # Bring-up check of the height-map observations against the live `terrain` topic (no motors)
+  add_executable(terrain_probe
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/terrain_probe.cpp)
+  target_include_directories(terrain_probe PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/input_interface
+    ${ZMQ_INCLUDE_DIR})
+  target_link_libraries(terrain_probe PRIVATE ${ZMQ_LIBRARY} Threads::Threads)
+  set_target_properties(terrain_probe PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/target/release/"
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF)
+  message(STATUS "✅ Added terrain_probe (ZMQ found)")
 elseif(BUILD_TESTS)
   message(WARNING "⚠️  libzmq not found - skipping zmq_pose_subscriber_test")
 endif()

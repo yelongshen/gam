@@ -94,6 +94,10 @@ gear_sonic's ZMQ packed message: a 1280-byte JSON header, then the fields. That 
   `terrain_height` as-is.
 - `python3 gear_sonic_deploy/scripts/terrain_subscriber.py --show` checks a live stream: rate,
   staleness, coverage, and a cross-check that `height_grid` reproduces `terrain_height`.
+- `gear_sonic_deploy/target/release/terrain_probe [seconds] [port]` (build with `-DBUILD_TESTS=ON`) reads
+  the same stream through the deploy runner's own C++ (`TerrainInput`, `terrain_scan.hpp`) and prints the
+  height-map observations a policy would get, with ASCII maps; no motors involved. On a gantry, start
+  perception with `GANTRY_FILTER=true`.
 - Measured on the gantry:
   - 50 Hz, about 1 ms from publish to receive.
   - `timestamp - map_stamp` is about 230-360 ms median: the LiDAR's own latency, the map's 5 Hz
