@@ -24,6 +24,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <vector>
 
@@ -138,27 +139,49 @@ inline Pose PelvisPoseFromTorso(const Vec3& torso_pos, const QuatWxyz& torso_qua
 // Height field and the ray march
 // ---------------------------------------------------------------------------
 
+// gear_sonic_deploy compiles with -ffast-math, under which the compiler may assume no NaN or
+// infinity ever occurs: std::isnan / std::isfinite and NaN comparisons can be optimised away.
+// So nothing here relies on them. Unseen cells are an explicit flag, and NaNs arriving in a
+// message (NaN = unseen) are detected from the bits, which fast-math cannot assume away.
+inline bool IsFiniteBits(float v) {
+  uint32_t b;
+  std::memcpy(&b, &v, sizeof b);
+  return (b & 0x7f800000u) != 0x7f800000u;
+}
+
 /// Gravity-aligned 2.5D terrain: heights[row * cols + col] = terrain z at the cell centre
-/// origin + (col, row) * resolution. NaN = unseen.
+/// origin + (col, row) * resolution, used only where seen[...] is set.
 struct HeightField {
   std::vector<double> heights;
+  std::vector<uint8_t> seen;  ///< same size as heights; 0 = unseen
   int rows = 0, cols = 0;
   double origin_x = 0.0, origin_y = 0.0, resolution = 0.04;
 
-  /// Nearest-cell height (np.rint semantics: round half to even); NaN if unseen or off the grid.
-  double Sample(double x, double y) const {
+  /// Nearest-cell height (np.rint semantics: round half to even). False if unseen or off the grid.
+  bool Sample(double x, double y, double& h) const {
     const long i = static_cast<long>(std::nearbyint((x - origin_x) / resolution));
     const long j = static_cast<long>(std::nearbyint((y - origin_y) / resolution));
-    if (i < 0 || i >= cols || j < 0 || j >= rows) return std::numeric_limits<double>::quiet_NaN();
-    return heights[static_cast<size_t>(j) * static_cast<size_t>(cols) + static_cast<size_t>(i)];
+    if (i < 0 || i >= cols || j < 0 || j >= rows) return false;
+    const size_t k = static_cast<size_t>(j) * static_cast<size_t>(cols) + static_cast<size_t>(i);
+    if (!seen[k]) return false;
+    h = heights[k];
+    return true;
   }
 
-  /// Rays below this z (two cells under the lowest observed height) can't land from above.
-  double FloorStop() const {
-    double lo = std::numeric_limits<double>::infinity();
-    for (double h : heights)
-      if (std::isfinite(h)) lo = std::min(lo, h);
-    return std::isfinite(lo) ? lo - 2.0 * resolution : -std::numeric_limits<double>::infinity();
+  /// Rays below `value` (two cells under the lowest observed height) can't land from above.
+  struct FloorStop {
+    bool any = false;  ///< false: nothing observed, no limit
+    double value = 0.0;
+  };
+  FloorStop LowestStop() const {
+    FloorStop f;
+    for (size_t k = 0; k < heights.size(); ++k) {
+      if (!seen[k]) continue;
+      f.value = f.any ? std::min(f.value, heights[k]) : heights[k];
+      f.any = true;
+    }
+    if (f.any) f.value -= 2.0 * resolution;
+    return f;
   }
 };
 
@@ -168,22 +191,25 @@ struct RayHit {
   bool valid = false;
 };
 
-/// First hit of one ray (see terrain_scan.raycast_heightfield). floor_stop = hf.FloorStop().
+/// First hit of one ray (see terrain_scan.raycast_heightfield). floor = hf.LowestStop().
 inline RayHit RaycastHeightField(const HeightField& hf, const Vec3& start, const Vec3& dir, double max_dist,
-                                 double floor_stop, int refine = 8) {
+                                 const HeightField::FloorStop& floor, int refine = 8) {
   const double step = 0.5 * hf.resolution;
   const size_t n_t = static_cast<size_t>(std::ceil((max_dist + step) / step));  // np.arange length
   auto t_at = [&](size_t k) { return k + 1 == n_t ? std::min(static_cast<double>(k) * step, max_dist)
                                                   : static_cast<double>(k) * step; };
-  auto h_at = [&](double t) { return hf.Sample(start[0] + t * dir[0], start[1] + t * dir[1]); };
+  auto h_at = [&](double t, double& h) { return hf.Sample(start[0] + t * dir[0], start[1] + t * dir[1], h); };
+  // Unseen cells never stop a ray; neither does anything below the floor stop.
+  auto below = [&](double t) {
+    double h;
+    const double z = start[2] + t * dir[2];
+    return h_at(t, h) && z <= h && (!floor.any || z >= floor.value);
+  };
 
   RayHit out;
   size_t k = n_t - 1;
   for (size_t s = 0; s < n_t; ++s) {
-    const double t = t_at(s);
-    const double z = start[2] + t * dir[2];
-    const double h = h_at(t);
-    if (z <= h && z >= floor_stop) {  // NaN compares false: unseen cells never stop a ray
+    if (below(t_at(s))) {
       out.hit = true;
       k = s;
       break;
@@ -191,8 +217,10 @@ inline RayHit RaycastHeightField(const HeightField& hf, const Vec3& start, const
   }
   if (out.hit) {
     const double tk = t_at(k);
-    const bool prev_unseen = k > 0 && std::isnan(h_at(t_at(k - 1)));
-    const double penetration = h_at(tk) - (start[2] + tk * dir[2]);
+    double h_prev, h_k = 0.0;
+    const bool prev_unseen = k > 0 && !h_at(t_at(k - 1), h_prev);
+    h_at(tk, h_k);
+    const double penetration = h_k - (start[2] + tk * dir[2]);
     out.valid = !prev_unseen || penetration <= 1.01 * step;
   }
 
@@ -200,7 +228,8 @@ inline RayHit RaycastHeightField(const HeightField& hf, const Vec3& start, const
   double lo = t_at(k > 0 ? k - 1 : 0), hi = t_at(k);
   for (int it = 0; it < refine; ++it) {
     const double mid = 0.5 * (lo + hi);
-    const bool inside = (start[2] + mid * dir[2]) <= h_at(mid);
+    double h;
+    const bool inside = h_at(mid, h) && (start[2] + mid * dir[2]) <= h;
     if (out.hit && inside) hi = mid;
     if (out.hit && !inside) lo = mid;
   }
@@ -234,12 +263,13 @@ struct Scan {
 
 /// The sim height_map observation against a height field (terrain_scan.terrain_scan), with
 /// invalid rays zeroed as the policy sees them. root_pose: pelvis pose in the field's frame.
-inline Scan TerrainScan(const HeightField& hf, const Pose& root, double floor_z,
+/// clamp_floor: apply the sim's floor clamp at floor_z (off on the robot, i.e. floor_z = -inf).
+inline Scan TerrainScan(const HeightField& hf, const Pose& root, bool clamp_floor, double floor_z,
                         double size = kHeightMapSize, double resolution = kHeightMapResolution,
                         double max_dist = kHeightMapMaxDist) {
   const double yaw = HeadingYaw(root.quat);
   const double c = std::cos(yaw), s = std::sin(yaw);
-  const double floor_stop = hf.FloorStop();
+  const auto floor_stop = hf.LowestStop();
   const auto dirs_local = ScanRayDirs(size, resolution);
   Scan out;
   out.points.assign(dirs_local.size() * 3, 0.0);
@@ -249,10 +279,11 @@ inline Scan TerrainScan(const HeightField& hf, const Pose& root, double floor_z,
     const Vec3 dir{c * d[0] - s * d[1], s * d[0] + c * d[1], d[2]};
     RayHit h = RaycastHeightField(hf, root.pos, dir, max_dist, floor_stop);
     if (!h.valid) continue;
-    // The sim's floor clamp (a no-op for floor_z = -inf, as on the robot).
-    const double sz = root.pos[2] - floor_z;
-    const double denom = std::max(root.pos[2] - h.point[2], 1e-8);
-    const double scale = std::min(sz / denom, 1.0);
+    double scale = 1.0;
+    if (clamp_floor) {  // the sim's floor clamp
+      const double denom = std::max(root.pos[2] - h.point[2], 1e-8);
+      scale = std::min((root.pos[2] - floor_z) / denom, 1.0);
+    }
     const double dx = (h.point[0] - root.pos[0]) * scale;
     const double dy = (h.point[1] - root.pos[1]) * scale;
     const double dz = (h.point[2] - root.pos[2]) * scale;
@@ -293,10 +324,14 @@ inline Scan ScanFromTerrainMessage(const TerrainMessage& msg, double waist_yaw, 
   hf.origin_x = msg.origin_x;
   hf.origin_y = msg.origin_y;
   hf.resolution = msg.resolution;
-  hf.heights.resize(msg.height_grid.size());
+  hf.heights.assign(msg.height_grid.size(), 0.0);
+  hf.seen.assign(msg.height_grid.size(), 0);
   for (size_t i = 0; i < msg.height_grid.size(); ++i) {
-    const bool seen = msg.grid_valid.empty() || msg.grid_valid[i] != 0;
-    hf.heights[i] = seen ? static_cast<double>(msg.height_grid[i]) : std::numeric_limits<double>::quiet_NaN();
+    const float v = msg.height_grid[i];
+    if ((msg.grid_valid.empty() || msg.grid_valid[i] != 0) && IsFiniteBits(v)) {
+      hf.heights[i] = static_cast<double>(v);
+      hf.seen[i] = 1;
+    }
   }
   const auto& qx = msg.torso_quat_xyzw;
   const QuatWxyz torso_q{qx[3], qx[0], qx[1], qx[2]};
@@ -306,7 +341,8 @@ inline Scan ScanFromTerrainMessage(const TerrainMessage& msg, double waist_yaw, 
   const Vec3 dp{pelvis.pos[0] - msg.torso_pos[0], pelvis.pos[1] - msg.torso_pos[1],
                 pelvis.pos[2] - msg.torso_pos[2]};
   Pose pelvis_g{MatVec(rt_t, dp), MatToQuat(MatMul(rt_t, QuatToMat(pelvis.quat)))};
-  return TerrainScan(hf, pelvis_g, -std::numeric_limits<double>::infinity(), size, resolution, max_dist);
+  // No floor clamp on the robot: rays that miss are invalid, and invalid rays read zero.
+  return TerrainScan(hf, pelvis_g, /*clamp_floor=*/false, 0.0, size, resolution, max_dist);
 }
 
 /// All rays invalid: what the policy gets when there is no usable map.
@@ -331,14 +367,14 @@ struct TorsoGrid {
 
 /// Unseen cells take the median of the observed ones (np.median: mean of the two middle values
 /// for an even count); with nothing observed, kTorsoGridFallback.
-inline TorsoGrid FillTorsoGrid(const std::vector<double>& grid, const std::vector<uint8_t>& valid_in) {
+inline TorsoGrid FillTorsoGrid(const std::vector<float>& grid, const std::vector<uint8_t>& valid_in) {
   TorsoGrid out{std::vector<double>(kTorsoGridCells, kTorsoGridFallback), std::vector<double>(kTorsoGridCells, 0.0)};
   std::vector<double> seen;
   for (size_t i = 0; i < kTorsoGridCells && i < grid.size(); ++i) {
-    const bool ok = (valid_in.empty() || valid_in[i] != 0) && std::isfinite(grid[i]);
+    const bool ok = (valid_in.empty() || valid_in[i] != 0) && IsFiniteBits(grid[i]);
     if (ok) {
       out.valid[i] = 1.0;
-      seen.push_back(grid[i]);
+      seen.push_back(static_cast<double>(grid[i]));
     }
   }
   double fill = kTorsoGridFallback;
@@ -347,14 +383,15 @@ inline TorsoGrid FillTorsoGrid(const std::vector<double>& grid, const std::vecto
     const size_t m = seen.size() / 2;
     fill = seen.size() % 2 ? seen[m] : (seen[m - 1] + seen[m]) / 2.0;
   }
-  for (size_t i = 0; i < kTorsoGridCells; ++i) out.heights[i] = out.valid[i] > 0.5 ? grid[i] : fill;
+  for (size_t i = 0; i < kTorsoGridCells; ++i)
+    out.heights[i] = out.valid[i] > 0.5 ? static_cast<double>(grid[i]) : fill;
   return out;
 }
 
 /// torso_heightmap_21 / torso_heightmap_21_valid from one terrain message.
 inline TorsoGrid TorsoGridFromTerrainMessage(const TerrainMessage& msg) {
   if (msg.torso_grid.size() != kTorsoGridCells) return FillTorsoGrid({}, {});
-  return FillTorsoGrid(std::vector<double>(msg.torso_grid.begin(), msg.torso_grid.end()), msg.torso_grid_valid);
+  return FillTorsoGrid(msg.torso_grid, msg.torso_grid_valid);
 }
 
 /// Nothing observed: what the policy gets when there is no usable map.

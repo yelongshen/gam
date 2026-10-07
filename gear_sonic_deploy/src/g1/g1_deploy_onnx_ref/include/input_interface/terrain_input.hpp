@@ -114,7 +114,8 @@ class TerrainInput {
     }
     terrain_scan::TerrainMessage m;
     float res = 0.f, origin[2] = {0.f, 0.f};
-    double timestamp = NAN, map_stamp = NAN;
+    double timestamp = 0.0, map_stamp = 0.0;  // no NaN sentinels: built with -ffast-math
+    bool got_timestamp = false, got_map_stamp = false;
     bool got_grid = false, got_res = false, got_origin = false, got_pos = false, got_quat = false;
     for (size_t i = 0; i < header.fields.size(); ++i) {
       const auto& f = header.fields[i];
@@ -136,9 +137,9 @@ class TerrainInput {
       } else if (f.name == "torso_quat") {
         got_quat = Read(f, b, "f64", 4, m.torso_quat_xyzw.data());
       } else if (f.name == "timestamp") {
-        Read(f, b, "f64", 1, &timestamp);
+        got_timestamp = Read(f, b, "f64", 1, &timestamp);
       } else if (f.name == "map_stamp") {
-        Read(f, b, "f64", 1, &map_stamp);
+        got_map_stamp = Read(f, b, "f64", 1, &map_stamp);
       } else if (f.name == "torso_grid_21" && f.shape.size() == 2 && f.shape[0] * f.shape[1] == terrain_scan::kTorsoGridCells) {
         m.torso_grid.resize(terrain_scan::kTorsoGridCells);
         if (!Read(f, b, "f32", m.torso_grid.size(), m.torso_grid.data())) m.torso_grid.clear();
@@ -158,7 +159,7 @@ class TerrainInput {
     std::lock_guard<std::mutex> lock(mutex_);
     msg_ = std::move(m);
     // Unknown map stamp -> treat the map as fresh; the message age still applies.
-    map_age_s_ = (std::isfinite(timestamp) && std::isfinite(map_stamp)) ? timestamp - map_stamp : 0.0;
+    map_age_s_ = (got_timestamp && got_map_stamp) ? timestamp - map_stamp : 0.0;
     recv_time_ = Clock::now();
     have_msg_ = true;
   }
