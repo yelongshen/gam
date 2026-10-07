@@ -52,6 +52,7 @@ case "${1:-start}" in
     fi
     docker exec g1_perception bash -lc "ROS_SETUP=/opt/ros/humble/install/setup.bash \
       ODOM_SOURCE=dlio GANTRY_FILTER=${GANTRY_FILTER:-false} ROBOT_HOST=127.0.0.1 EMC_WS=/ws LOG_DIR=/logs \
+      TERRAIN_BIND=${TERRAIN_BIND:-tcp://127.0.0.1:5559} TERRAIN_RATE=${TERRAIN_RATE:-50.0} \
       EMC_EXTRA_PARAMS=/perception/jetson/onboard_overrides.yaml \
       /perception/run_emc.sh"
     echo "logs: $LOG"
