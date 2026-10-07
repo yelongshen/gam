@@ -19,7 +19,8 @@ import yaml
 RUNNER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "g1", "g1_deploy_onnx_ref",
                       "src", "g1_deploy_onnx_ref.cpp")
 # Registry sizes that are expressions rather than literals.
-SYMBOLS = {"terrain_scan_.points.size()": 363, "terrain_scan_.valid.size()": 121}
+SYMBOLS = {"terrain_scan_.points.size()": 363, "terrain_scan_.valid.size()": 121,
+           "terrain_scan::kTorsoGridCells": 441}
 
 
 def registry(token_dim):

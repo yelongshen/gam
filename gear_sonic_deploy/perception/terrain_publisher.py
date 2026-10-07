@@ -17,6 +17,10 @@ and publishes one message per sample on ZMQ PUB `bind` (default tcp://127.0.0.1:
   grid_origin          f32 [2]       x, y of height_grid[0][0]'s centre, torso heading frame (m)
   torso_pos            f64 [3]       torso position in robot/odom used for this sample
   torso_quat           f64 [4]       torso orientation in robot/odom, x y z w
+  torso_grid_21        f32 [21, 21]  torso_z - surface_z (m), 10 cm cells, centres -1.0..+1.0 m around
+                                     torso_link, torso heading frame, [y][x]; NaN where unseen. The
+                                     heightmap flow policy's map (humanoid-foundation-model mmurray/fm)
+  torso_grid_21_valid  bool [21, 21] cell observed
   timestamp            f64 [1]       when this sample was taken (local clock, s)
   map_stamp            f64 [1]       stamp of the map it was sampled from; staleness = timestamp - map_stamp
 
@@ -41,6 +45,7 @@ from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation
 from tf2_ros import Buffer, TransformListener
 
+import terrain_grids as tg
 import videomimic_obs as vo
 import zmq_packed
 from elevation_mapping_cupy.gridmap_utils import decode_multiarray_to_rows_cols
@@ -115,15 +120,9 @@ class TerrainPublisher(Node):
         yaw = Rotation.from_quat(quat).as_euler("zyx")[0]
 
         # generic grid: nearest map cell (same 4 cm resolution as the mapper) at each rotated cell centre
-        cyaw, syaw = np.cos(yaw), np.sin(yaw)
-        xy = self.local @ np.array([[cyaw, syaw], [-syaw, cyaw]]) + pos[:2]
-        E = m["E"]
-        i = np.floor(E.shape[0] / 2.0 - (xy[:, 0] - m["cx"]) / m["res"]).astype(np.int64)   # rows along -x
-        j = np.floor(E.shape[1] / 2.0 - (xy[:, 1] - m["cy"]) / m["res"]).astype(np.int64)   # cols along -y
-        inb = (i >= 0) & (i < E.shape[0]) & (j >= 0) & (j < E.shape[1])
-        h = np.full(len(xy), np.nan, dtype=np.float32)
-        h[inb] = E[i[inb], j[inb]] - pos[2]
+        h = tg.sample_map(m["E"], m["res"], m["cx"], m["cy"], pos, yaw, self.local) - np.float32(pos[2])
         valid = np.isfinite(h)
+        torso_h, torso_valid = tg.torso_grid(m["E"], m["res"], m["cx"], m["cy"], pos, yaw)
 
         if m["tree"] is not None:
             obs, seen = vo.terrain_obs(m["points"], pos, yaw, return_mask=True, tree=m["tree"])
@@ -135,6 +134,8 @@ class TerrainPublisher(Node):
             "height_grid_valid": valid.reshape(self.grid_shape),
             "terrain_height": obs.astype(np.float32),
             "terrain_height_valid": seen,
+            "torso_grid_21": torso_h.astype(np.float32),
+            "torso_grid_21_valid": torso_valid,
             "grid_resolution": self.grid_res,
             "grid_origin": self.grid_origin,
             "torso_pos": pos,

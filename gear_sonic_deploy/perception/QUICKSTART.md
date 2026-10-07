@@ -84,6 +84,8 @@ gear_sonic's ZMQ packed message: a 1280-byte JSON header, then the fields. That 
 | `height_grid_valid` | bool [50, 50] | cell observed |
 | `terrain_height` | f32 [11, 11] | VideoMimic window: 0.1 m, +-0.5 m, torso_z - terrain_z, `[y][x]`, 0.85 = unseen |
 | `terrain_height_valid` | bool [11, 11] | window cell observed |
+| `torso_grid_21` | f32 [21, 21] | torso z - surface z (m), 10 cm cells, centres -1.0..+1.0 m around torso_link, torso heading frame, `[y][x]`; NaN = unseen. The heightmap flow policy's map (humanoid-foundation-model `mmurray/fm`); sampled by `scripts/terrain_grids.py` |
+| `torso_grid_21_valid` | bool [21, 21] | torso grid cell observed |
 | `grid_resolution`, `grid_origin` | f32 [1], f32 [2] | 0.04; x, y of `height_grid[0][0]` in the torso heading frame |
 | `torso_pos`, `torso_quat` | f64 [3], f64 [4] | DLIO pose used (robot/odom), quaternion x y z w |
 | `timestamp`, `map_stamp` | f64 [1] | sample time, and the stamp of the map it came from (local clock, s) |

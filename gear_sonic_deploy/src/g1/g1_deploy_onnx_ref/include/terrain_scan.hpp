@@ -276,6 +276,10 @@ struct TerrainMessage {
   double origin_x = 0.0, origin_y = 0.0, resolution = 0.04;
   Vec3 torso_pos{};
   std::array<double, 4> torso_quat_xyzw{0.0, 0.0, 0.0, 1.0};
+  /// 21 x 21 torso grid (torso_z - surface_z, [y][x], NaN = unseen); empty if the publisher
+  /// does not send it (older terrain_publisher.py).
+  std::vector<float> torso_grid;
+  std::vector<uint8_t> torso_grid_valid;
 };
 
 /// terrain_scan.scan_from_terrain_msg: the policy's height_map_flat / height_map_valid_flat.
@@ -310,6 +314,51 @@ inline Scan EmptyScan(double size = kHeightMapSize, double resolution = kHeightM
   const auto n = static_cast<size_t>(NumRaysPerSide(size, resolution));
   return {std::vector<double>(n * n * 3, 0.0), std::vector<double>(n * n, 0.0)};
 }
+
+// ---------------------------------------------------------------------------
+// 21 x 21 torso grid (the heightmap flow policy's map; humanoid-foundation-model branch
+// mmurray/fm): port of terrain_scan.torso_grid_from_terrain_msg / fill_torso_grid.
+// ---------------------------------------------------------------------------
+
+constexpr int kTorsoGridN = 21;
+constexpr size_t kTorsoGridCells = static_cast<size_t>(kTorsoGridN) * kTorsoGridN;
+constexpr double kTorsoGridFallback = 0.85;  // nothing observed: VideoMimic's default torso height
+
+struct TorsoGrid {
+  std::vector<double> heights;  ///< 441, torso_z - surface_z, [y][x]; unseen cells filled
+  std::vector<double> valid;    ///< 441, 1.0 / 0.0
+};
+
+/// Unseen cells take the median of the observed ones (np.median: mean of the two middle values
+/// for an even count); with nothing observed, kTorsoGridFallback.
+inline TorsoGrid FillTorsoGrid(const std::vector<double>& grid, const std::vector<uint8_t>& valid_in) {
+  TorsoGrid out{std::vector<double>(kTorsoGridCells, kTorsoGridFallback), std::vector<double>(kTorsoGridCells, 0.0)};
+  std::vector<double> seen;
+  for (size_t i = 0; i < kTorsoGridCells && i < grid.size(); ++i) {
+    const bool ok = (valid_in.empty() || valid_in[i] != 0) && std::isfinite(grid[i]);
+    if (ok) {
+      out.valid[i] = 1.0;
+      seen.push_back(grid[i]);
+    }
+  }
+  double fill = kTorsoGridFallback;
+  if (!seen.empty()) {
+    std::sort(seen.begin(), seen.end());
+    const size_t m = seen.size() / 2;
+    fill = seen.size() % 2 ? seen[m] : (seen[m - 1] + seen[m]) / 2.0;
+  }
+  for (size_t i = 0; i < kTorsoGridCells; ++i) out.heights[i] = out.valid[i] > 0.5 ? grid[i] : fill;
+  return out;
+}
+
+/// torso_heightmap_21 / torso_heightmap_21_valid from one terrain message.
+inline TorsoGrid TorsoGridFromTerrainMessage(const TerrainMessage& msg) {
+  if (msg.torso_grid.size() != kTorsoGridCells) return FillTorsoGrid({}, {});
+  return FillTorsoGrid(std::vector<double>(msg.torso_grid.begin(), msg.torso_grid.end()), msg.torso_grid_valid);
+}
+
+/// Nothing observed: what the policy gets when there is no usable map.
+inline TorsoGrid EmptyTorsoGrid() { return FillTorsoGrid({}, {}); }
 
 }  // namespace terrain_scan
 

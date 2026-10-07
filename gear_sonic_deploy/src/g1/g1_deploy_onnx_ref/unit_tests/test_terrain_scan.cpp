@@ -14,6 +14,7 @@
 #include "../include/terrain_scan.hpp"
 
 #include <cmath>
+#include <limits>
 #include <cstdlib>
 #include <fstream>
 #include <string>
@@ -21,11 +22,11 @@
 namespace {
 
 // Next to this source file (CMake compiles it by absolute path), or $TERRAIN_SCAN_GOLDEN_DIR.
-std::string GoldenPath() {
-  if (const char* dir = std::getenv("TERRAIN_SCAN_GOLDEN_DIR")) return std::string(dir) + "/terrain_scan_golden.txt";
+std::string GoldenPath(const std::string& name = "terrain_scan_golden.txt") {
+  if (const char* dir = std::getenv("TERRAIN_SCAN_GOLDEN_DIR")) return std::string(dir) + "/" + name;
   std::string here = __FILE__;
   here = here.substr(0, here.find_last_of('/') + 1);
-  return here + "golden/terrain_scan_golden.txt";
+  return here + "golden/" + name;
 }
 
 }  // namespace
@@ -119,4 +120,55 @@ TEST(TerrainScan, NoMapMeansEveryRayInvalid) {
   const auto e = terrain_scan::EmptyScan();
   EXPECT_EQ(e.points.size(), 363u);
   EXPECT_EQ(e.valid.size(), 121u);
+}
+
+// 21 x 21 torso grid: golden cases from make_terrain_scan_golden.py (main_torso_grid).
+// Layout per case: torso_grid_21 (441, NaN allowed) / valid (441) / expected heights / expected valid.
+TEST(TerrainScan, TorsoGridMatchesPythonReference) {
+  std::ifstream in(GoldenPath("torso_grid_golden.txt"));
+  ASSERT_TRUE(in.good()) << "missing " << GoldenPath("torso_grid_golden.txt");
+  int cases = 0;
+  in >> cases;
+  ASSERT_GT(cases, 0);
+  int cells_differing = 0, empty_cases = 0;
+  for (int c = 0; c < cases; ++c) {
+    terrain_scan::TerrainMessage msg;
+    msg.torso_grid.resize(terrain_scan::kTorsoGridCells);
+    msg.torso_grid_valid.resize(terrain_scan::kTorsoGridCells);
+    for (auto& g : msg.torso_grid) {
+      std::string tok;
+      in >> tok;
+      g = (tok == "nan") ? std::numeric_limits<float>::quiet_NaN() : std::stof(tok);
+    }
+    for (auto& v : msg.torso_grid_valid) {
+      int b;
+      in >> b;
+      v = static_cast<uint8_t>(b);
+    }
+    std::vector<double> want_h(terrain_scan::kTorsoGridCells), want_v(terrain_scan::kTorsoGridCells);
+    for (auto& h : want_h) in >> h;
+    for (auto& v : want_v) in >> v;
+    ASSERT_TRUE(in.good()) << "truncated torso-grid golden data at case " << c;
+    const auto got = terrain_scan::TorsoGridFromTerrainMessage(msg);
+    double seen = 0;
+    for (size_t i = 0; i < terrain_scan::kTorsoGridCells; ++i) {
+      cells_differing += (got.heights[i] != want_h[i] || got.valid[i] != want_v[i]) ? 1 : 0;
+      seen += want_v[i];
+    }
+    empty_cases += seen == 0 ? 1 : 0;
+  }
+  std::cout << "torso grid: " << cases << " cases (" << empty_cases << " fully unseen), " << cells_differing
+            << " cells differ from the Python reference" << std::endl;
+  EXPECT_EQ(cells_differing, 0);
+  EXPECT_GT(empty_cases, 0);
+}
+
+TEST(TerrainScan, TorsoGridWithoutTheFieldsIsEmpty) {
+  terrain_scan::TerrainMessage msg;  // older publisher: no torso_grid_21 fields
+  const auto g = terrain_scan::TorsoGridFromTerrainMessage(msg);
+  ASSERT_EQ(g.heights.size(), terrain_scan::kTorsoGridCells);
+  for (size_t i = 0; i < g.heights.size(); ++i) {
+    EXPECT_EQ(g.heights[i], terrain_scan::kTorsoGridFallback);
+    EXPECT_EQ(g.valid[i], 0.0);
+  }
 }

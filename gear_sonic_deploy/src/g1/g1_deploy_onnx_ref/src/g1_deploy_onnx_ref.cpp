@@ -406,6 +406,8 @@ class G1Deploy {
     // this control step's scan, computed once in GatherObservations().
     std::unique_ptr<TerrainInput> terrain_input_;
     terrain_scan::Scan terrain_scan_ = terrain_scan::EmptyScan();
+    // 21 x 21 torso grid (torso_heightmap_21 / torso_heightmap_21_valid), same terrain input.
+    terrain_scan::TorsoGrid torso_grid_ = terrain_scan::EmptyTorsoGrid();
     TerrainInput::Status terrain_status_ = TerrainInput::Status::kNoMessage;
     
     // Active encoder observation functions (for encoder input)
@@ -1624,6 +1626,13 @@ class G1Deploy {
       return true;
     }
 
+    /// Copy this step's 21 x 21 torso grid (heights, or validity) into the observation buffer.
+    bool GatherTorsoGrid(std::vector<double>& target_buffer, size_t offset, bool validity) {
+      const auto& src = validity ? torso_grid_.valid : torso_grid_.heights;
+      std::copy(src.begin(), src.end(), target_buffer.begin() + static_cast<std::ptrdiff_t>(offset));
+      return true;
+    }
+
     /// Recompute the height-map scan from the latest terrain message and the current waist
     /// angles. No usable map (none yet, stopped, stale) -> every ray invalid, which the policy
     /// was trained on; never hold old heights.
@@ -1635,6 +1644,8 @@ class G1Deploy {
         std::cout << "[HeightMap] " << TerrainInput::StatusName(status) << std::endl;
         terrain_status_ = status;
       }
+      torso_grid_ = status == TerrainInput::Status::kOk ? terrain_scan::TorsoGridFromTerrainMessage(msg)
+                                                        : terrain_scan::EmptyTorsoGrid();
       if (status != TerrainInput::Status::kOk || !state_logger_) {
         terrain_scan_ = terrain_scan::EmptyScan();
         return;
@@ -1863,7 +1874,9 @@ class G1Deploy {
               {"his_base_angular_velocity_10frame_step1", 30, [this](std::vector<double>& buf, size_t offset) { return GatherHisBaseAngularVelocity(buf, offset, 10, 1); }},
               {"his_gravity_dir_10frame_step1", 30, [this](std::vector<double>& buf, size_t offset) { return GatherHisGravityDir(buf, offset, 10, 1); }},
               {"height_map_flat", terrain_scan_.points.size(), [this](std::vector<double>& buf, size_t offset) { return GatherHeightMap(buf, offset, false); }},
-              {"height_map_valid_flat", terrain_scan_.valid.size(), [this](std::vector<double>& buf, size_t offset) { return GatherHeightMap(buf, offset, true); }}};
+              {"height_map_valid_flat", terrain_scan_.valid.size(), [this](std::vector<double>& buf, size_t offset) { return GatherHeightMap(buf, offset, true); }},
+              {"torso_heightmap_21", terrain_scan::kTorsoGridCells, [this](std::vector<double>& buf, size_t offset) { return GatherTorsoGrid(buf, offset, false); }},
+              {"torso_heightmap_21_valid", terrain_scan::kTorsoGridCells, [this](std::vector<double>& buf, size_t offset) { return GatherTorsoGrid(buf, offset, true); }}};
     }
     
     // Initialize observation functions
@@ -1901,7 +1914,7 @@ class G1Deploy {
         // Add to active functions (get function directly from registry)
         active_obs_functions_.emplace_back(config.name, registry_it->function, current_offset, dimension);
         current_offset += dimension;
-        if (config.name.rfind("height_map", 0) == 0 && !terrain_input_) {
+        if ((config.name.rfind("height_map", 0) == 0 || config.name.rfind("torso_heightmap", 0) == 0) && !terrain_input_) {
           terrain_input_ = std::make_unique<TerrainInput>(GlobalTerrainInputOptions());
           terrain_input_->Start();
         }

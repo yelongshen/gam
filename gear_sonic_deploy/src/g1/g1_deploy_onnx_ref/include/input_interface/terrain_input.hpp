@@ -14,6 +14,8 @@
  *   torso_quat        f64  [4]          x y z w
  *   timestamp         f64  [1]          when the publisher sampled the map (its clock)
  *   map_stamp         f64  [1]          stamp of the map it sampled (same clock)
+ *   torso_grid_21       f32  [21, 21] optional: torso_z - surface_z, 10 cm, torso heading frame
+ *   torso_grid_21_valid bool [21, 21] optional
  *
  * A message is usable when it arrived less than `max_msg_age_s` ago and its map is less
  * than `max_map_age_s` older than the sample (both default to a few map periods). When it
@@ -137,6 +139,12 @@ class TerrainInput {
         Read(f, b, "f64", 1, &timestamp);
       } else if (f.name == "map_stamp") {
         Read(f, b, "f64", 1, &map_stamp);
+      } else if (f.name == "torso_grid_21" && f.shape.size() == 2 && f.shape[0] * f.shape[1] == terrain_scan::kTorsoGridCells) {
+        m.torso_grid.resize(terrain_scan::kTorsoGridCells);
+        if (!Read(f, b, "f32", m.torso_grid.size(), m.torso_grid.data())) m.torso_grid.clear();
+      } else if (f.name == "torso_grid_21_valid" && f.shape.size() == 2 && f.shape[0] * f.shape[1] == terrain_scan::kTorsoGridCells) {
+        m.torso_grid_valid.resize(terrain_scan::kTorsoGridCells);
+        if (!Read(f, b, "bool", m.torso_grid_valid.size(), m.torso_grid_valid.data())) m.torso_grid_valid.clear();
       }
     }
     if (!(got_grid && got_res && got_origin && got_pos && got_quat) ||
