@@ -677,6 +677,99 @@ from all metrics.
 
 ---
 
+## 4b. Candidate clips (NOT part of the frozen v11 list)
+
+Clips under consideration for a future version. They are **not** in §1, have **no robot
+replays**, and must **not** be used in any comparison until promoted (which means bumping
+the version, appending to §6 and re-running all policies).
+
+| candidate | category | duration | status |
+|---|---|---|---|
+| `dance_latino_kick_kick_padeburee_doubled_R_002__A314` | Test-Content (OOD) — latino dance, kicks, leg-heavy | 11.14 s | candidate, added 2026-10-07, sim-streamed only |
+| `dance_basic_padeburee_270_R_loop_fast_001__A325` | Test-Content (OOD) — basic dance, fast loop, 270° turn, arm-heavy | 11.44 s | candidate, added 2026-10-07, not yet streamed |
+
+### `dance_latino_kick_kick_padeburee_doubled_R_002__A314`
+
+| form | path | size | md5 |
+|---|---|---|---|
+| SMPL (streamed) | `eval_subset/smpl/dance_latino_kick_kick_padeburee_doubled_R_002__A314.pkl` | 378779 B | `2c92ba5e86cf6f1a399d1e190f1bae63` |
+| Robot (retargeted) | `eval_subset/robot/dance_latino_kick_kick_padeburee_doubled_R_002__A314.pkl` | 100459 B | `5ee7c6ca2a51d6d325312ea094128cc2` |
+
+Properties (from `sim2real/clip_stats.py`):
+
+| SMPL fr @50fps | robot `dof` @30fps | `dof` range | root disp (x,y,z) m | path | height range | root speed mean/peak | joint speed mean/peak | ROM arms/legs |
+|---|---|---|---|---|---|---|---|---|
+| 557 (11.14 s) | (335, 29) (11.17 s) | −77.3…+148.4° | (−0.03, +0.04, −0.00) | 4.20 m | 0.147 m | 0.38 / 1.03 m/s | 83.3 / 1387 °/s | 78.7 / 71.9° |
+
+Top-ROM joints: `right_knee` 143°, `left_shoulder_pitch` 133°, `right_shoulder_pitch` 128°,
+`left_elbow` 122°, `right_elbow` 121°, `right_hip_pitch` 100°. Wrist-roll ROM is 78.7° / 91.6°
+(L/R), above clip 13's 86° on the right side.
+
+Why it is a candidate:
+- **Leg-heavy and long.** Leg ROM 71.9° is the highest of any dance in the manifest
+  (clip 13: 51.3°, clip 14: 62.1°) and the clip is 11.14 s, versus 4.8–6.4 s for clips 13/14.
+- **In place.** Net displacement is ≈ 0 (like clip 14), so it is safe in a confined space.
+- **High transient rate.** Peak joint speed 1387 °/s exceeds both existing dances (1190 / 1171).
+- Mean joint speed (83.3 °/s) is below clips 13/14 (126.1 / 108.7), so it is sustained but
+  not the fastest.
+
+Stream it (sim; add `--host 192.168.8.192 --chunk-frames 10` for the robot):
+
+```bash
+.venv_teleop/bin/python ./data_process/stream_clip_mode2.py \
+    --path ~/ego_dataset/eval_subset/smpl/dance_latino_kick_kick_padeburee_doubled_R_002__A314.pkl \
+    --fps 50 --settle 2.0 --visualize
+```
+
+### `dance_basic_padeburee_270_R_loop_fast_001__A325`
+
+| form | path | size | md5 |
+|---|---|---|---|
+| SMPL (streamed) | `eval_subset/smpl/dance_basic_padeburee_270_R_loop_fast_001__A325.pkl` | 387120 B | `f48e6716262a9323e8869c63711b8dfe` |
+| Robot (retargeted) | `eval_subset/robot/dance_basic_padeburee_270_R_loop_fast_001__A325.pkl` | 103518 B | `51c0d27a72c0739567acd48df74caeda` |
+
+Properties (from `sim2real/clip_stats.py`):
+
+| SMPL fr @50fps | robot `dof` @30fps | `dof` range | root disp (x,y,z) m | path | height range | root speed mean/peak | joint speed mean/peak | ROM arms/legs |
+|---|---|---|---|---|---|---|---|---|
+| 572 (11.44 s) | (344, 29) (11.47 s) | −118.9…+105.7° | (−0.08, +0.09, −0.00) | 5.04 m | 0.127 m | 0.44 / 1.24 m/s | 100.6 / 1316 °/s | 116.0 / 58.7° |
+
+Top-ROM joints: `left_shoulder_pitch` 164°, `left_shoulder_yaw` 159°, `right_shoulder_yaw` 154°,
+`left_elbow` 151°, `right_wrist_roll` 150° (left 129°). Pelvis mean (de-rotated)
+(0.311, 0.028, 0.025).
+
+Why it is a candidate:
+- **Fast and sustained.** Mean joint speed 100.6 °/s is the highest of the eval_subset dances not
+  already listed, bar a 3.7 s clip (`dance_retro_round_hand_step_R_002__A314_M`, 120 °/s). It is
+  11.4 s long, versus 4.8–6.4 s for clips 13/14.
+- **Largest arm and wrist travel of any listed clip.** Arm ROM 116° exceeds clip 6 (110.8°);
+  wrist-roll ROM 129–150° is above clip 13 (86°). Because the legs are loaded the whole time,
+  this is a genuine §0.1 twist stress entry.
+- **A travelling loop that returns to its start.** 5.04 m of path, net displacement ≈ 0.1 m.
+
+> **Arm-retargeting check (`sim2real/detect_arm_retarget_errors.py`, thresholds fitted on
+> `amass_evalset`): 3 of 6 flags, NOT severe.** Reach error 0.132 (threshold 0.114), arm-limit
+> fraction 0.029 (threshold 0), arm joint spike 1035 °/s (threshold 976); elbow-angle error
+> 24.2° sits just below its 24.3° threshold. It is far from the S04/S09 pattern (arms pinned at
+> a joint limit on 100% of frames), but watch the arm tracking in the reference video before
+> trusting the wrist numbers as *human* motion rather than retargeting artefacts.
+
+Other eval_subset dances not yet recorded, by mean joint speed (for reference):
+`dance_retro_round_hand_step_R_002__A314_M` 120 °/s (3.7 s),
+`dance_hiphop_janet_R_001__A312_M` 94 °/s (8.0 s, peak 1556 °/s),
+`dance_vouge_boogle_180_R_003__A316` 63 °/s, `dance_latino_mambo_chase_180_turn_R_001__A324_M`
+63 °/s (10.1 s).
+
+Stream it (sim; add `--host 192.168.8.192 --chunk-frames 10` for the robot):
+
+```bash
+.venv_teleop/bin/python ./data_process/stream_clip_mode2.py \
+    --path ~/ego_dataset/eval_subset/smpl/dance_basic_padeburee_270_R_loop_fast_001__A325.pkl \
+    --fps 50 --settle 2.0 --visualize
+```
+
+---
+
 ## 5. Known gaps in this manifest
 
 1. **OOD content is started but thin.** Clips 9–14 are the Test-Content entries — two jumps

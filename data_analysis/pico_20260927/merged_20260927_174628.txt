@@ -1,0 +1,30 @@
+
+===== 20260927_174628   candidates: 40 -> 26 merged, non-overlapping
+  #       chunk range           t (s)     dur  label      parts  composition
+  1 [  1172,  1230)   23.4-  24.6    1.2s  walking        1  walking:1.2s
+  2 [  1514,  1764)   30.3-  35.3    5.0s  jumping        2  jumping:3.6s
+  3 [  1800,  2182)   36.0-  43.6    7.6s  jumping        2  jumping:7.6s
+  4 [  2351,  2477)   47.0-  49.5    2.5s  jumping        1  jumping:2.5s
+  5 [  2694,  2940)   53.9-  58.8    4.9s  walking        2  walking:4.9s
+  6 [  3068,  3150)   61.4-  63.0    1.6s  jumping        1  jumping:1.6s
+  7 [  3730,  3813)   74.6-  76.3    1.7s  jumping        1  jumping:1.7s
+  8 [  4160,  4373)   83.2-  87.5    4.3s  jumping        1  jumping:4.3s
+  9 [  4811,  5357)   96.2- 107.1   10.9s  walking        4  walking:8.0s
+ 10 [  5464,  5750)  109.3- 115.0    5.7s  agile          2  agile:5.7s
+ 11 [  5750,  6150)  115.0- 123.0    8.0s  jumping        1  jumping:8.0s
+ 12 [  6150,  6600)  123.0- 132.0    9.0s  waving         1  waving:9.0s
+ 13 [  6745,  7121)  134.9- 142.4    7.5s  jumping        2  jumping:6.4s
+ 14 [  7402,  7563)  148.0- 151.3    3.2s  jumping        1  jumping:3.2s
+ 15 [  7926,  7987)  158.5- 159.7    1.2s  walking        1  walking:1.2s
+ 16 [  8900,  9100)  178.0- 182.0    4.0s  walking        1  walking:4.0s
+ 17 [  9800, 10100)  196.0- 202.0    6.0s  walking        1  walking:6.0s
+ 18 [ 10233, 10640)  204.7- 212.8    8.1s  walking        2  walking:8.1s
+ 19 [ 10640, 11242)  212.8- 224.8   12.0s  jumping        3  jumping:12.0s
+ 20 [ 11469, 11771)  229.4- 235.4    6.0s  jumping        1  jumping:6.0s
+ 21 [ 11800, 12144)  236.0- 242.9    6.9s  sitting        2  sitting:6.9s
+ 22 [ 12331, 12635)  246.6- 252.7    6.1s  jumping        1  jumping:6.1s
+ 23 [ 12635, 12900)  252.7- 258.0    5.3s  sitting        1  sitting:5.3s
+ 24 [ 12900, 13200)  258.0- 264.0    6.0s  agile          1  agile:6.0s
+ 25 [ 13382, 13900)  267.6- 278.0   10.4s  walking        3  walking:9.9s
+ 26 [ 14440, 14519)  288.8- 290.4    1.6s  walking        1  walking:1.6s
+    total 146.8s across 26 disjoint clips

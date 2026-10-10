@@ -1,0 +1,9 @@
+
+===== 20260924_173425   candidates: 7 -> 5 merged, non-overlapping
+  #       chunk range           t (s)     dur  label      parts  composition
+  1 [     0,   400)    0.0-   8.0    8.0s  waving         1  waving:8.0s
+  2 [   500,   950)   10.0-  19.0    9.0s  waving         2  waving:9.0s
+  3 [   950,  1400)   19.0-  28.0    9.0s  walking        2  walking:9.0s
+  4 [  1482,  1629)   29.6-  32.6    2.9s  waving         1  waving:2.9s
+  5 [  3476,  3690)   69.5-  73.8    4.3s  waving         1  waving:4.3s
+    total 33.2s across 5 disjoint clips

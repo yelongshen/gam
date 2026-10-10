@@ -1,0 +1,34 @@
+{
+  "BMLhandball__BMLhandball__S04_Expert__Trial_upper_left_right_234_poses": {
+    "source": "amass_evalset",
+    "tag": "hand-arm-retargeting-error",
+    "excluded": true,
+    "reason": "G1 arm/wrist joints pinned at joint limits for the whole clip and arm shape does not match SMPL",
+    "evidence": {
+      "elbow_ang_err_p95": 58.096,
+      "reach_err_p95": 0.304,
+      "hand_dist_err_p95": 0.879,
+      "arm_limit_frac": 1.0,
+      "wrist_limit_frac": 1.0,
+      "arm_spike_deg_s": 449.871
+    },
+    "detected_by": "sim2real/detect_arm_retarget_errors.py",
+    "tagged": "2026-10-07"
+  },
+  "BMLhandball__BMLhandball__S09_Novice__Trial_upper_right_left_168_poses": {
+    "source": "amass_evalset",
+    "tag": "hand-arm-retargeting-error",
+    "excluded": true,
+    "reason": "G1 arm/wrist joints pinned at joint limits for the whole clip and arm shape does not match SMPL",
+    "evidence": {
+      "elbow_ang_err_p95": 27.24,
+      "reach_err_p95": 0.127,
+      "hand_dist_err_p95": 0.667,
+      "arm_limit_frac": 1.0,
+      "wrist_limit_frac": 1.0,
+      "arm_spike_deg_s": 486.246
+    },
+    "detected_by": "sim2real/detect_arm_retarget_errors.py",
+    "tagged": "2026-10-07"
+  }
+}

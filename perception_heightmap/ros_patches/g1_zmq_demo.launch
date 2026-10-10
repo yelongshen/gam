@@ -1,0 +1,71 @@
+<?xml version="1.0"?>
+<launch>
+  <!--
+    g1_zmq_demo.launch
+
+    Same stack as realsense_demo.launch, but WITHOUT the Livox ROS driver.
+
+    Why: realsense_demo.launch starts livox_ros_driver2/msg_MID360.launch,
+    which expects to talk to the Mid-360 over its own UDP protocol. In the
+    "Option 3" setup the LiDAR is attached to the ROBOT, not this
+    workstation, so that driver would find no sensor. Instead,
+    perception_heightmap/zmq_to_ros_livox_bridge.py publishes the exact same
+    two topics the driver would (/livox/lidar as livox_ros_driver2/CustomMsg
+    and /livox/imu as sensor_msgs/Imu), sourced from the robot ZMQ stream.
+
+    So: run the bridge INSTEAD of the driver, then this launch file for
+    everything downstream of it.
+
+    Usage:
+      conda activate ros_noetic && source ~/ros_ws/devel/setup.bash
+      # terminal 1
+      python perception_heightmap/zmq_to_ros_livox_bridge.py (host) ROBOT_IP (use-host-stamp)
+      # terminal 2
+      roslaunch elevation_mapping_demos g1_zmq_demo.launch
+  -->
+
+  <!--
+    Gravity alignment. FAST-LIO's world frame is NOT gravity-aligned: it is
+    simply the LiDAR pose at initialization, and this G1's Mid-360 is mounted
+    with a ~2.33 deg pitch (urdf rpy = (0, 3.101, 3.1415)). That tilt turns the
+    flat floor into a phantom ramp across the elevation map.
+
+    The stock gravity_correction_publisher.py estimates ONCE from the first ~10
+    IMU samples using a hand-tuned axis flip, and measured WORSE than doing
+    nothing (1.55 deg residual floor tilt vs 0.79 deg uncorrected).
+    gravity_align_publisher.py re-estimates continuously and measures 0.36 deg.
+    Set use_legacy_gravity:=true to go back. Validate with check_floor_tilt.py.
+  -->
+  <arg name="use_legacy_gravity" default="false" />
+
+  <!-- LiDAR-inertial odometry, consumes /livox/lidar + /livox/imu -->
+  <include file="$(find fast_lio)/launch/mapping_mid360.launch" />
+
+  <!--
+    The elevation map is built in odom_gravity (see simple_demo_robot.yaml), so
+    the robot pose handed to elevation_mapping must be in the SAME frame, or its
+    pose-variance propagation is inconsistent with the map it updates.
+  -->
+  <include file="$(find pose_publisher)/launch/pose_publisher.launch">
+    <arg name="map_frame" value="odom_gravity" />
+  </include>
+
+  <node pkg="elevation_mapping_demos" type="pc_filter.py" name="pc_filter" />
+  <node pkg="elevation_mapping_demos" type="publish_map_frame.py" name="publish_map_frame" />
+
+  <node pkg="elevation_mapping_demos" type="gravity_correction_publisher.py"
+        name="gravity_correction_publisher" if="$(arg use_legacy_gravity)" />
+  <node pkg="elevation_mapping_demos" type="gravity_align_publisher.py"
+        name="gravity_align_publisher" output="screen"
+        unless="$(arg use_legacy_gravity)" />
+
+  <!-- Elevation mapping node -->
+  <node pkg="elevation_mapping" type="elevation_mapping" name="elevation_mapping" output="screen">
+    <rosparam command="load" file="$(find elevation_mapping_demos)/config/robots/simple_demo_robot.yaml" />
+    <rosparam command="load" file="$(find elevation_mapping)/config/sensor_processors/realsense_d435.yaml" />
+    <rosparam command="load" file="$(find elevation_mapping_demos)/config/postprocessing/postprocessor_pipeline.yaml" />
+  </node>
+
+  <!-- Visualizations for the resulting elevation map -->
+  <include file="$(find elevation_mapping_demos)/launch/visualization.launch" />
+</launch>

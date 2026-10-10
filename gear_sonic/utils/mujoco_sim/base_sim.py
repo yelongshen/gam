@@ -424,6 +424,16 @@ class DefaultEnv:
             self.mj_data.ctrl = self.torques
         mujoco.mj_step(self.mj_model, self.mj_data)
 
+        # The MuJoCo viewer's own reset (Backspace) calls mj_resetData directly,
+        # bypassing self.reset() and restoring the chair's XML pose. Detect it
+        # via the sim clock going backwards and re-place the chair.
+        t_now = self.mj_data.time
+        if t_now < getattr(self, "_last_sim_time", 0.0) and (
+            os.environ.get("CHAIR_RESPAWN_ON_RESET", "0") == "1"
+        ):
+            self.respawn_chair_under_robot(use_spawn_pose=True)
+        self._last_sim_time = t_now
+
         self.check_fall()
 
     def apply_perturbation(self, key):
@@ -495,6 +505,8 @@ class DefaultEnv:
             self.reset()
         if key == "v":
             self.update_viewer_camera()
+        if key == "c":
+            self.respawn_chair_under_robot()
         if key in ["up", "down", "left", "right"]:
             self.apply_perturbation(key)
 
@@ -518,6 +530,39 @@ class DefaultEnv:
 
     def reset(self):
         mujoco.mj_resetData(self.mj_model, self.mj_data)
+        if os.environ.get("CHAIR_RESPAWN_ON_RESET", "0") == "1":
+            # Deterministic: use the model's spawn pose, not the live pose.
+            self.respawn_chair_under_robot(use_spawn_pose=True)
+
+    def respawn_chair_under_robot(self, back_offset=None, use_spawn_pose=False):
+        """Teleport the mocap body 'chair_body' (see make_chair_scene.py) so the
+        seat is under the robot pelvis, aligned with the robot heading, keeping
+        the seat height. back_offset (m) shifts it behind the pelvis along the
+        robot's -x; default from env CHAIR_BACK_OFFSET (0.0)."""
+        bid = mujoco.mj_name2id(self.mj_model, mujoco.mjtObj.mjOBJ_BODY, "chair_body")
+        if bid < 0 or self.mj_model.body_mocapid[bid] < 0:
+            print("No mocap 'chair_body' in scene; regenerate with make_chair_scene.py")
+            return
+        if back_offset is None:
+            back_offset = float(os.environ.get("CHAIR_BACK_OFFSET", "0.0"))
+        mid = self.mj_model.body_mocapid[bid]
+        fixed = os.environ.get("CHAIR_FIXED_POSE")  # "x,y,yaw_deg", absolute world pose
+        if fixed:
+            fx, fy, fyaw = [float(v) for v in fixed.split(",")]
+            self.mj_data.mocap_pos[mid][0] = fx
+            self.mj_data.mocap_pos[mid][1] = fy
+            yaw = np.radians(fyaw)
+        else:
+            q = self.mj_model.qpos0 if use_spawn_pose else self.mj_data.qpos
+            pelvis = q[0:3]
+            w, x, y, z = q[3:7]
+            yaw = np.arctan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
+            self.mj_data.mocap_pos[mid][0] = pelvis[0] - back_offset * np.cos(yaw)
+            self.mj_data.mocap_pos[mid][1] = pelvis[1] - back_offset * np.sin(yaw)
+        # z unchanged: seat height stays as generated
+        self.mj_data.mocap_quat[mid] = [np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)]
+        mujoco.mj_forward(self.mj_model, self.mj_data)
+        print(f"Chair respawned under robot at yaw={np.degrees(yaw):.1f} deg")
 
 
 class BaseSimulator:

@@ -1,0 +1,8 @@
+{
+  "elbow_ang_err_p95": 24.268419363348418,
+  "reach_err_p95": 0.11426831522417641,
+  "hand_dist_err_p95": 1.3270988880958352,
+  "arm_limit_frac": 4e-09,
+  "wrist_limit_frac": 4e-09,
+  "arm_spike_deg_s": 976.419535081138
+}

@@ -1,0 +1,452 @@
+{
+  "version": "icl-v0-picks",
+  "window_s": 8.0,
+  "clips": [
+    {
+      "name": "flip_360_004__A415",
+      "source": "eval_subset",
+      "why": "flip clip; sim mixv3b_020000 success=0 progress=0.382",
+      "smpl": "/home/grease/ego_dataset/eval_subset/smpl/flip_360_004__A415.pkl",
+      "robot": "/home/grease/ego_dataset/eval_subset/robot/flip_360_004__A415.pkl",
+      "window": null,
+      "smpl_md5": "1bc46bfc110eca5e222a3a26d56960f7",
+      "robot_md5": "ec8e552618cdc2a7f28c5d8ae01326f5"
+    },
+    {
+      "name": "flip_090_003__A304_M",
+      "source": "eval_subset",
+      "why": "flip clip; sim mixv3b_020000 success=0 progress=0.478",
+      "smpl": "/home/grease/ego_dataset/eval_subset/smpl/flip_090_003__A304_M.pkl",
+      "robot": "/home/grease/ego_dataset/eval_subset/robot/flip_090_003__A304_M.pkl",
+      "window": null,
+      "smpl_md5": "81940607404ceb7b26b5750f16a0b6cf",
+      "robot_md5": "a1b1bf9042de9655ddba08187503b98a"
+    },
+    {
+      "name": "CMU__CMU__05__05_16_stageii",
+      "source": "amass_evalset",
+      "why": "sim mixv3b_020000 success=0 progress=0.32",
+      "smpl": "/home/grease/ego_dataset/amass_evalset/smpl/CMU__CMU__05__05_16_stageii.pkl",
+      "robot": "/home/grease/ego_dataset/amass_evalset/robot/CMU__CMU__05__05_16_stageii.pkl",
+      "window": null,
+      "smpl_md5": "785ac833972c98963199abd34b9c0f26",
+      "robot_md5": "2aebbb73e68308af1922c87e7e661679"
+    },
+    {
+      "name": "CMU__CMU__87__87_01_stageii",
+      "source": "amass_evalset",
+      "why": "sim mixv3b_020000 success=0 progress=0.339",
+      "smpl": "/home/grease/ego_dataset/amass_evalset/smpl/CMU__CMU__87__87_01_stageii.pkl",
+      "robot": "/home/grease/ego_dataset/amass_evalset/robot/CMU__CMU__87__87_01_stageii.pkl",
+      "window": null,
+      "smpl_md5": "5b2eb103581e05466670c71bca69ba8c",
+      "robot_md5": "43fdb51242431a960379e98051951935"
+    },
+    {
+      "name": "Transitions__Transitions__mazen_c3d__punchkarate_stand_stageii",
+      "source": "amass_evalset",
+      "why": "sim mixv3b_020000 success=0 progress=0.347",
+      "smpl": "/home/grease/ego_dataset/amass_evalset/smpl/Transitions__Transitions__mazen_c3d__punchkarate_stand_stageii.pkl",
+      "robot": "/home/grease/ego_dataset/amass_evalset/robot/Transitions__Transitions__mazen_c3d__punchkarate_stand_stageii.pkl",
+      "window": null,
+      "smpl_md5": "a10a1886745bb1e03affae6676d18ecf",
+      "robot_md5": "61f8768fdb82637b60366315a2eb38e9"
+    },
+    {
+      "name": "ACCAD__Male2General_c3d__A8-_Crouch_to_Lie_poses",
+      "source": "amass_evalset",
+      "why": "sim mixv3b_020000 success=0 progress=0.418",
+      "smpl": "/home/grease/ego_dataset/amass_evalset/smpl/ACCAD__Male2General_c3d__A8-_Crouch_to_Lie_poses.pkl",
+      "robot": "/home/grease/ego_dataset/amass_evalset/robot/ACCAD__Male2General_c3d__A8-_Crouch_to_Lie_poses.pkl",
+      "window": null,
+      "smpl_md5": "5a8313c3c8057ab1b95066554f38b44d",
+      "robot_md5": "da936447e90c43a29d739fb59a1d3f1b"
+    },
+    {
+      "name": "BMLmovi__BMLmovi__Subject_80_F_MoSh__Subject_80_F_2_poses",
+      "source": "amass_evalset",
+      "why": "sim mixv3b_020000 success=0 progress=0.431",
+      "smpl": "/home/grease/ego_dataset/amass_evalset/smpl/BMLmovi__BMLmovi__Subject_80_F_MoSh__Subject_80_F_2_poses.pkl",
+      "robot": "/home/grease/ego_dataset/amass_evalset/robot/BMLmovi__BMLmovi__Subject_80_F_MoSh__Subject_80_F_2_poses.pkl",
+      "window": null,
+      "smpl_md5": "b66d6a41658c2e02b79c79c60a5a2ce6",
+      "robot_md5": "16a298fa63337a24feb564225e8ab748"
+    },
+    {
+      "name": "BMLmovi__BMLmovi__Subject_65_F_MoSh__Subject_65_F_1_poses",
+      "source": "amass_evalset",
+      "why": "sim mixv3b_020000 success=0 progress=0.471",
+      "smpl": "/home/grease/ego_dataset/amass_evalset/smpl/BMLmovi__BMLmovi__Subject_65_F_MoSh__Subject_65_F_1_poses.pkl",
+      "robot": "/home/grease/ego_dataset/amass_evalset/robot/BMLmovi__BMLmovi__Subject_65_F_MoSh__Subject_65_F_1_poses.pkl",
+      "window": null,
+      "smpl_md5": "cba6d52e7bce779c3cb61f9e8270ece5",
+      "robot_md5": "82414d3fa4617996dc9f5ca634cacb54"
+    },
+    {
+      "name": "WEIZMANN__WEIZMANN__67__Normal_StraightLong(4)_stageii",
+      "source": "amass_evalset",
+      "why": "sim mixv3b_020000 success=0 progress=0.474",
+      "smpl": "/home/grease/ego_dataset/amass_evalset/smpl/WEIZMANN__WEIZMANN__67__Normal_StraightLong(4)_stageii.pkl",
+      "robot": "/home/grease/ego_dataset/amass_evalset/robot/WEIZMANN__WEIZMANN__67__Normal_StraightLong(4)_stageii.pkl",
+      "window": null,
+      "smpl_md5": "f515518bf1ba969f80fd7eed644abd3e",
+      "robot_md5": "8da2b6d9e80e34dbd55d7253560d337b"
+    },
+    {
+      "name": "BMLmovi__BMLmovi__Subject_28_F_MoSh__Subject_28_F_21_poses",
+      "source": "amass_evalset",
+      "why": "sim mixv3b_020000 success=0 progress=0.735",
+      "smpl": "/home/grease/ego_dataset/amass_evalset/smpl/BMLmovi__BMLmovi__Subject_28_F_MoSh__Subject_28_F_21_poses.pkl",
+      "robot": "/home/grease/ego_dataset/amass_evalset/robot/BMLmovi__BMLmovi__Subject_28_F_MoSh__Subject_28_F_21_poses.pkl",
+      "window": null,
+      "smpl_md5": "6a573be76f180d2fa5b9d0aa79829f5e",
+      "robot_md5": "ecfa43149043c5646d2bbfea0a5e5793"
+    },
+    {
+      "name": "MoSh__MoSh__50022__misc_1_stageii",
+      "source": "amass_evalset",
+      "why": "sim mixv3b_020000 success=0 progress=0.766",
+      "smpl": "/home/grease/ego_dataset/amass_evalset/smpl/MoSh__MoSh__50022__misc_1_stageii.pkl",
+      "robot": "/home/grease/ego_dataset/amass_evalset/robot/MoSh__MoSh__50022__misc_1_stageii.pkl",
+      "window": null,
+      "smpl_md5": "206b7a07c9ca158aa9121a927dbeb02f",
+      "robot_md5": "640e019a87248561278436085a5f1ace"
+    },
+    {
+      "name": "obstacles2_subject2__w163s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of obstacles2_subject2 (mean pelvis-local joint speed 1.42 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/obstacles2_subject2__w163s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/obstacles2_subject2__w163s.pkl",
+      "window": {
+        "orig": "obstacles2_subject2",
+        "start_s": 163.27,
+        "end_s": 171.27
+      },
+      "smpl_md5": "1e7187db3c83febdd12c6ca3d2cb4dcf",
+      "robot_md5": "9944c1c1fc05632e4b2e068554d6bbff"
+    },
+    {
+      "name": "dance2_subject1__w088s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of dance2_subject1 (mean pelvis-local joint speed 1.36 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/dance2_subject1__w088s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/dance2_subject1__w088s.pkl",
+      "window": {
+        "orig": "dance2_subject1",
+        "start_s": 88.5,
+        "end_s": 96.5
+      },
+      "smpl_md5": "f16b23b3273061427a973e3799343b66",
+      "robot_md5": "0006169d65f39d71396041b0631aafa3"
+    },
+    {
+      "name": "run2_subject1__w068s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of run2_subject1 (mean pelvis-local joint speed 1.33 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/run2_subject1__w068s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/run2_subject1__w068s.pkl",
+      "window": {
+        "orig": "run2_subject1",
+        "start_s": 68.87,
+        "end_s": 76.87
+      },
+      "smpl_md5": "f657d29f19bf78d0162451db59f0a792",
+      "robot_md5": "f37d842ac5b01b91b8034b677bb1e3d4"
+    },
+    {
+      "name": "pushAndStumble1_subject3__w181s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of pushAndStumble1_subject3 (mean pelvis-local joint speed 1.32 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/pushAndStumble1_subject3__w181s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/pushAndStumble1_subject3__w181s.pkl",
+      "window": {
+        "orig": "pushAndStumble1_subject3",
+        "start_s": 181.47,
+        "end_s": 189.47
+      },
+      "smpl_md5": "dd0cd0e8105d8abe0b4e977118dab553",
+      "robot_md5": "2eafc537a794be3e5a382ad43379839d"
+    },
+    {
+      "name": "run1_subject5__w016s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of run1_subject5 (mean pelvis-local joint speed 1.29 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/run1_subject5__w016s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/run1_subject5__w016s.pkl",
+      "window": {
+        "orig": "run1_subject5",
+        "start_s": 16.63,
+        "end_s": 24.63
+      },
+      "smpl_md5": "ec685526c8f9b270c9bb75844144dafd",
+      "robot_md5": "776012a598dcfa3e90d2f571a1f8d03a"
+    },
+    {
+      "name": "dance1_subject1__w100s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of dance1_subject1 (mean pelvis-local joint speed 1.24 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/dance1_subject1__w100s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/dance1_subject1__w100s.pkl",
+      "window": {
+        "orig": "dance1_subject1",
+        "start_s": 100.77,
+        "end_s": 108.77
+      },
+      "smpl_md5": "f61e047e9ae2d56b6f12e2a556138f2e",
+      "robot_md5": "bee3680562b4c03628c909d5c949705c"
+    },
+    {
+      "name": "fight1_subject3__w153s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of fight1_subject3 (mean pelvis-local joint speed 1.18 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/fight1_subject3__w153s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/fight1_subject3__w153s.pkl",
+      "window": {
+        "orig": "fight1_subject3",
+        "start_s": 153.23,
+        "end_s": 161.23
+      },
+      "smpl_md5": "22167fa1bd98a35fe85848876167e220",
+      "robot_md5": "2be20a2d6a16907599dcc100ef5ce2bf"
+    },
+    {
+      "name": "dance2_subject5__w110s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of dance2_subject5 (mean pelvis-local joint speed 1.15 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/dance2_subject5__w110s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/dance2_subject5__w110s.pkl",
+      "window": {
+        "orig": "dance2_subject5",
+        "start_s": 110.67,
+        "end_s": 118.67
+      },
+      "smpl_md5": "906e85905423622da42236e199aca3f4",
+      "robot_md5": "904a2c3276a05f46ea54d3fafacb4110"
+    },
+    {
+      "name": "obstacles5_subject3__w155s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of obstacles5_subject3 (mean pelvis-local joint speed 1.15 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/obstacles5_subject3__w155s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/obstacles5_subject3__w155s.pkl",
+      "window": {
+        "orig": "obstacles5_subject3",
+        "start_s": 155.8,
+        "end_s": 163.8
+      },
+      "smpl_md5": "c0d1c0b892b2786829f8ce88f8ac5c59",
+      "robot_md5": "84e1249aa5eb0f95fa857cc9c601d4d1"
+    },
+    {
+      "name": "multipleActions1_subject1__w124s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of multipleActions1_subject1 (mean pelvis-local joint speed 1.13 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/multipleActions1_subject1__w124s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/multipleActions1_subject1__w124s.pkl",
+      "window": {
+        "orig": "multipleActions1_subject1",
+        "start_s": 124.93,
+        "end_s": 132.93
+      },
+      "smpl_md5": "f69dab9b87d376b2a92e17f165cfe137",
+      "robot_md5": "8f574bbe6963a1ffe959f6cc5e51cb49"
+    },
+    {
+      "name": "pushAndStumble1_subject5__w116s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of pushAndStumble1_subject5 (mean pelvis-local joint speed 1.11 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/pushAndStumble1_subject5__w116s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/pushAndStumble1_subject5__w116s.pkl",
+      "window": {
+        "orig": "pushAndStumble1_subject5",
+        "start_s": 116.47,
+        "end_s": 124.47
+      },
+      "smpl_md5": "b2ce3d7a1987b40c63e326d8d9869828",
+      "robot_md5": "82cbb1ca96ad9be0387e93c644126c82"
+    },
+    {
+      "name": "obstacles4_subject4__w182s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of obstacles4_subject4 (mean pelvis-local joint speed 1.10 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/obstacles4_subject4__w182s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/obstacles4_subject4__w182s.pkl",
+      "window": {
+        "orig": "obstacles4_subject4",
+        "start_s": 182.7,
+        "end_s": 190.7
+      },
+      "smpl_md5": "bca4fc6bed873f8c6e703fe283d7f143",
+      "robot_md5": "2e4e20ee312cf336cf3b60c08bc6e976"
+    },
+    {
+      "name": "fallAndGetUp1_subject5__w008s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of fallAndGetUp1_subject5 (mean pelvis-local joint speed 1.08 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/fallAndGetUp1_subject5__w008s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/fallAndGetUp1_subject5__w008s.pkl",
+      "window": {
+        "orig": "fallAndGetUp1_subject5",
+        "start_s": 8.53,
+        "end_s": 16.53
+      },
+      "smpl_md5": "33bc45761bd59b40ba4870658303449d",
+      "robot_md5": "df6f45f56668f26a7a483ac151b5f5da"
+    },
+    {
+      "name": "ground2_subject2__w112s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of ground2_subject2 (mean pelvis-local joint speed 1.07 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/ground2_subject2__w112s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/ground2_subject2__w112s.pkl",
+      "window": {
+        "orig": "ground2_subject2",
+        "start_s": 112.0,
+        "end_s": 120.0
+      },
+      "smpl_md5": "0f2580df19fec6c618e657a21a282325",
+      "robot_md5": "ebd4b6a9fb903136010d4139bd5ea581"
+    },
+    {
+      "name": "dance2_subject4__w196s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of dance2_subject4 (mean pelvis-local joint speed 1.05 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/dance2_subject4__w196s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/dance2_subject4__w196s.pkl",
+      "window": {
+        "orig": "dance2_subject4",
+        "start_s": 196.77,
+        "end_s": 204.77
+      },
+      "smpl_md5": "ac74afada7b3c5784998169de7874d77",
+      "robot_md5": "a6dfc4122b398a22e716f7eed2439eab"
+    },
+    {
+      "name": "obstacles3_subject4__w116s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of obstacles3_subject4 (mean pelvis-local joint speed 1.03 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/obstacles3_subject4__w116s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/obstacles3_subject4__w116s.pkl",
+      "window": {
+        "orig": "obstacles3_subject4",
+        "start_s": 116.53,
+        "end_s": 124.53
+      },
+      "smpl_md5": "ca1edaf2d1edca1cd54fe91e287150d8",
+      "robot_md5": "bcb0c104227ab174035fe9d4b8f8578a"
+    },
+    {
+      "name": "fightAndSports1_subject4__w028s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of fightAndSports1_subject4 (mean pelvis-local joint speed 1.00 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/fightAndSports1_subject4__w028s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/fightAndSports1_subject4__w028s.pkl",
+      "window": {
+        "orig": "fightAndSports1_subject4",
+        "start_s": 28.47,
+        "end_s": 36.47
+      },
+      "smpl_md5": "93fe1072f19f235ed1670f0ce6f3d8e6",
+      "robot_md5": "80fe539ab6a81dd3f7b7ac948c7ac0e7"
+    },
+    {
+      "name": "jumps1_subject2__w035s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of jumps1_subject2 (mean pelvis-local joint speed 0.98 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/jumps1_subject2__w035s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/jumps1_subject2__w035s.pkl",
+      "window": {
+        "orig": "jumps1_subject2",
+        "start_s": 35.93,
+        "end_s": 43.93
+      },
+      "smpl_md5": "cf9abf9a8574b32535a0b11785972f90",
+      "robot_md5": "b16250104e0e158b93f9f1fdb9e65a00"
+    },
+    {
+      "name": "fallAndGetUp1_subject4__w009s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of fallAndGetUp1_subject4 (mean pelvis-local joint speed 0.94 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/fallAndGetUp1_subject4__w009s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/fallAndGetUp1_subject4__w009s.pkl",
+      "window": {
+        "orig": "fallAndGetUp1_subject4",
+        "start_s": 9.73,
+        "end_s": 17.73
+      },
+      "smpl_md5": "21678c7094a5cf7237575b718b130af2",
+      "robot_md5": "db1b0ac86e5a092cffbf6925811e6cdd"
+    },
+    {
+      "name": "fallAndGetUp1_subject1__w027s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of fallAndGetUp1_subject1 (mean pelvis-local joint speed 0.88 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/fallAndGetUp1_subject1__w027s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/fallAndGetUp1_subject1__w027s.pkl",
+      "window": {
+        "orig": "fallAndGetUp1_subject1",
+        "start_s": 27.17,
+        "end_s": 35.17
+      },
+      "smpl_md5": "3fd8e87d134605047a978c8df7112e0d",
+      "robot_md5": "9f2a952e2449434a23c73fffb537210b"
+    },
+    {
+      "name": "jumps1_subject5__w004s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of jumps1_subject5 (mean pelvis-local joint speed 0.88 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/jumps1_subject5__w004s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/jumps1_subject5__w004s.pkl",
+      "window": {
+        "orig": "jumps1_subject5",
+        "start_s": 4.53,
+        "end_s": 12.53
+      },
+      "smpl_md5": "30d4135fa6d26cccb2343439df249212",
+      "robot_md5": "2c452243366196c7794aeabdcfece7b8"
+    },
+    {
+      "name": "fallAndGetUp3_subject1__w048s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of fallAndGetUp3_subject1 (mean pelvis-local joint speed 0.72 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/fallAndGetUp3_subject1__w048s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/fallAndGetUp3_subject1__w048s.pkl",
+      "window": {
+        "orig": "fallAndGetUp3_subject1",
+        "start_s": 48.47,
+        "end_s": 56.47
+      },
+      "smpl_md5": "75477f62fccad00fec56981a1aac3fb8",
+      "robot_md5": "6592a5bfedbd9b919895a926d602a82c"
+    },
+    {
+      "name": "ground1_subject5__w124s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of ground1_subject5 (mean pelvis-local joint speed 0.70 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/ground1_subject5__w124s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/ground1_subject5__w124s.pkl",
+      "window": {
+        "orig": "ground1_subject5",
+        "start_s": 124.83,
+        "end_s": 132.83
+      },
+      "smpl_md5": "53314608301f99270c0f5c0a89a4d5f8",
+      "robot_md5": "93e6e7559a8577ca583b55b2188826cb"
+    },
+    {
+      "name": "push1_subject2__w061s",
+      "source": "lafan1_evalset",
+      "why": "hardest 8s window of push1_subject2 (mean pelvis-local joint speed 0.61 m/s)",
+      "smpl": "/home/grease/gam/sim2real/icl_hard_set/cropped/smpl/push1_subject2__w061s.pkl",
+      "robot": "/home/grease/gam/sim2real/icl_hard_set/cropped/robot/push1_subject2__w061s.pkl",
+      "window": {
+        "orig": "push1_subject2",
+        "start_s": 61.63,
+        "end_s": 69.63
+      },
+      "smpl_md5": "8f5ea0df0bfe00046a15327565f863c5",
+      "robot_md5": "4bd8d2258651a2952d197727ea273c13"
+    }
+  ]
+}

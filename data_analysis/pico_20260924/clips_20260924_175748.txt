@@ -1,0 +1,52 @@
+Loading /home/grease/g1_robot_data/pico_raw/20260924_175748 ...
+  10809 frames @ 50.0 fps  (216.2s)  joints=(10809, 24, 3)
+Computing sliding-window features (window=1.5s) ...
+  limb_energy threshold (p60): 4.0894  (40.0% of frames flagged active)
+
+Found 28 candidate segments before dedup/ranking:
+
+==========================================================================================
+SELECTED CLIPS (top 3 per label, 10 total, frame_base=100):
+==========================================================================================
+       frame_range   dur(s)  label        coarse_category           root_v   air%   ulr  gait_p  wave_p
+[  1000,  1100)     2.00  gesture      Upper-Body Manipulation    0.042    0.0  3.05  -0.026   0.223
+[  2300,  2700)     8.00  walking      Basic Locomotion           0.209    0.0  0.79   0.252   0.637
+[  4500,  4800)     6.00  walking      Basic Locomotion           0.362    0.0  0.91   0.619   0.777
+[  4800,  5200)     8.00  jumping      Agility / High-Dynamic     0.327    9.5  1.23   0.249   0.684
+[  5400,  5700)     6.00  walking      Basic Locomotion           0.168    0.0  0.84   0.164   0.762
+[  5700,  5900)     4.00  gesture      Upper-Body Manipulation    0.054    0.0  3.42  -0.013   0.126
+[  6500,  6800)     6.00  jumping      Agility / High-Dynamic     0.058   21.3  0.51   0.131   0.312
+[  6900,  7200)     6.00  jumping      Agility / High-Dynamic     0.073   28.1  0.48   0.307   0.527
+[  8000,  8200)     4.00  gesture      Upper-Body Manipulation    0.097    0.0  2.20   0.052   0.084
+[ 10000, 10200)     4.00  agile        Agility / High-Dynamic     0.102    0.0  1.08   0.438   0.493
+==========================================================================================
+
+All 28 candidate segments (before top-N filtering):
+  [  1000,  1100)  dur= 2.00s  label=gesture       coarse=Upper-Body Manipulation
+  [  1235,  1552)  dur= 6.34s  label=walking       coarse=Basic Locomotion
+  [  1757,  1977)  dur= 4.40s  label=walking       coarse=Basic Locomotion
+  [  2055,  2332)  dur= 5.54s  label=walking       coarse=Basic Locomotion
+  [  2300,  2700)  dur= 8.00s  label=walking       coarse=Basic Locomotion
+  [  2609,  2884)  dur= 5.50s  label=walking       coarse=Basic Locomotion
+  [  3022,  3162)  dur= 2.80s  label=walking       coarse=Basic Locomotion
+  [  3237,  3315)  dur= 1.56s  label=walking       coarse=Basic Locomotion
+  [  3372,  3452)  dur= 1.60s  label=walking       coarse=Basic Locomotion
+  [  3548,  3759)  dur= 4.22s  label=walking       coarse=Basic Locomotion
+  [  4313,  4430)  dur= 2.34s  label=walking       coarse=Basic Locomotion
+  [  4500,  4800)  dur= 6.00s  label=walking       coarse=Basic Locomotion
+  [  4800,  5200)  dur= 8.00s  label=jumping       coarse=Agility / High-Dynamic
+  [  5400,  5700)  dur= 6.00s  label=walking       coarse=Basic Locomotion
+  [  5700,  5900)  dur= 4.00s  label=gesture       coarse=Upper-Body Manipulation
+  [  6500,  6800)  dur= 6.00s  label=jumping       coarse=Agility / High-Dynamic
+  [  6900,  7200)  dur= 6.00s  label=jumping       coarse=Agility / High-Dynamic
+  [  7622,  7760)  dur= 2.76s  label=walking       coarse=Basic Locomotion
+  [  7912,  7987)  dur= 1.50s  label=walking       coarse=Basic Locomotion
+  [  8000,  8200)  dur= 4.00s  label=gesture       coarse=Upper-Body Manipulation
+  [  8787,  8927)  dur= 2.80s  label=walking       coarse=Basic Locomotion
+  [  8980,  9085)  dur= 2.10s  label=walking       coarse=Basic Locomotion
+  [  9113,  9194)  dur= 1.62s  label=walking       coarse=Basic Locomotion
+  [  9258,  9342)  dur= 1.68s  label=walking       coarse=Basic Locomotion
+  [  9640,  9709)  dur= 1.38s  label=walking       coarse=Basic Locomotion
+  [  9764,  9845)  dur= 1.62s  label=walking       coarse=Basic Locomotion
+  [ 10000, 10200)  dur= 4.00s  label=agile         coarse=Agility / High-Dynamic
+  [ 10674, 10740)  dur= 1.32s  label=walking       coarse=Basic Locomotion
