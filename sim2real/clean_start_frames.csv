@@ -1,0 +1,12 @@
+clip,full_seq,full_dir,match_err,orig_start_frame,new_start_frame,shift_frames,shift_s,clean,window_frames,sole_lo,sole_hi,com_off,tilt_deg,root_speed,orig_sole_lo,orig_com_off
+dance1_subject2__w067s,dance1_subject2,robot_v2,0.0,2013,2038,25,0.83,False,240,0.085,0.26,-0.032,7.7,0.64,0.155,0.061
+dance2_subject4__w196s,dance2_subject4,robot_v2,0.0,5898,5915,17,0.57,True,240,0.019,0.022,-0.074,6.6,1.57,0.131,0.08
+fight1_subject2__w219s,fight1_subject2,robot_v2,0.0,6573,6591,18,0.6,False,240,0.043,0.128,0.041,5.9,0.63,0.142,-0.008
+fight1_subject3__w148s,fight1_subject3,robot_v2,0.0,4452,4484,32,1.07,False,240,0.073,0.259,0.051,4.5,2.05,0.301,0.206
+fightAndSports1_subject1__w062s,fightAndSports1_subject1,robot_v2,0.0,1860,1827,-33,-1.1,True,240,-0.011,-0.009,-0.042,9.5,1.3,0.024,0.242
+jumps1_subject1__w050s,jumps1_subject1,robot_v2,0.0,1509,1549,40,1.33,False,240,0.049,0.052,0.041,5.4,1.52,0.243,0.221
+jumps1_subject2__w169s,jumps1_subject2,robot_v2,0.0,5082,5120,38,1.27,False,240,0.134,0.149,0.044,2.5,1.72,0.114,0.263
+multipleActions1_subject1__w124s,multipleActions1_subject1,robot_v2,0.0,3738,3751,13,0.43,False,240,0.018,0.176,0.025,4.5,2.77,0.007,0.011
+multipleActions1_subject3__w036s,multipleActions1_subject3,robot_v2,0.0,1098,1102,4,0.13,False,240,0.05,0.174,0.017,7.4,1.84,0.097,-0.023
+run1_subject5__w035s,run1_subject5,robot_v2,0.0,1077,1013,-64,-2.13,False,240,-0.06,0.018,0.006,21.6,2.47,0.55,-0.005
+run2_subject4__w205s,run2_subject4,robot_v2,0.0,6165,6106,-59,-1.97,False,240,-0.013,-0.004,-0.022,18.1,3.02,0.11,0.24
