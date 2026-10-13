@@ -33,6 +33,8 @@ Usage
   python gear_sonic/teleoperation/avp_g1_inspire_teleop.py --print-only
   # drive the hands over DDS (NIC wired to the G1)
   python gear_sonic/teleoperation/avp_g1_inspire_teleop.py --net enp4s0
+  # retarget here, send over UDP to inspire_relay.py running on the robot PC (which publishes DDS on its eth0)
+  python gear_sonic/teleoperation/avp_g1_inspire_teleop.py --relay 192.168.8.227
 
 Requirements: numpy, pyyaml, dex_retargeting (+pinocchio, nlopt); unitree_sdk2_python for DDS.
 """
@@ -289,8 +291,79 @@ def smoothstep(s):
     return s * s * (3.0 - 2.0 * s)
 
 
-def check_state(net, secs=3.0):
-    """Listen to rt/inspire/state (published by Unitree's DFX_inspire_service) and print the hand positions."""
+class InspireRelay:
+    """Same interface as InspireDDS, but talks UDP to inspire_relay.py running on the robot PC (which owns the DDS side).
+
+    send(): {"type":"cmd","seq":ms,"q":[12]}  (also the keepalive).  State comes back as {"type":"state","q":[12]}.
+    """
+
+    def __init__(self, host, port=9871):
+        import json as _json
+        import socket as _socket
+        self._json = _json
+        self.addr = (host, port)
+        self.sock = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
+        self.sock.settimeout(0.2)
+        self._state = None
+        self._state_t = 0.0
+        self._running = True
+        threading.Thread(target=self._recv, daemon=True).start()
+
+    def _recv(self):
+        while self._running:
+            try:
+                data, _ = self.sock.recvfrom(4096)
+                m = self._json.loads(data.decode())
+                if m.get("type") == "state" and len(m.get("q", [])) == 12:
+                    self._state, self._state_t = np.array(m["q"], dtype=float), time.time()
+            except Exception:
+                continue
+
+    def _tx(self, obj):
+        try:
+            self.sock.sendto(self._json.dumps(obj).encode(), self.addr)
+        except OSError:
+            pass
+
+    def wait_state(self, timeout=2.0):
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            self._tx({"type": "hello"})
+            if self._state is not None:
+                break
+            time.sleep(0.2)
+        return None if self._state is None else {"right": self._state[:6].copy(), "left": self._state[6:].copy()}
+
+    def state_age(self):
+        return time.time() - self._state_t if self._state is not None else float("inf")
+
+    def send(self, api):
+        q = [float(api["right"][k]) for k in range(6)] + [float(api["left"][k]) for k in range(6)]
+        self._tx({"type": "cmd", "seq": int(time.time() * 1000), "q": q})
+
+    def close(self):
+        self._running = False
+        self.sock.close()
+
+
+def check_state(net, secs=3.0, relay=None):
+    """Listen to the hand state (rt/inspire/state via DDS, or via inspire_relay.py if relay=(host,port)) and print it."""
+    if relay is not None:
+        r = InspireRelay(*relay)
+        t0, got = time.time(), 0
+        while time.time() - t0 < secs:
+            st = r.wait_state(0.5)
+            if st is None:
+                continue
+            got += 1
+            print("[check] right q", " ".join(f"{v:.2f}" for v in st["right"]), "| left q",
+                  " ".join(f"{v:.2f}" for v in st["left"]), "(via relay)")
+            time.sleep(0.5)
+        if got == 0:
+            print(f"[check] NO state from the relay at {relay[0]}:{relay[1]}: is inspire_relay.py running there (and --allow "
+                  "this PC's IP)?")
+        r.close()
+        return got > 0
     from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber
     from unitree_sdk2py.idl.unitree_go.msg.dds_ import MotorStates_
     ChannelFactoryInitialize(0, net)
@@ -316,6 +389,9 @@ def main():
     ap = argparse.ArgumentParser(description="AVP -> Inspire hand teleoperation")
     ap.add_argument("--net", default="enp4s0", help="NIC on the same network as the G1 / inspire service (DDS)")
     ap.add_argument("--check", action="store_true", help="only listen to rt/inspire/state for a few seconds and exit")
+    ap.add_argument("--relay", default=None, metavar="HOST[:PORT]",
+                    help="send the 12 hand values over UDP to inspire_relay.py on the robot PC (default port 9871) "
+                         "instead of publishing DDS from this machine; the real hand pose comes back the same way")
     ap.add_argument("--port", type=int, default=9870, help="UDP port of the AVPHandStreamer app")
     ap.add_argument("--hz", type=float, default=50.0, help="control rate")
     ap.add_argument("--type", choices=["dexpilot", "vector"], default=None, help="override the yml retargeting type")
@@ -340,8 +416,13 @@ def main():
     ap.add_argument("--seconds", type=float, default=0.0, help="exit after N seconds (0 = until Ctrl+C)")
     a = ap.parse_args()
 
+    relay_addr = None
+    if a.relay:
+        host, _, p = a.relay.partition(":")
+        relay_addr = (host, int(p) if p else 9871)
+
     if a.check:
-        sys.exit(0 if check_state(a.net) else 1)
+        sys.exit(0 if check_state(a.net, relay=relay_addr) else 1)
 
     print("[Inspire] building retargeters (DexPilot on the Inspire URDF) ...")
     retarget = InspireRetargeter(a.type)
@@ -351,10 +432,11 @@ def main():
     if a.sim:
         threading.Thread(target=sim_sender, args=(a.port, stop), daemon=True).start()
     print(f"[AVP] PC IP {local_ip()}  UDP :{a.port}  (enter this in the headset app and tap Start Streaming)")
-    dds = None if a.print_only else InspireDDS(a.net)
+    dds = None if a.print_only else (InspireRelay(*relay_addr) if relay_addr else InspireDDS(a.net))
     viz = HandViz(retarget) if a.viz else None
     t_viz = 0.0
-    print("[Inspire] mode:", "print-only" if a.print_only else f"DDS {TOPIC_CMD} on {a.net}",
+    print("[Inspire] mode:", "print-only" if a.print_only else
+          (f"UDP relay -> {relay_addr[0]}:{relay_addr[1]}" if relay_addr else f"DDS {TOPIC_CMD} on {a.net}"),
           "| order [pinky ring middle index thumb_bend thumb_rot], API 1=open 0=closed")
 
     cmd = {"left": np.ones(6), "right": np.ones(6)}   # what we send; before a hand is tracked it stays at the actual pose
@@ -362,8 +444,9 @@ def main():
         state = dds.wait_state(2.0)
         if state is None:
             if not a.assume_open:
-                sys.exit(f"[Inspire] no rt/inspire/state on '{a.net}': cannot know where the hands are. Is inspire_g1 running "
-                         "on the same DDS network? (use --assume-open to start the settle from 'open' anyway)")
+                sys.exit(f"[Inspire] no hand state from {'the relay' if relay_addr else repr(a.net)}: cannot know where the hands "
+                         "are. Is inspire_g1 (and inspire_relay.py, if --relay) running? (--assume-open starts the settle from "
+                         "'open' anyway)")
             print("[Inspire] WARNING: no hand state; assuming the hands are OPEN at start")
         else:
             cmd = {s: np.clip(state[s], 0.0, 1.0) for s in ("left", "right")}
