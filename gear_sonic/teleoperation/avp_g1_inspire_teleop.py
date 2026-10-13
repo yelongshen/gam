@@ -324,6 +324,14 @@ def main():
                          "(smoothstep; the target keeps tracking your hand during the settle)")
     ap.add_argument("--assume-open", action="store_true",
                     help="if rt/inspire/state is not received, start the settle from 'open' instead of refusing to run")
+    ap.add_argument("--lost", choices=["hold", "open"], default="open",
+                    help="what a hand does once it is OFF (not tracked for --lost-grace seconds): hold the last pose, or "
+                         "ramp to open over --off-ramp seconds. A hand that was never tracked is left where it is.")
+    ap.add_argument("--lost-grace", type=float, default=1.0,
+                    help="seconds without tracking before a hand counts as OFF; shorter dropouts just hold the last "
+                         "command and resume without a new settle")
+    ap.add_argument("--off-ramp", type=float, default=2.0,
+                    help="seconds for the OFF ramp to open (also used to open the hands when the script exits); 0 = immediately")
     ap.add_argument("--print-only", action="store_true", help="retarget and print; do not touch DDS / the robot")
     ap.add_argument("--sim", action="store_true", help="feed fake hands (no headset)")
     ap.add_argument("--viz", action="store_true",
@@ -363,7 +371,11 @@ def main():
             print(f"[Inspire] hands now: right [{f0(cmd['right'])}]  left [{f0(cmd['left'])}]  -> settle {a.settle:.1f}s to the tracked pose")
     start = {"left": cmd["left"].copy(), "right": cmd["right"].copy()}
     ramp_t0 = {"left": 0.0, "right": 0.0}
-    was = {"left": False, "right": False}
+    was = {"left": False, "right": False}          # ACTIVE: tracked, or lost for less than --lost-grace
+    ever = {"left": False, "right": False}         # tracked at least once
+    last_live = {"left": 0.0, "right": 0.0}
+    off_t0 = {"left": 0.0, "right": 0.0}
+    off_from = {"left": cmd["left"].copy(), "right": cmd["right"].copy()}
     dt, t_start, t_print = 1.0 / a.hz, time.time(), 0.0
     try:
         while a.seconds <= 0 or time.time() - t_start < a.seconds:
@@ -375,15 +387,22 @@ def main():
                 if live:
                     q, api = retarget(joints[side], side)
                     rad[side] = q
-                    if not was[side]:
+                    last_live[side] = t0
+                    if not was[side]:   # ON: first appearance, or back after being OFF
                         ramp_t0[side] = t0
                         start[side] = cmd[side].copy()   # settle starts from what we last commanded (= where the hand is)
+                        was[side] = ever[side] = True
                         print(f"[Inspire] {side} hand ON -> settling over {a.settle:.1f}s")
                     w = 1.0 if a.settle <= 0 else smoothstep((t0 - ramp_t0[side]) / a.settle)
                     cmd[side] = (1 - w) * start[side] + w * api
-                elif was[side]:
-                    print(f"[Inspire] {side} hand LOST -> holding last command")
-                was[side] = live
+                elif was[side] and t0 - last_live[side] > a.lost_grace:   # OFF
+                    was[side] = False
+                    off_t0[side], off_from[side] = t0, cmd[side].copy()
+                    print(f"[Inspire] {side} hand OFF (no tracking for {a.lost_grace:.1f}s) -> "
+                          + (f"opening over {a.off_ramp:.1f}s" if a.lost == "open" else "holding last pose"))
+                if not live and not was[side] and ever[side] and a.lost == "open":
+                    w = 1.0 if a.off_ramp <= 0 else smoothstep((t0 - off_t0[side]) / a.off_ramp)
+                    cmd[side] = (1 - w) * off_from[side] + w * np.ones(6)
             if dds is not None:
                 dds.send(cmd)
             if viz is not None and t0 - t_viz > 1.0 / a.viz_hz:
@@ -403,7 +422,17 @@ def main():
         stop.set()
         rx.stop()
         if dds is not None:
-            dds.send({"left": np.ones(6), "right": np.ones(6)})  # open hands on exit
+            # release: ramp both hands to open over --off-ramp (Ctrl+C again = open immediately)
+            frm = {s: cmd[s].copy() for s in ("left", "right")}
+            n = int(a.off_ramp * a.hz)
+            try:
+                for i in range(1, n + 1):
+                    w = smoothstep(i / n)
+                    dds.send({s: (1 - w) * frm[s] + w * np.ones(6) for s in frm})
+                    time.sleep(dt)
+            except KeyboardInterrupt:
+                pass
+            dds.send({"left": np.ones(6), "right": np.ones(6)})
             print("[Inspire] hands commanded open, bye")
 
 
