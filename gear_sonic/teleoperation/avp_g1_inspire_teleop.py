@@ -19,6 +19,12 @@ they are mapped to the pip `dex_retargeting` 0.5.0 keys at load time (see load_r
 
 NOT implemented: the Inspire FTP variant (topics rt/inspire_hand/ctrl/{l,r}, needs the `inspire_dds` package).
 
+Robot side: Unitree's DFX_inspire_service (https://github.com/unitreerobotics/DFX_inspire_service) bridges
+rt/inspire/cmd <-> the hands' serial ports (RS485 frame, address 0x05CE, raw = q * 1000, clipped to 0..1000; right hand
+/dev/ttyUSB1, left /dev/ttyUSB2 -- hard-coded in inspire_g1.cpp). Run it on the machine the hands are wired to:
+    sudo ./inspire_g1 --network <nic>        # build: mkdir build && cd build && cmake .. && make -j6
+Check it is reachable from here:  python avp_g1_inspire_teleop.py --net <nic> --check
+
 Usage
 -----
   # dry run on fake hands, no headset, no robot
@@ -261,9 +267,33 @@ class InspireDDS:
         self.pub.Write(self.msg)
 
 
+def check_state(net, secs=3.0):
+    """Listen to rt/inspire/state (published by Unitree's DFX_inspire_service) and print the hand positions."""
+    from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber
+    from unitree_sdk2py.idl.unitree_go.msg.dds_ import MotorStates_
+    ChannelFactoryInitialize(0, net)
+    sub = ChannelSubscriber("rt/inspire/state", MotorStates_)
+    sub.Init()
+    t0, got = time.time(), 0
+    while time.time() - t0 < secs:
+        msg = sub.Read(200)
+        if msg is None:
+            continue
+        got += 1
+        q = [float(msg.states[i].q) for i in range(12)]
+        lost = [int(msg.states[i].lost) for i in (0, 6)]
+        print("[check] right q", " ".join(f"{v:.2f}" for v in q[:6]), "| left q", " ".join(f"{v:.2f}" for v in q[6:]),
+              f"| lost R/L {lost}")
+        time.sleep(0.5)
+    if got == 0:
+        print(f"[check] NO rt/inspire/state on '{net}' within {secs:.0f}s: is inspire_g1 running and on the same DDS network?")
+    return got > 0
+
+
 def main():
     ap = argparse.ArgumentParser(description="AVP -> Inspire hand teleoperation")
-    ap.add_argument("--net", default="enp4s0", help="NIC wired to the G1 (DDS)")
+    ap.add_argument("--net", default="enp4s0", help="NIC on the same network as the G1 / inspire service (DDS)")
+    ap.add_argument("--check", action="store_true", help="only listen to rt/inspire/state for a few seconds and exit")
     ap.add_argument("--port", type=int, default=9870, help="UDP port of the AVPHandStreamer app")
     ap.add_argument("--hz", type=float, default=50.0, help="control rate")
     ap.add_argument("--type", choices=["dexpilot", "vector"], default=None, help="override the yml retargeting type")
@@ -275,6 +305,9 @@ def main():
     ap.add_argument("--viz-hz", type=float, default=15.0, help="window refresh rate")
     ap.add_argument("--seconds", type=float, default=0.0, help="exit after N seconds (0 = until Ctrl+C)")
     a = ap.parse_args()
+
+    if a.check:
+        sys.exit(0 if check_state(a.net) else 1)
 
     print("[Inspire] building retargeters (DexPilot on the Inspire URDF) ...")
     retarget = InspireRetargeter(a.type)
