@@ -12,8 +12,9 @@ Three processes must run together (in this order):
 | # | Component | Purpose | Port / Topic |
 |---|-----------|---------|--------------|
 | 1 | `run_sim_loop.py` | MuJoCo physics simulation (robot + DDS on `lo`) | DDS on `lo` |
-| 2 | `pico_manager_thread_server.py` | PICO VR → SMPL pose → ZMQ publisher | PUB `5556` / topic `pose` |
-| 3 | `g1_deploy_onnx_ref` | Policy inference (encoder + decoder) → motor commands | SUB `5556`, PUB `5557` / `g1_debug` |
+| 2 | `RoboticsServiceProcess` + PICO client | XRoboToolkit PC service ⇄ headset app (body tracking source) | TCP `63901` (headset), `127.0.0.1:60061` (SDK) |
+| 3 | `pico_manager_thread_server.py` | PICO VR → SMPL pose → ZMQ publisher | PUB `5556` / topic `pose` |
+| 4 | `g1_deploy_onnx_ref` | Policy inference (encoder + decoder) → motor commands | SUB `5556`, PUB `5557` / `g1_debug` |
 
 ---
 
@@ -23,6 +24,70 @@ Three processes must run together (in this order):
 cd /home/grease/gam
 .venv_sim/bin/python gear_sonic/scripts/run_sim_loop.py
 ```
+
+---
+
+## 2b. Start the XRoboToolkit Stack (PC service + PICO client via adb)
+
+`pico_manager_thread_server.py` (§3) is only a *consumer* — the body-tracking data comes
+from the **XRoboToolkit PC service** on the workstation, paired over **Wi-Fi** with the
+**client app running on the headset**. Both must be up first, or §3 hangs at
+`waiting for body data...`.
+
+### 2b.1 PC service (workstation)
+
+```bash
+cd /home/grease/XRoboToolkit-PC-Service/RoboticsService/bin
+nohup ./RoboticsServiceProcess > /tmp/xrobo_pc_service.log 2>&1 &
+```
+
+Verify — expect the process plus two listeners (`63901` faces the headset, `60061` is the
+local SDK endpoint that `pico_manager_thread_server.py` connects to):
+
+```bash
+pgrep -af RoboticsServiceProcess
+ss -lntp | grep -i robotics
+```
+
+> **Do not run it with `sudo`.** `/opt/apps/roboticsservice/runService.sh` is only a
+> wrapper that `cd`s into the path above; under `sudo` it resolves the wrong `$HOME` and
+> exits 1. Run the binary directly as your own user, as shown.
+
+### 2b.2 PICO client (headset, launched over adb)
+
+The headset app is `com.xrobotoolkit.client` (Unity). With the PICO attached over USB:
+
+```bash
+adb devices -l                       # note the serial, e.g. PA921HMGL4180126G
+adb -s <SERIAL> shell am start -n \
+    com.xrobotoolkit.client/com.unity3d.player.UnityPlayerActivity
+
+# confirm it is up (prints a pid)
+adb -s <SERIAL> shell pidof com.xrobotoolkit.client
+```
+
+> **Always pass `-s <SERIAL>`.** A stale/offline transport makes bare `adb shell` fail with
+> `error: more than one device/emulator` even when `adb devices` lists only one headset.
+
+Useful adb helpers:
+
+```bash
+adb -s <SERIAL> shell ip route | grep -oE "src [0-9.]+"   # headset IP
+adb -s <SERIAL> logcat -s Unity:V                          # client-side logs
+adb -s <SERIAL> shell am force-stop com.xrobotoolkit.client
+```
+
+### 2b.3 Pair them (inside the headset)
+
+1. In the client, set **PC Service** to the **workstation's** IP (`hostname -I`, e.g.
+   `192.168.8.192`) → *Enter*, or *Reconnect* if it is already filled in.
+2. Wait for **`Status: WORKING`**.
+3. Tick **Head** and **Controller** under *Tracking*.
+4. Set *Data/Control* to **Send**.
+5. Set *Pico Motion Tracker* to **Full body**.
+
+Both machines must be on the **same Wi-Fi network** — USB/adb is only used to *launch*
+and debug the app, the pose data itself travels over Wi-Fi.
 
 ---
 
@@ -100,6 +165,33 @@ cd /home/grease/gam/gear_sonic_deploy
 ```
 
 > Only the three `policy/<name>/...` paths differ between 4a and 4b.
+
+### 4c. No-VR / AMASS-augmented low-latency model (`sonic_no_vr_llam_080k`)
+
+Same invocation, different policy directory. This family (`sonic_no_vr_050k`,
+`sonic_no_vr_ll_062k`, `sonic_no_vr_llam_080k`) was trained **without** the teleop/VR
+encoder branch, so it has only two encoder modes (`g1`=0, `smpl`=2).
+
+```bash
+cd /home/grease/gam/gear_sonic_deploy
+./target/release/g1_deploy_onnx_ref lo \
+  policy/sonic_no_vr_llam_080k/model_decoder.onnx \
+  reference/example/ \
+  --obs-config policy/sonic_no_vr_llam_080k/observation_config.yaml \
+  --encoder-file policy/sonic_no_vr_llam_080k/model_encoder.onnx \
+  --input-type zmq \
+  --zmq-host localhost \
+  --zmq-port 5556 \
+  --zmq-topic pose \
+  --zmq-conflate \
+  --disable-crc-check
+```
+
+| | value |
+|---|---|
+| Encoder / decoder dim | **979 / 994** (not 1247 — that is `low_latency`) |
+| SMPL lookahead | **4 frames** ⇒ pair with `--num_frames_to_send 4` (§3) |
+| Expected mode | `GetEncodeMode()=2`; mode 0 means the SMPL stream is not being consumed and the robot will stand still |
 
 ---
 
@@ -296,9 +388,12 @@ cd ~/gam
 | Symptom | Cause / Fix |
 |---------|-------------|
 | First launch takes minutes | TensorRT compiles ONNX → `.trt` engine (one-time). Cached next to the ONNX. Low-latency decoder is 143 MB, so its first build is slow. |
+| `Binding to port: 5557` → `zmq::error_t: Address already in use`, exit 134 | Something else holds the debug PUB port. Find it with `ss -lntp \| grep 5557`. **VS Code auto-forwards 5557/5558** (process `code`, `--utility-sub-type=node.mojom.NodeService`) after it sees them in use once — in that case either *Stop Forwarding Port* in the **Ports** panel (`"remote.autoForwardPorts": false` prevents a repeat), kill that helper PID, or just move the port with `--zmq-out-port 5559`. Note 5558 collides with `perception_heightmap/view_lidar_client.py` for the same reason. |
 | `Unknown observation function '<name>'` | The observation is missing from `GetObservationRegistry()` in `g1_deploy_onnx_ref.cpp`. Add the entry and rebuild (§10). |
 | Observation dimension mismatch | `observation_config.yaml` doesn't match the ONNX. Verify with §7. |
-| PICO stuck at `waiting for body data...` | Motion Trackers not paired/on. Run `--xrt_diag` (§9) and check `serials`. |
+| PICO stuck at `waiting for body data...` | Check in order: PC service running (§2b.1), client app running on the headset (§2b.2), `Status: WORKING` + *Send* + *Full body* ticked (§2b.3), then Motion Trackers paired/on — `--xrt_diag` (§9), check `serials`. |
+| `adb: error: more than one device/emulator` (only one headset attached) | Stale transport. Always target the serial explicitly: `adb -s <SERIAL> shell ...` (§2b.2). |
+| `sudo /opt/apps/roboticsservice/runService.sh` exits 1 | The wrapper `cd`s into `$HOME/XRoboToolkit-PC-Service/...`; under `sudo` that path doesn't resolve. Run `./RoboticsServiceProcess` directly as your user (§2b.1). |
 | Visualization window frozen | Manager is in `OFF` mode — use `--auto_pose`, or press A+B+X+Y then A+X on the controllers. |
 | Robot lags further behind over time | Producer FPS > 50 Hz consumption. Adaptive catch-up handles this; confirm `timesteps` stays flat (§9). |
 | `selected interface "lo" is not multicast-capable` | Harmless warning in loopback/sim mode. |
@@ -411,7 +506,17 @@ which keeps `step=1`) or lower `kMaxCatchupStep` to 3 (caps overspeed at 1.5×).
 ## 12. Quick Copy-Paste: Full Pipeline
 
 
-Three separate terminals:
+One-time per session, then three terminals:
+
+```bash
+# Terminal 0 — XRoboToolkit stack (PC service + headset client), see §2b
+cd /home/grease/XRoboToolkit-PC-Service/RoboticsService/bin && \
+  nohup ./RoboticsServiceProcess > /tmp/xrobo_pc_service.log 2>&1 &
+adb -s <SERIAL> shell am start -n \
+  com.xrobotoolkit.client/com.unity3d.player.UnityPlayerActivity
+# then in the headset: PC Service IP = `hostname -I`, Status: WORKING,
+# Head+Controller ticked, Data/Control = Send, Motion Tracker = Full body
+```
 
 ```bash
 # Terminal 1 — simulator
@@ -426,7 +531,7 @@ cd /home/grease/gam && .venv_teleop/bin/python -u \
 ```
 
 ```bash
-# Terminal 3 — policy (swap low_latency ↔ release as needed)
+# Terminal 3 — policy (swap low_latency ↔ release ↔ sonic_no_vr_llam_080k as needed)
 cd /home/grease/gam/gear_sonic_deploy && ./target/release/g1_deploy_onnx_ref lo \
   policy/low_latency/model_decoder.onnx reference/example/ \
   --obs-config policy/low_latency/observation_config.yaml \

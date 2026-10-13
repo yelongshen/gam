@@ -4,6 +4,12 @@ Catalog of all raw PICO VR SMPL-streaming recordings found on disk (searched via
 `pose_*.npz` per-frame signature format). To be studied further later (e.g. axis-convention
 verification, root-orientation correction work, deploy-vs-raw comparison).
 
+> **Newer session (2026-09-24)** — four recordings under
+> `/home/grease/g1_robot_data/pico_raw/` (73,673 chunks, 580 MB), one of them paired with a
+> `sonic_no_vr_llam_080k` sim run. Catalogued separately in
+> `model_eval/PICO_RAW_SESSION_20260924.md`. Note those use the **chunked** layout
+> (4 frames per `pose_*.npz`, `--num_frames_to_send 4`), not one frame per file.
+
 ## Dataset Table
 
 | Directory | Frames | Frame-index range | Schema | Notes |

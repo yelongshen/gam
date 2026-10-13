@@ -1,0 +1,2 @@
+name,severe,n_flags,flags,elbow_ang_err_p95,reach_err_p95,hand_dist_err_p95,arm_limit_frac,wrist_limit_frac,arm_spike_deg_s,elbow_ang_err_mean,dur_s
+dance_basic_padeburee_270_R_loop_fast_001__A325,0,3,reach_err_p95;arm_limit_frac;arm_spike_deg_s,24.171964308975106,0.13209125375561404,0.8877621054380964,0.029069767441860465,0.0,1034.6784054985342,10.432129385383506,11.466666666666667

@@ -21,6 +21,8 @@ NUM_META_COLS = 5  # index,time_ms,time_realtime_ms,time_monotonic_ms,ros_timest
 def load(run_dir, name, ncols=29):
     path = os.path.join(run_dir, f"{name}.csv")
     arr = np.genfromtxt(path, delimiter=",", skip_header=1, invalid_raise=False)
+    if arr.size == 0:
+        return np.zeros((0, ncols)), np.zeros((0,))
     if arr.ndim == 1:
         arr = arr[None, :]
     return arr[:, NUM_META_COLS:NUM_META_COLS + ncols], arr[:, 1]

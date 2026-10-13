@@ -252,3 +252,8 @@ data_process/excluded_clips/
 *.bak
 gear_sonic/scripts/note.txt
 
+
+# local virtualenvs / model bundles that must not be committed
+.venv_emc/
+gear_sonic_deploy/policy/
+model_eval/cache_sim_next/

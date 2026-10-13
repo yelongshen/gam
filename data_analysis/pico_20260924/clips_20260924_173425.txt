@@ -1,0 +1,26 @@
+Loading /home/grease/g1_robot_data/pico_raw/20260924_173425 ...
+  3969 frames @ 50.0 fps  (79.4s)  joints=(3969, 24, 3)
+Computing sliding-window features (window=1.5s) ...
+  limb_energy threshold (p60): 1.4388  (40.0% of frames flagged active)
+
+Found 7 candidate segments before dedup/ranking:
+
+==========================================================================================
+SELECTED CLIPS (top 3 per label, 5 total, frame_base=100):
+==========================================================================================
+       frame_range   dur(s)  label        coarse_category           root_v   air%   ulr  gait_p  wave_p
+[     0,   400)     8.00  waving       Basic Locomotion           0.009    0.0  2.54   0.738   0.859
+[   500,   800)     6.00  waving       Upper-Body Manipulation    0.039    0.0  2.79   0.633   0.556
+[   700,  1000)     6.00  waving       Upper-Body Manipulation    0.033    0.0  2.02   0.412   0.537
+[   900,  1200)     6.00  walking      Basic Locomotion           0.023    0.0  1.41   0.670   0.741
+[  1100,  1400)     6.00  walking      Basic Locomotion           0.018    0.0  1.28   0.291   0.720
+==========================================================================================
+
+All 7 candidate segments (before top-N filtering):
+  [     0,   400)  dur= 8.00s  label=waving        coarse=Basic Locomotion
+  [   500,   800)  dur= 6.00s  label=waving        coarse=Upper-Body Manipulation
+  [   700,  1000)  dur= 6.00s  label=waving        coarse=Upper-Body Manipulation
+  [   900,  1200)  dur= 6.00s  label=walking       coarse=Basic Locomotion
+  [  1100,  1400)  dur= 6.00s  label=walking       coarse=Basic Locomotion
+  [  1482,  1629)  dur= 2.94s  label=waving        coarse=Upper-Body Manipulation
+  [  3476,  3690)  dur= 4.28s  label=waving        coarse=Upper-Body Manipulation

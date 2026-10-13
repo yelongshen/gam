@@ -1,0 +1,10 @@
+
+===== 20260924_181122   candidates: 9 -> 6 merged, non-overlapping
+  #       chunk range           t (s)     dur  label      parts  composition
+  1 [   300,   500)    6.0-  10.0    4.0s  waving         1  waving:4.0s
+  2 [  1500,  1700)   30.0-  34.0    4.0s  gesture        1  gesture:4.0s
+  3 [  2000,  2450)   40.0-  49.0    9.0s  waving         1  waving:9.0s
+  4 [  2450,  3450)   49.0-  69.0   20.0s  walking        4  walking:20.0s
+  5 [  3450,  3800)   69.0-  76.0    7.0s  agile          1  agile:7.0s
+  6 [  4400,  4548)   88.0-  91.0    3.0s  gesture        1  gesture:3.0s
+    total 47.0s across 6 disjoint clips

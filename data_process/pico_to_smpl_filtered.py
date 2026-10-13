@@ -91,6 +91,50 @@ def load_pico_sequence(d, start=None, end=None):
     )
 
 
+def load_pico_clip_npz(path, start=None, end=None):
+    """Load a CONSOLIDATED clip .npz (produced by
+    `gear_sonic/scripts/chunk_pico_session.py`), where every key is already
+    stacked over time as (T, ...) instead of a directory of 4-frame chunks.
+
+    Unlike the legacy chunked captures, these clips carry `body_pos_w` -- the
+    real world root position recorded via `--record_root_pos` -- which is what
+    finally makes a non-zero `transl` possible.
+    """
+    z = np.load(path, allow_pickle=True)
+    sl = slice(start, end)
+    # FRAME RATE.  A consolidated clip keeps ONE frame per recorded 4-frame message (the newest), and messages are written
+    # at ~50 Hz.  `pico_fps` (~86-90 Hz) is the SDK capture rate, NOT the spacing of these frames: using it made every
+    # clip play ~1.75-1.9x too fast (measured on 0928/0929/0930/1002: dataset duration 0.49-0.55x the real one).  The real
+    # spacing is in `timestamp_monotonic`, so the rate is measured from it.
+    pico_fps = float(np.asarray(z['pico_fps']).reshape(-1)[0])
+    fps = pico_fps
+    if 'timestamp_monotonic' in z.files:
+        ts = np.asarray(z['timestamp_monotonic'], dtype=np.float64).reshape(-1)[sl]
+        if len(ts) >= 2 and ts[-1] > ts[0]:
+            meas = (len(ts) - 1) / (ts[-1] - ts[0])
+            if 20.0 <= meas <= 120.0:
+                fps = float(meas)
+    if abs(fps - pico_fps) > 1.0:
+        print(f"  [fps] measured {fps:.2f} Hz from timestamps (pico_fps field says {pico_fps:.2f}) -> using {fps:.2f}")
+    out = dict(
+        smpl_pose=np.asarray(z['smpl_pose'][sl], dtype=np.float64),
+        body_quat_w=np.asarray(z['body_quat_w'][sl], dtype=np.float64),
+        smpl_joints=np.asarray(z['smpl_joints'][sl], dtype=np.float32),
+        vr_position=np.asarray(z['vr_position'][sl], dtype=np.float64),
+        fps=fps,
+    )
+    out['body_pos_w'] = (np.asarray(z['body_pos_w'][sl], dtype=np.float64)
+                         if 'body_pos_w' in z.files else None)
+    out['n'] = out['smpl_pose'].shape[0]
+    return out
+
+
+def yup_to_zup(p):
+    """PICO Y-up (x, y, z) -> Z-up (x, -z, y), preserving handedness."""
+    p = np.asarray(p, dtype=np.float64)
+    return np.stack([p[:, 0], -p[:, 2], p[:, 1]], axis=-1)
+
+
 def build_pose_aa(smpl_pose, body_quat_w):
     """smpl_pose: (T,21,3) axis-angle, body_quat_w: (T,4) [w,x,y,z] quat
     -> pose_aa (T,72): root(3) + 21 body joints(63) + 2 hand joints(6, zero).
@@ -186,7 +230,8 @@ def build_smpl_joints_for_pkl(raw_smpl_joints, body_quat_w, pelvis_offset=None):
     return joints
 
 
-def build_transl(n, vr_position, mode='zero'):
+def build_transl(n, vr_position, mode='zero', body_pos_w=None, world_floor_z=None,
+                 recenter_xy=True):
     if mode == 'zero':
         return np.zeros((n, 3), dtype=np.float64)
     if mode == 'head':
@@ -197,7 +242,85 @@ def build_transl(n, vr_position, mode='zero'):
         head_xyz = vr_position[:, 0:3].copy()
         head_xyz[:, 2] -= 0.6
         return head_xyz
+    if mode == 'body_pos_w':
+        # REAL root translation, recorded by pico_manager_thread_server.py
+        # under --record_root_pos. This is the fix for the long-standing
+        # "transl is entirely zero / every clip retargets in-place" problem
+        # documented in PICO_TELEOP_RETARGETING_PIPELINE.md.
+        if body_pos_w is None:
+            raise ValueError("transl_mode='body_pos_w' but the clip has no body_pos_w")
+        t = yup_to_zup(body_pos_w)
+        if world_floor_z is not None:
+            # Put the floor at z = 0 so pelvis height is physical (~0.9 m).
+            t[:, 2] -= world_floor_z
+        if recenter_xy:
+            # Start each clip at the world origin in the horizontal plane;
+            # the SHAPE of the trajectory (the locomotion) is preserved.
+            t[:, 0:2] -= t[0, 0:2]
+        return t
     raise ValueError(f"unknown transl_mode: {mode}")
+
+
+def estimate_world_floor_z(smpl_joints_local, body_quat_w, body_pos_w,
+                           foot_idx=(10, 11), pct=5.0):
+    """Robust floor height (z) in the Z-up world frame.
+
+    Reconstructs world joints as R(body_quat_w) * joints_local + zup(body_pos_w)
+    and takes a low percentile of the lowest-foot height. The percentile (not
+    the raw minimum) keeps a single foot-tracking spike from dragging the whole
+    clip into the air -- the exact failure mode seen on clip_018.
+    """
+    def qapply(q, v):
+        w = q[..., 0:1]
+        u = q[..., 1:]
+        return v + 2 * np.cross(u, np.cross(u, v) + w * v)
+
+    q = np.repeat(body_quat_w[:, None, :], smpl_joints_local.shape[1], axis=1)
+    world = qapply(q, np.asarray(smpl_joints_local, dtype=np.float64))
+    world = world + yup_to_zup(body_pos_w)[:, None, :]
+    low = world[:, list(foot_idx), 2].min(axis=1)
+    return float(np.percentile(low, pct))
+
+
+def floor_envelope_z(smpl_joints_local, body_quat_w, body_pos_w, fps, win_s=1.5,
+                     foot_idx=(10, 11), stand_lo=0.88, stand_hi=1.00):
+    """PER-FRAME floor height (z, Z-up world), (T,) array.
+
+    `estimate_world_floor_z` returns ONE number per clip. That is wrong when the
+    tracker's height scale differs between postures: in the 2026-10-02 sitting
+    session the SEATED feet sit on the floor but the STANDING feet float 0.10-0.24 m
+    above it (pelvis 1.07 m instead of 0.94 m, head-to-pelvis unchanged), so any
+    single floor value leaves either the sit or the walk off the ground.
+
+    A person always has at least one foot on the floor while walking, standing or
+    sitting, so the lowest-foot height, followed by a rolling MINIMUM over `win_s`
+    seconds (long enough to cover a stride) and then a moving average (so the correction
+    ramps smoothly through the stand<->sit transitions), is the local floor. Subtracting
+    it puts the supporting foot at z = 0 in every posture.  NOT suitable for clips with
+    flight phases (jumps) -- there the envelope would follow the airborne feet.
+    """
+    from scipy.ndimage import minimum_filter1d, uniform_filter1d
+
+    def qapply(q, v):
+        w = q[..., 0:1]
+        u = q[..., 1:]
+        return v + 2 * np.cross(u, np.cross(u, v) + w * v)
+
+    q = np.repeat(body_quat_w[:, None, :], smpl_joints_local.shape[1], axis=1)
+    world = qapply(q, np.asarray(smpl_joints_local, dtype=np.float64))
+    world = world + yup_to_zup(body_pos_w)[:, None, :]
+    low = world[:, list(foot_idx), 2].min(axis=1)
+    n = max(3, int(round(win_s * fps)))
+    env = minimum_filter1d(low, size=n, mode='nearest')
+    env = uniform_filter1d(env, size=n, mode='nearest')
+    # Apply the envelope ONLY while STANDING / walking. While seated the feet may legitimately
+    # dangle (a high stool): a rolling minimum would then follow the lifted feet and sink the whole
+    # body (measured: pelvis 0.34 m instead of 0.57 m on two clips). Seated frames keep the plain
+    # clip-level floor (p5), which is the old behaviour and is correct where the feet rest on it.
+    p5 = float(np.percentile(low, 5.0))
+    pel = uniform_filter1d(world[:, 0, 2] - p5, size=n, mode='nearest')
+    w = np.clip((pel - stand_lo) / (stand_hi - stand_lo), 0.0, 1.0)
+    return p5 + w * (env - p5)
 
 
 def _resample_times(T, src_fps, tgt_fps):
@@ -268,8 +391,11 @@ def resample_quat_slerp(quat_wfirst, src_fps, tgt_fps):
 
 
 def convert_clip(src_dir, out_path, start=None, end=None, target_fps=50.0, transl_mode='zero',
-                 verify=True):
-    seq = load_pico_sequence(src_dir, start=start, end=end)
+                 verify=True, floor_mode='clip_p5', floor_win=1.5):
+    if os.path.isfile(src_dir) and src_dir.endswith('.npz'):
+        seq = load_pico_clip_npz(src_dir, start=start, end=end)
+    else:
+        seq = load_pico_sequence(src_dir, start=start, end=end)
     print(f"  loaded {seq['n']} frames @ {seq['fps']:.2f} fps from {src_dir}"
           + (f" [{start},{end})" if (start is not None or end is not None) else ""))
 
@@ -290,10 +416,40 @@ def convert_clip(src_dir, out_path, start=None, end=None, target_fps=50.0, trans
     # ordering that reproduces `pico_replay_server.py` to ~1e-7; interpolating
     # in the pelvis-pinned world frame instead drifts ~5e-4 m from it.
     pose_aa = build_pose_aa(smpl_pose_rs, body_quat_rs).astype(np.float32)
-    smpl_joints = build_smpl_joints_for_pkl(raw_joints_rs, body_quat_rs).astype(np.float32)
+    # Re-pin the pelvis to PELVIS_OFFSET. Resampling ~87fps -> 50fps linearly
+    # interpolates joints that are ROTATING, so the pelvis picks up a
+    # chord-vs-arc error of up to ~0.7mm and no longer sits exactly on the
+    # constant the `smpl_filtered` spec requires. Re-pinning removes it.
+    # This does NOT flatten squats: the pelvis' WORLD height lives in `transl`,
+    # and the pose lives in the pelvis-relative joint offsets -- neither is
+    # touched here.
+    smpl_joints = build_smpl_joints_for_pkl(raw_joints_rs, body_quat_rs,
+                                            pelvis_offset=PELVIS_OFFSET).astype(np.float32)
 
-    transl_full = build_transl(seq['n'], seq['vr_position'], mode=transl_mode)
+    if transl_mode == 'body_pos_w' and seq.get('body_pos_w') is not None:
+        if floor_mode == 'foot_envelope':
+            world_floor = floor_envelope_z(seq['smpl_joints'], seq['body_quat_w'],
+                                           seq['body_pos_w'], original_fps, win_s=floor_win)
+            print(f"     floor[foot_envelope win={floor_win}s]: z range "
+                  f"[{world_floor.min():.3f}, {world_floor.max():.3f}] m (per-frame)")
+        else:
+            world_floor = estimate_world_floor_z(seq['smpl_joints'], seq['body_quat_w'],
+                                                 seq['body_pos_w'])
+    else:
+        world_floor = None
+    transl_full = build_transl(
+        seq['n'], seq['vr_position'], mode=transl_mode,
+        body_pos_w=seq.get('body_pos_w'),
+        world_floor_z=world_floor,
+    )
     transl = resample_linear(transl_full, original_fps, target_fps).astype(np.float32)
+
+    if transl_mode != 'zero':
+        disp = float(np.linalg.norm(transl[-1] - transl[0]))
+        path = float(np.linalg.norm(np.diff(transl, axis=0), axis=1).sum())
+        print(f"     transl[{transl_mode}]: path={path:.2f}m disp={disp:.2f}m "
+              f"pelvis_z mean={transl[:, 2].mean():.3f}m "
+              f"[{transl[:, 2].min():.3f}, {transl[:, 2].max():.3f}]")
 
     out = dict(
         pose_aa=pose_aa,
@@ -360,7 +516,14 @@ def verify_roundtrip(out, body_quat_rs, raw_joints_rs, tol=1e-5):
 
     sgn = np.sign(np.sum(root_q * body_quat_rs, axis=1, keepdims=True))
     q_err = np.abs(root_q * sgn - body_quat_rs).max()
-    j_err = np.abs(joints_local - raw_joints_rs).max()
+
+    # Compare the POSE, i.e. joints relative to the pelvis. The pelvis' own
+    # absolute position is deliberately re-pinned to PELVIS_OFFSET during
+    # conversion (see convert_clip), so comparing it against the un-pinned raw
+    # capture would just re-measure the resampling error we intentionally
+    # corrected. Everything that carries actual motion is pelvis-relative.
+    j_err = np.abs((joints_local - joints_local[:, 0:1, :])
+                   - (raw_joints_rs - raw_joints_rs[:, 0:1, :])).max()
 
     # Pelvis must stay PINNED. The residual tolerance here is set by the raw
     # capture itself: `smpl_joints`/`body_quat_w` are stored as float32, so
@@ -372,7 +535,7 @@ def verify_roundtrip(out, body_quat_rs, raw_joints_rs, tol=1e-5):
     pel_off = np.abs(pel.mean(axis=0) - PELVIS_OFFSET).max()
 
     ok = (q_err < tol) and (j_err < tol) and (pel_drift < 1e-4) and (pel_off < 1e-3)
-    print(f"     [verify] body_quat_w err={q_err:.2e}  smpl_joints err={j_err:.2e}  "
+    print(f"     [verify] body_quat_w err={q_err:.2e}  pose(rel) err={j_err:.2e}  "
           f"pelvis drift={pel_drift:.2e} off={pel_off:.2e}  -> "
           f"{'PASS' if ok else 'FAIL'}")
     if not ok:
@@ -381,14 +544,24 @@ def verify_roundtrip(out, body_quat_rs, raw_joints_rs, tol=1e-5):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--dir', required=True, help='directory of pose_*.npz files')
+    ap.add_argument('--dir', required=True,
+                    help='directory of pose_*.npz files, OR a consolidated clip .npz')
     ap.add_argument('--out', required=True, help='output .pkl path')
     ap.add_argument('--start', type=int, default=None, help='start frame (array index, inclusive)')
     ap.add_argument('--end', type=int, default=None, help='end frame (array index, exclusive)')
     ap.add_argument('--target_fps', type=float, default=50.0)
-    ap.add_argument('--transl_mode', choices=['zero', 'head'], default='zero',
+    ap.add_argument('--transl_mode', choices=['zero', 'head', 'body_pos_w'], default='zero',
                      help="'zero': static root translation (safe default); "
-                          "'head': rough placeholder derived from the VR head anchor")
+                          "'head': rough placeholder derived from the VR head anchor; "
+                          "'body_pos_w': REAL recorded world root position (needs "
+                          "a capture made with --record_root_pos)")
+    ap.add_argument('--floor_mode', choices=['clip_p5', 'foot_envelope'], default='clip_p5',
+                    help="'clip_p5': one floor height per clip (5th percentile of the lowest foot; "
+                         "default, unchanged); 'foot_envelope': per-frame floor from the lowest foot "
+                         "(rolling min + smoothing) -- for sit/stand sessions where the tracker's "
+                         "height differs between postures. Do not use for jumps.")
+    ap.add_argument('--floor_win', type=float, default=1.5,
+                    help='window (s) of the foot_envelope rolling minimum / smoothing')
     ap.add_argument('--no_verify', action='store_true',
                      help='skip the built-in round-trip check against the raw PICO values')
     args = ap.parse_args()
@@ -396,7 +569,7 @@ def main():
     print(f"Converting {args.dir} -> {args.out}")
     convert_clip(args.dir, args.out, start=args.start, end=args.end,
                  target_fps=args.target_fps, transl_mode=args.transl_mode,
-                 verify=not args.no_verify)
+                 verify=not args.no_verify, floor_mode=args.floor_mode, floor_win=args.floor_win)
 
 
 if __name__ == '__main__':

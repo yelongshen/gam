@@ -1,0 +1,68 @@
+{
+ "dance1_subject2__w067s": {
+  "full_seq": "dance1_subject2",
+  "new_start_frame": 2038,
+  "window_frames": 240,
+  "clean": false
+ },
+ "dance2_subject4__w196s": {
+  "full_seq": "dance2_subject4",
+  "new_start_frame": 5915,
+  "window_frames": 240,
+  "clean": true
+ },
+ "fight1_subject2__w219s": {
+  "full_seq": "fight1_subject2",
+  "new_start_frame": 6591,
+  "window_frames": 240,
+  "clean": false
+ },
+ "fight1_subject3__w148s": {
+  "full_seq": "fight1_subject3",
+  "new_start_frame": 4484,
+  "window_frames": 240,
+  "clean": false
+ },
+ "fightAndSports1_subject1__w062s": {
+  "full_seq": "fightAndSports1_subject1",
+  "new_start_frame": 1827,
+  "window_frames": 240,
+  "clean": true
+ },
+ "jumps1_subject1__w050s": {
+  "full_seq": "jumps1_subject1",
+  "new_start_frame": 1549,
+  "window_frames": 240,
+  "clean": false
+ },
+ "jumps1_subject2__w169s": {
+  "full_seq": "jumps1_subject2",
+  "new_start_frame": 5120,
+  "window_frames": 240,
+  "clean": false
+ },
+ "multipleActions1_subject1__w124s": {
+  "full_seq": "multipleActions1_subject1",
+  "new_start_frame": 3751,
+  "window_frames": 240,
+  "clean": false
+ },
+ "multipleActions1_subject3__w036s": {
+  "full_seq": "multipleActions1_subject3",
+  "new_start_frame": 1102,
+  "window_frames": 240,
+  "clean": false
+ },
+ "run1_subject5__w035s": {
+  "full_seq": "run1_subject5",
+  "new_start_frame": 1013,
+  "window_frames": 240,
+  "clean": false
+ },
+ "run2_subject4__w205s": {
+  "full_seq": "run2_subject4",
+  "new_start_frame": 6106,
+  "window_frames": 240,
+  "clean": false
+ }
+}

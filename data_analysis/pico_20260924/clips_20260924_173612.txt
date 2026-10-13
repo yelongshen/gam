@@ -1,0 +1,155 @@
+Loading /home/grease/g1_robot_data/pico_raw/20260924_173612 ...
+  54347 frames @ 50.0 fps  (1086.9s)  joints=(54347, 24, 3)
+Computing sliding-window features (window=1.5s) ...
+  limb_energy threshold (p60): 8.1700  (40.0% of frames flagged active)
+
+Found 129 candidate segments before dedup/ranking:
+
+==========================================================================================
+SELECTED CLIPS (top 3 per label, 12 total, frame_base=100):
+==========================================================================================
+       frame_range   dur(s)  label        coarse_category           root_v   air%   ulr  gait_p  wave_p
+[  2800,  3200)     8.00  jumping      Agility / High-Dynamic     0.276   23.0  0.81   0.557   0.325
+[  4700,  5100)     8.00  waving       Basic Locomotion           0.135    0.0  1.97   0.727   0.558
+[  5400,  5800)     8.00  agile        Agility / High-Dynamic     0.153    0.8  1.71   0.613   0.468
+[  6100,  6600)    10.00  walking      Agility / High-Dynamic     0.537    0.0  0.98   0.355   0.660
+[  6600,  7100)    10.00  walking      Agility / High-Dynamic     0.626    0.0  0.81   0.749   0.749
+[  7300,  7600)     6.00  jumping      Agility / High-Dynamic     0.759   19.0  0.79   0.514   0.723
+[  7600,  7900)     6.00  agile        Agility / High-Dynamic     0.303    0.0  0.45   0.426   0.417
+[  9000,  9500)    10.00  agile        Agility / High-Dynamic     0.190    0.0  0.99   0.590   0.460
+[ 16300, 16400)     2.00  gesture      Upper-Body Manipulation    0.074    0.0  3.81  -0.041   0.110
+[ 22500, 22700)     4.00  waving       Upper-Body Manipulation    0.199    0.0  2.03   0.377   0.507
+[ 33700, 34100)     8.00  jumping      Agility / High-Dynamic     0.455   37.5  0.53   0.679   0.695
+[ 35700, 36100)     8.00  walking      Agility / High-Dynamic     0.633    0.0  0.99   0.554   0.777
+==========================================================================================
+
+All 129 candidate segments (before top-N filtering):
+  [   921,  1218)  dur= 5.94s  label=jumping       coarse=Agility / High-Dynamic
+  [  1218,  1514)  dur= 5.92s  label=jumping       coarse=Agility / High-Dynamic
+  [  1588,  1660)  dur= 1.44s  label=jumping       coarse=Basic Locomotion
+  [  1711,  1826)  dur= 2.30s  label=jumping       coarse=Agility / High-Dynamic
+  [  2045,  2352)  dur= 6.14s  label=walking       coarse=Basic Locomotion
+  [  2460,  2707)  dur= 4.94s  label=walking       coarse=Basic Locomotion
+  [  2800,  3200)  dur= 8.00s  label=jumping       coarse=Agility / High-Dynamic
+  [  3191,  3417)  dur= 4.52s  label=walking       coarse=Basic Locomotion
+  [  3417,  3642)  dur= 4.50s  label=jumping       coarse=Agility / High-Dynamic
+  [  3659,  3927)  dur= 5.36s  label=jumping       coarse=Agility / High-Dynamic
+  [  4225,  4361)  dur= 2.72s  label=jumping       coarse=Agility / High-Dynamic
+  [  4414,  4612)  dur= 3.96s  label=jumping       coarse=Agility / High-Dynamic
+  [  4700,  5100)  dur= 8.00s  label=waving        coarse=Basic Locomotion
+  [  5370,  5433)  dur= 1.26s  label=walking       coarse=Basic Locomotion
+  [  5400,  5800)  dur= 8.00s  label=agile         coarse=Agility / High-Dynamic
+  [  5789,  6176)  dur= 7.74s  label=walking       coarse=Basic Locomotion
+  [  6100,  6600)  dur=10.00s  label=walking       coarse=Agility / High-Dynamic
+  [  6600,  7100)  dur=10.00s  label=walking       coarse=Agility / High-Dynamic
+  [  7085,  7137)  dur= 1.04s  label=walking       coarse=Basic Locomotion
+  [  7256,  7337)  dur= 1.62s  label=walking       coarse=Basic Locomotion
+  [  7300,  7600)  dur= 6.00s  label=jumping       coarse=Agility / High-Dynamic
+  [  7600,  7900)  dur= 6.00s  label=agile         coarse=Agility / High-Dynamic
+  [  8240,  8424)  dur= 3.68s  label=walking       coarse=Basic Locomotion
+  [  8457,  8772)  dur= 6.30s  label=jumping       coarse=Agility / High-Dynamic
+  [  8772,  9087)  dur= 6.30s  label=walking       coarse=Basic Locomotion
+  [  9000,  9500)  dur=10.00s  label=agile         coarse=Agility / High-Dynamic
+  [  9494,  9702)  dur= 4.16s  label=walking       coarse=Basic Locomotion
+  [  9702,  9910)  dur= 4.16s  label=walking       coarse=Basic Locomotion
+  [ 10136, 10251)  dur= 2.30s  label=jumping       coarse=Agility / High-Dynamic
+  [ 10392, 10585)  dur= 3.86s  label=jumping       coarse=Unstructured / OOD
+  [ 10704, 10839)  dur= 2.70s  label=walking       coarse=Basic Locomotion
+  [ 11155, 11290)  dur= 2.70s  label=jumping       coarse=Agility / High-Dynamic
+  [ 11336, 11470)  dur= 2.68s  label=jumping       coarse=Unstructured / OOD
+  [ 11497, 11571)  dur= 1.48s  label=jumping       coarse=Basic Locomotion
+  [ 11867, 11951)  dur= 1.68s  label=walking       coarse=Basic Locomotion
+  [ 13191, 13244)  dur= 1.06s  label=walking       coarse=Basic Locomotion
+  [ 13920, 14040)  dur= 2.40s  label=walking       coarse=Basic Locomotion
+  [ 14067, 14249)  dur= 3.64s  label=jumping       coarse=Agility / High-Dynamic
+  [ 14277, 14661)  dur= 7.68s  label=walking       coarse=Basic Locomotion
+  [ 14692, 14908)  dur= 4.32s  label=walking       coarse=Basic Locomotion
+  [ 14964, 15042)  dur= 1.56s  label=walking       coarse=Basic Locomotion
+  [ 15440, 15611)  dur= 3.42s  label=jumping       coarse=Basic Locomotion
+  [ 15669, 15811)  dur= 2.84s  label=jumping       coarse=Agility / High-Dynamic
+  [ 15923, 15980)  dur= 1.14s  label=walking       coarse=Basic Locomotion
+  [ 16300, 16400)  dur= 2.00s  label=gesture       coarse=Upper-Body Manipulation
+  [ 16507, 16581)  dur= 1.48s  label=walking       coarse=Basic Locomotion
+  [ 16610, 16791)  dur= 3.62s  label=walking       coarse=Basic Locomotion
+  [ 16844, 16926)  dur= 1.64s  label=walking       coarse=Basic Locomotion
+  [ 17205, 17316)  dur= 2.22s  label=walking       coarse=Basic Locomotion
+  [ 17361, 17448)  dur= 1.74s  label=walking       coarse=Basic Locomotion
+  [ 18482, 18578)  dur= 1.92s  label=walking       coarse=Basic Locomotion
+  [ 18614, 18695)  dur= 1.62s  label=walking       coarse=Basic Locomotion
+  [ 19043, 19131)  dur= 1.76s  label=walking       coarse=Basic Locomotion
+  [ 19285, 19500)  dur= 4.30s  label=walking       coarse=Basic Locomotion
+  [ 19588, 19667)  dur= 1.58s  label=walking       coarse=Basic Locomotion
+  [ 19755, 19856)  dur= 2.02s  label=walking       coarse=Basic Locomotion
+  [ 19940, 20254)  dur= 6.28s  label=walking       coarse=Basic Locomotion
+  [ 20254, 20568)  dur= 6.28s  label=walking       coarse=Basic Locomotion
+  [ 21116, 21199)  dur= 1.66s  label=jumping       coarse=Agility / High-Dynamic
+  [ 22158, 22239)  dur= 1.62s  label=walking       coarse=Basic Locomotion
+  [ 22259, 22333)  dur= 1.48s  label=walking       coarse=Basic Locomotion
+  [ 22500, 22700)  dur= 4.00s  label=waving        coarse=Upper-Body Manipulation
+  [ 23033, 23159)  dur= 2.52s  label=walking       coarse=Basic Locomotion
+  [ 23351, 23453)  dur= 2.04s  label=walking       coarse=Basic Locomotion
+  [ 23549, 23640)  dur= 1.82s  label=walking       coarse=Basic Locomotion
+  [ 23750, 23815)  dur= 1.30s  label=walking       coarse=Basic Locomotion
+  [ 23979, 24072)  dur= 1.86s  label=jumping       coarse=Agility / High-Dynamic
+  [ 24104, 24204)  dur= 2.00s  label=jumping       coarse=Agility / High-Dynamic
+  [ 25201, 25372)  dur= 3.42s  label=walking       coarse=Basic Locomotion
+  [ 28502, 28569)  dur= 1.34s  label=walking       coarse=Basic Locomotion
+  [ 28589, 28674)  dur= 1.70s  label=walking       coarse=Basic Locomotion
+  [ 28772, 28844)  dur= 1.44s  label=walking       coarse=Basic Locomotion
+  [ 30888, 31175)  dur= 5.74s  label=walking       coarse=Basic Locomotion
+  [ 31283, 31540)  dur= 5.14s  label=jumping       coarse=Agility / High-Dynamic
+  [ 31540, 31796)  dur= 5.12s  label=jumping       coarse=Agility / High-Dynamic
+  [ 31868, 32128)  dur= 5.20s  label=jumping       coarse=Agility / High-Dynamic
+  [ 32260, 32327)  dur= 1.34s  label=walking       coarse=Basic Locomotion
+  [ 32361, 32512)  dur= 3.02s  label=walking       coarse=Basic Locomotion
+  [ 33020, 33102)  dur= 1.64s  label=walking       coarse=Basic Locomotion
+  [ 33546, 33779)  dur= 4.66s  label=agile         coarse=Agility / High-Dynamic
+  [ 33700, 34100)  dur= 8.00s  label=jumping       coarse=Agility / High-Dynamic
+  [ 34048, 34251)  dur= 4.06s  label=jumping       coarse=Agility / High-Dynamic
+  [ 34829, 34902)  dur= 1.46s  label=walking       coarse=Basic Locomotion
+  [ 35075, 35321)  dur= 4.92s  label=walking       coarse=Basic Locomotion
+  [ 35487, 35608)  dur= 2.42s  label=walking       coarse=Basic Locomotion
+  [ 35660, 35729)  dur= 1.38s  label=walking       coarse=Basic Locomotion
+  [ 35700, 36100)  dur= 8.00s  label=walking       coarse=Agility / High-Dynamic
+  [ 36658, 36809)  dur= 3.02s  label=walking       coarse=Basic Locomotion
+  [ 36868, 36934)  dur= 1.32s  label=walking       coarse=Basic Locomotion
+  [ 37601, 37729)  dur= 2.56s  label=walking       coarse=Basic Locomotion
+  [ 37832, 38005)  dur= 3.46s  label=jumping       coarse=Agility / High-Dynamic
+  [ 38481, 38565)  dur= 1.68s  label=walking       coarse=Basic Locomotion
+  [ 38883, 38982)  dur= 1.98s  label=walking       coarse=Basic Locomotion
+  [ 39032, 39328)  dur= 5.92s  label=jumping       coarse=Agility / High-Dynamic
+  [ 39348, 39492)  dur= 2.88s  label=jumping       coarse=Agility / High-Dynamic
+  [ 39781, 39852)  dur= 1.42s  label=walking       coarse=Basic Locomotion
+  [ 40126, 40228)  dur= 2.04s  label=walking       coarse=Basic Locomotion
+  [ 40263, 40438)  dur= 3.50s  label=walking       coarse=Basic Locomotion
+  [ 41117, 41201)  dur= 1.68s  label=walking       coarse=Basic Locomotion
+  [ 41385, 41723)  dur= 6.76s  label=walking       coarse=Basic Locomotion
+  [ 41773, 41896)  dur= 2.46s  label=jumping       coarse=Agility / High-Dynamic
+  [ 42203, 42267)  dur= 1.28s  label=jumping       coarse=Agility / High-Dynamic
+  [ 42332, 42394)  dur= 1.24s  label=walking       coarse=Basic Locomotion
+  [ 42607, 42720)  dur= 2.26s  label=jumping       coarse=Agility / High-Dynamic
+  [ 42743, 42817)  dur= 1.48s  label=jumping       coarse=Agility / High-Dynamic
+  [ 42880, 42982)  dur= 2.04s  label=walking       coarse=Basic Locomotion
+  [ 43836, 44049)  dur= 4.26s  label=walking       coarse=Basic Locomotion
+  [ 44049, 44261)  dur= 4.24s  label=walking       coarse=Basic Locomotion
+  [ 44339, 44399)  dur= 1.20s  label=jumping       coarse=Basic Locomotion
+  [ 44591, 44821)  dur= 4.60s  label=walking       coarse=Basic Locomotion
+  [ 45043, 45324)  dur= 5.62s  label=walking       coarse=Basic Locomotion
+  [ 45324, 45605)  dur= 5.62s  label=jumping       coarse=Agility / High-Dynamic
+  [ 45605, 45886)  dur= 5.62s  label=walking       coarse=Basic Locomotion
+  [ 46347, 46621)  dur= 5.48s  label=walking       coarse=Basic Locomotion
+  [ 47168, 47357)  dur= 3.78s  label=walking       coarse=Basic Locomotion
+  [ 47868, 48192)  dur= 6.48s  label=walking       coarse=Basic Locomotion
+  [ 48336, 48541)  dur= 4.10s  label=walking       coarse=Basic Locomotion
+  [ 48541, 48745)  dur= 4.08s  label=walking       coarse=Basic Locomotion
+  [ 48807, 48868)  dur= 1.22s  label=walking       coarse=Basic Locomotion
+  [ 49119, 49398)  dur= 5.58s  label=walking       coarse=Basic Locomotion
+  [ 50436, 50555)  dur= 2.38s  label=walking       coarse=Basic Locomotion
+  [ 50624, 50706)  dur= 1.64s  label=walking       coarse=Basic Locomotion
+  [ 50755, 51049)  dur= 5.88s  label=walking       coarse=Basic Locomotion
+  [ 51339, 51447)  dur= 2.16s  label=walking       coarse=Basic Locomotion
+  [ 51872, 52032)  dur= 3.20s  label=walking       coarse=Basic Locomotion
+  [ 52121, 52322)  dur= 4.02s  label=walking       coarse=Basic Locomotion
+  [ 52322, 52523)  dur= 4.02s  label=walking       coarse=Basic Locomotion
+  [ 52560, 52666)  dur= 2.12s  label=walking       coarse=Basic Locomotion
+  [ 54257, 54347)  dur= 1.80s  label=walking       coarse=Basic Locomotion

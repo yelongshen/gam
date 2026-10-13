@@ -1,0 +1,20 @@
+
+===== 20260924_175748   candidates: 28 -> 16 merged, non-overlapping
+  #       chunk range           t (s)     dur  label      parts  composition
+  1 [  1000,  1100)   20.0-  22.0    2.0s  gesture        1  gesture:2.0s
+  2 [  1235,  1552)   24.7-  31.0    6.3s  walking        1  walking:6.3s
+  3 [  1757,  2884)   35.1-  57.7   22.5s  walking        4  walking:23.4s
+  4 [  3022,  3759)   60.4-  75.2   14.7s  walking        4  walking:10.2s
+  5 [  4313,  4800)   86.3-  96.0    9.7s  walking        2  walking:9.7s
+  6 [  4800,  5200)   96.0- 104.0    8.0s  jumping        1  jumping:8.0s
+  7 [  5400,  5700)  108.0- 114.0    6.0s  walking        1  walking:6.0s
+  8 [  5700,  5900)  114.0- 118.0    4.0s  gesture        1  gesture:4.0s
+  9 [  6500,  6800)  130.0- 136.0    6.0s  jumping        1  jumping:6.0s
+ 10 [  6900,  7200)  138.0- 144.0    6.0s  jumping        1  jumping:6.0s
+ 11 [  7622,  7987)  152.4- 159.7    7.3s  walking        2  walking:7.3s
+ 12 [  8000,  8200)  160.0- 164.0    4.0s  gesture        1  gesture:4.0s
+ 13 [  8787,  9342)  175.7- 186.8   11.1s  walking        4  walking:8.2s
+ 14 [  9640,  9845)  192.8- 196.9    4.1s  walking        2  walking:4.1s
+ 15 [ 10000, 10200)  200.0- 204.0    4.0s  agile          1  agile:4.0s
+ 16 [ 10674, 10740)  213.5- 214.8    1.3s  walking        1  walking:1.3s
+    total 117.2s across 16 disjoint clips

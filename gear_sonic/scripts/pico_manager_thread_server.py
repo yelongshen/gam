@@ -1007,6 +1007,7 @@ def _pose_stream_common(
     use_cuda: bool,
     record_dir: str,
     record_format: str,
+    record_root_pos: bool = False,
     stop_event: threading.Event | None = None,
     log_prefix: str = "PoseLoop",
     enable_vis_vr3pt: bool = False,
@@ -1042,6 +1043,7 @@ def _pose_stream_common(
         use_cuda=use_cuda,
         record_dir=record_dir,
         record_format=record_format,
+        record_root_pos=record_root_pos,
         log_prefix=log_prefix,
     )
 
@@ -1413,6 +1415,7 @@ class PoseStreamer:
         use_cuda: bool,
         record_dir: str,
         record_format: str,
+        record_root_pos: bool = False,
         log_prefix: str = "PoseLoop",
     ):
         self.socket = socket
@@ -1420,6 +1423,7 @@ class PoseStreamer:
         self.num_frames_to_send = num_frames_to_send
         self.target_fps = target_fps
         self.record_dir = record_dir
+        self.record_root_pos = record_root_pos
         self.log_prefix = log_prefix
 
         # Injected dependencies
@@ -1678,6 +1682,17 @@ class PoseStreamer:
         self.frame_buffer["body_quat_w"].append(use_body_quat)
         self.frame_buffer["frame_index"].append(int(self.step))
         self.frame_buffer["joint_pos"].append(joint_pos)
+        # Root WORLD position (SMPL joint 0). `get_body_joints_pose()` returns
+        # [x,y,z,qx,qy,qz,qw] per joint, but _process_3pt_pose() uses the root
+        # position only to make the other keypoints root-relative and then
+        # discards it -- so every capture so far has transl == 0 and retargets
+        # to an in-place clip. Buffer it here so it can be RECORDED. It is
+        # deliberately NOT added to the streamed ZMQ payload: the C++ decoder
+        # validates the v3 field set and an extra key risks "frame count
+        # mismatch" aborts. Recording-only keeps the wire format byte-identical.
+        self.frame_buffer["body_pos_w"].append(
+            np.asarray(sample["body_poses_np"][0, :3], dtype=np.float32)
+        )
         pico_dt = float(sample.get("dt", 0.0))
         pico_fps = float(sample.get("fps", 0.0))
         N = len(self.frame_buffer["frame_index"])
@@ -1729,7 +1744,17 @@ class PoseStreamer:
 
             if self.record_dir:
                 out_path = os.path.join(self.record_dir, f"pose_{self.record_idx:06d}.npz")
-                np.savez_compressed(out_path, **numpy_data)
+                record_data = numpy_data
+                if self.record_root_pos:
+                    # Extra key in the RECORDED npz only -- `numpy_data` was
+                    # already handed to pack_pose_message() above, so the wire
+                    # format is untouched and old readers still work (they just
+                    # ignore the extra array).
+                    record_data = dict(numpy_data)
+                    record_data["body_pos_w"] = np.stack(
+                        self.frame_buffer["body_pos_w"], axis=0
+                    )
+                np.savez_compressed(out_path, **record_data)
                 self.record_idx += 1
 
         self.step += 1
@@ -1759,6 +1784,7 @@ def run_pico(
     use_cuda: bool = False,
     record_dir: str = "",
     record_format: str = "npz",
+    record_root_pos: bool = False,
     enable_vis_vr3pt: bool = False,
     with_g1_robot: bool = True,
     enable_waist_tracking: bool = False,
@@ -1795,6 +1821,7 @@ def run_pico(
             use_cuda=use_cuda,
             record_dir=record_dir,
             record_format=record_format,
+            record_root_pos=record_root_pos,
             stop_event=None,
             log_prefix="Main",
             enable_vis_vr3pt=enable_vis_vr3pt,
@@ -2070,6 +2097,7 @@ def run_pico_manager(
     use_cuda: bool = False,
     record_dir: str = "",
     record_format: str = "npz",
+    record_root_pos: bool = False,
     zmq_feedback_host: str = "localhost",
     zmq_feedback_port: int = 5557,
     enable_vis_vr3pt: bool = False,
@@ -2135,6 +2163,7 @@ def run_pico_manager(
         use_cuda=use_cuda,
         record_dir=record_dir,
         record_format=record_format,
+        record_root_pos=record_root_pos,
         log_prefix="PoseLoop",
     )
     planner_streamer = PlannerStreamer(
@@ -2376,6 +2405,15 @@ if __name__ == "__main__":
         help="Recording format: 'npz' or 'bin' (default: npz)",
     )
     parser.add_argument(
+        "--record_root_pos",
+        action="store_true",
+        help="Also record the root WORLD position as 'body_pos_w' in each npz. "
+             "The SDK provides it (get_body_joints_pose joint 0) but the pose "
+             "pipeline discards it, which is why older captures have transl==0 "
+             "and retarget to in-place clips. Recording-only: the streamed ZMQ "
+             "payload is unchanged, so this cannot affect a live session.",
+    )
+    parser.add_argument(
         "--manager",
         action="store_true",
         help="Run manager with planner and pose threads (interactive)",
@@ -2593,6 +2631,7 @@ if __name__ == "__main__":
             use_cuda=args.cuda,
             record_dir=args.record_dir,
             record_format=args.record_format,
+            record_root_pos=args.record_root_pos,
             zmq_feedback_host=args.zmq_feedback_host,
             zmq_feedback_port=args.zmq_feedback_port,
             enable_vis_vr3pt=args.vis_vr3pt,
@@ -2612,6 +2651,7 @@ if __name__ == "__main__":
             use_cuda=args.cuda,
             record_dir=args.record_dir,
             record_format=args.record_format,
+            record_root_pos=args.record_root_pos,
             enable_vis_vr3pt=args.vis_vr3pt,
             with_g1_robot=with_g1_robot,
             enable_waist_tracking=args.waist_tracking,
