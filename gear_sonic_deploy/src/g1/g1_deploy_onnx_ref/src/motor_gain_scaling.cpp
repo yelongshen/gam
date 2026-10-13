@@ -1,8 +1,12 @@
 #include "motor_gain_scaling.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cctype>
+#include <cerrno>
 #include <charconv>
+#include <cstdio>
+#include <cstdlib>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -42,10 +46,14 @@ std::optional<float> parse_scale(std::string_view value, std::string& error) {
     return std::nullopt;
   }
 
-  float scale = 0.0F;
-  const auto result = std::from_chars(value.data(), value.data() + value.size(),
-                                      scale, std::chars_format::general);
-  if (result.ec != std::errc{} || result.ptr != value.data() + value.size()) {
+  // gcc-10's libstdc++ does not implement the floating-point overloads of
+  // std::from_chars (added in GCC 11), so parse via strtof instead. Build a
+  // NUL-terminated copy since value (a string_view) is not guaranteed to be.
+  const std::string text(value);
+  char* end = nullptr;
+  errno = 0;
+  const float scale = std::strtof(text.c_str(), &end);
+  if (end != text.c_str() + text.size() || errno == ERANGE) {
     error = "invalid scale factor '" + std::string(value) + "'";
     return std::nullopt;
   }
@@ -105,10 +113,16 @@ bool select_motor_range(
 }
 
 std::string format_scale(float scale) {
+  // gcc-10's libstdc++ does not implement the floating-point overload of
+  // std::to_chars (added in GCC 11), so format via snprintf instead.
   std::array<char, 32> buffer;
-  const auto result =
-      std::to_chars(buffer.data(), buffer.data() + buffer.size(), scale);
-  return std::string(buffer.data(), result.ptr);
+  const int written = std::snprintf(buffer.data(), buffer.size(), "%g", scale);
+  if (written < 0) {
+    return std::string();
+  }
+  const std::size_t length =
+      std::min(static_cast<std::size_t>(written), buffer.size());
+  return std::string(buffer.data(), length);
 }
 
 }  // namespace

@@ -5,6 +5,7 @@ ChannelConfigHasInterface = '''<?xml version="1.0" encoding="UTF-8" ?>
                 <Interfaces>
                     <NetworkInterface name="$__IF_NAME__$" priority="default" multicast="default"/>
                 </Interfaces>
+                <AllowMulticast>spdp</AllowMulticast>
             </General>
             <Tracing>
                 <Verbosity>config</Verbosity>

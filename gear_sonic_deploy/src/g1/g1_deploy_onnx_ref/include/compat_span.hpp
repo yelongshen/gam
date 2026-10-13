@@ -1,7 +1,17 @@
 #pragma once
 
-#if __has_include(<span>) && __cplusplus >= 202002L
+// Some compilers (e.g. g++-10 in -std=c++2a mode) report a pre-C++20
+// __cplusplus value even though libstdc++'s <span> is fully implemented and
+// usable. Relying on __cplusplus here caused this polyfill to activate
+// alongside the real std::span, producing "redeclared with 1 template
+// parameter" errors. Prefer the __cpp_lib_span feature-test macro, which
+// libstdc++ defines only when a real, usable std::span is present.
+#if __has_include(<span>)
 #include <span>
+#endif
+
+#if defined(__cpp_lib_span)
+// Real std::span is available; nothing further to do.
 #else
 
 #include <array>
