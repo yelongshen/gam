@@ -59,6 +59,7 @@ ASSETS = HERE / "assets"
 YML = ASSETS / "inspire_hand" / "inspire_hand.yml"
 NUM_MOTORS = 6
 TOPIC_CMD = "rt/inspire/cmd"
+TOPIC_STATE = "rt/inspire/state"
 STALE_S = 0.5
 
 # Hardware order of the Inspire DFX API (per hand), as joint names of the URDF
@@ -247,24 +248,45 @@ class HandViz:
 
 
 class InspireDDS:
-    """Publishes both hands on rt/inspire/cmd (DFX). q in [0,1]: 1 = open."""
+    """Publishes both hands on rt/inspire/cmd (DFX) and tracks the actual hand pose from rt/inspire/state.
+
+    q in [0,1]: 1 = open. The service applies BOTH hands from every message, so a hand we do not drive must be
+    re-sent at its own current value (a default 0 would close it).
+    """
 
     def __init__(self, net):
-        from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelPublisher
+        from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelPublisher, ChannelSubscriber
         from unitree_sdk2py.idl.default import unitree_go_msg_dds__MotorCmd_
-        from unitree_sdk2py.idl.unitree_go.msg.dds_ import MotorCmds_
+        from unitree_sdk2py.idl.unitree_go.msg.dds_ import MotorCmds_, MotorStates_
         ChannelFactoryInitialize(0, net)
         self.pub = ChannelPublisher(TOPIC_CMD, MotorCmds_)
         self.pub.Init()
         self.msg = MotorCmds_()
         self.msg.cmds = [unitree_go_msg_dds__MotorCmd_() for _ in range(12)]
-        self.send({"left": np.ones(6), "right": np.ones(6)})  # start open
+        self._state = None
+        self.sub = ChannelSubscriber(TOPIC_STATE, MotorStates_)
+        self.sub.Init(self._on_state, 10)
+
+    def _on_state(self, msg):
+        self._state = np.array([float(msg.states[i].q) for i in range(12)])
+
+    def wait_state(self, timeout=2.0):
+        """Actual hand pose {'right': [6], 'left': [6]} in API units (0..1), or None if no state arrives."""
+        t0 = time.time()
+        while self._state is None and time.time() - t0 < timeout:
+            time.sleep(0.05)
+        return None if self._state is None else {"right": self._state[:6].copy(), "left": self._state[6:].copy()}
 
     def send(self, api):
         for side in ("left", "right"):
             for k, mid in enumerate(DDS_ID[side]):
                 self.msg.cmds[mid].q = float(api[side][k])
         self.pub.Write(self.msg)
+
+
+def smoothstep(s):
+    s = min(max(s, 0.0), 1.0)
+    return s * s * (3.0 - 2.0 * s)
 
 
 def check_state(net, secs=3.0):
@@ -297,7 +319,11 @@ def main():
     ap.add_argument("--port", type=int, default=9870, help="UDP port of the AVPHandStreamer app")
     ap.add_argument("--hz", type=float, default=50.0, help="control rate")
     ap.add_argument("--type", choices=["dexpilot", "vector"], default=None, help="override the yml retargeting type")
-    ap.add_argument("--ramp", type=float, default=1.0, help="seconds to ramp from open to the target when a hand appears")
+    ap.add_argument("--settle", "--ramp", dest="settle", type=float, default=3.0,
+                    help="seconds to move from the hand's CURRENT pose to your tracked pose when a hand first appears "
+                         "(smoothstep; the target keeps tracking your hand during the settle)")
+    ap.add_argument("--assume-open", action="store_true",
+                    help="if rt/inspire/state is not received, start the settle from 'open' instead of refusing to run")
     ap.add_argument("--print-only", action="store_true", help="retarget and print; do not touch DDS / the robot")
     ap.add_argument("--sim", action="store_true", help="feed fake hands (no headset)")
     ap.add_argument("--viz", action="store_true",
@@ -323,7 +349,19 @@ def main():
     print("[Inspire] mode:", "print-only" if a.print_only else f"DDS {TOPIC_CMD} on {a.net}",
           "| order [pinky ring middle index thumb_bend thumb_rot], API 1=open 0=closed")
 
-    cmd = {"left": np.ones(6), "right": np.ones(6)}
+    cmd = {"left": np.ones(6), "right": np.ones(6)}   # what we send; before a hand is tracked it stays at the actual pose
+    if dds is not None:
+        state = dds.wait_state(2.0)
+        if state is None:
+            if not a.assume_open:
+                sys.exit(f"[Inspire] no rt/inspire/state on '{a.net}': cannot know where the hands are. Is inspire_g1 running "
+                         "on the same DDS network? (use --assume-open to start the settle from 'open' anyway)")
+            print("[Inspire] WARNING: no hand state; assuming the hands are OPEN at start")
+        else:
+            cmd = {s: np.clip(state[s], 0.0, 1.0) for s in ("left", "right")}
+            f0 = lambda v: " ".join(f"{x:.2f}" for x in v)  # noqa: E731
+            print(f"[Inspire] hands now: right [{f0(cmd['right'])}]  left [{f0(cmd['left'])}]  -> settle {a.settle:.1f}s to the tracked pose")
+    start = {"left": cmd["left"].copy(), "right": cmd["right"].copy()}
     ramp_t0 = {"left": 0.0, "right": 0.0}
     was = {"left": False, "right": False}
     dt, t_start, t_print = 1.0 / a.hz, time.time(), 0.0
@@ -339,9 +377,10 @@ def main():
                     rad[side] = q
                     if not was[side]:
                         ramp_t0[side] = t0
-                        print(f"[Inspire] {side} hand ON")
-                    w = 1.0 if a.ramp <= 0 else min(1.0, (t0 - ramp_t0[side]) / a.ramp)
-                    cmd[side] = (1 - w) * np.ones(6) + w * api
+                        start[side] = cmd[side].copy()   # settle starts from what we last commanded (= where the hand is)
+                        print(f"[Inspire] {side} hand ON -> settling over {a.settle:.1f}s")
+                    w = 1.0 if a.settle <= 0 else smoothstep((t0 - ramp_t0[side]) / a.settle)
+                    cmd[side] = (1 - w) * start[side] + w * api
                 elif was[side]:
                     print(f"[Inspire] {side} hand LOST -> holding last command")
                 was[side] = live
