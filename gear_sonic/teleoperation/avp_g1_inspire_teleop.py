@@ -152,7 +152,7 @@ def urdf_edges(side):
 
 
 class InspireRetargeter:
-    def __init__(self, rtype=None, alpha=None):
+    def __init__(self, rtype=None, alpha=None, project_dist=None, escape_dist=None):
         from dex_retargeting.retargeting_config import RetargetingConfig
         RetargetingConfig.set_default_urdf_dir(str(ASSETS))
         cfg = yaml.safe_load(YML.read_text())
@@ -166,6 +166,10 @@ class InspireRetargeter:
                     c["type"] = rtype
                 if alpha is not None:
                     c["low_pass_alpha"] = alpha   # 1.0 = no smoothing; the yml value (0.2) smooths a lot
+                if project_dist is not None:
+                    c["project_dist"] = project_dist   # DexPilot: thumb-to-fingertip distance below which it assumes a pinch
+                if escape_dist is not None:
+                    c["escape_dist"] = escape_dist
                 dex = c.pop("target_link_human_indices_dexpilot")
                 vec = c.pop("target_link_human_indices_vector")
                 # map the fork's key names to pip dex_retargeting 0.5.0
@@ -403,6 +407,11 @@ def main():
     ap.add_argument("--port", type=int, default=9870, help="UDP port of the AVPHandStreamer app")
     ap.add_argument("--hz", type=float, default=50.0, help="control rate")
     ap.add_argument("--type", choices=["dexpilot", "vector"], default=None, help="override the yml retargeting type")
+    ap.add_argument("--project-dist", type=float, default=None,
+                    help="DexPilot only: if the thumb tip is closer than this (m, default 0.03) to a fingertip it assumes a "
+                         "pinch and curls that finger, which can bend fingers on an open hand; lower it (e.g. 0.01) or use "
+                         "--type vector")
+    ap.add_argument("--escape-dist", type=float, default=None, help="DexPilot only: distance (m, default 0.05) that ends a pinch")
     ap.add_argument("--alpha", type=float, default=None,
                     help="retargeting low-pass filter (0..1, 1 = off). The yml uses 0.2, which smooths a lot; try 0.6-1.0 for a "
                          "snappier hand")
@@ -436,7 +445,7 @@ def main():
         sys.exit(0 if check_state(a.net, relay=relay_addr) else 1)
 
     print("[Inspire] building retargeters (DexPilot on the Inspire URDF) ...")
-    retarget = InspireRetargeter(a.type, a.alpha)
+    retarget = InspireRetargeter(a.type, a.alpha, a.project_dist, a.escape_dist)
     rx = Receiver(a.port)
     rx.start()
     stop = threading.Event()
