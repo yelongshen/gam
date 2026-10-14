@@ -433,6 +433,9 @@ def main():
     ap.add_argument("--viz", action="store_true",
                     help="simulation window: retargeted Inspire hand (URDF FK) over the human hand; use with --print-only")
     ap.add_argument("--viz-hz", type=float, default=15.0, help="window refresh rate")
+    ap.add_argument("--record", default=None, metavar="FILE.npz",
+                    help="save every tracked frame (raw 25 joints, retargeted radians and API values, DexPilot pinch flags) "
+                         "to this file on exit, to debug retargeting offline")
     ap.add_argument("--seconds", type=float, default=0.0, help="exit after N seconds (0 = until Ctrl+C)")
     a = ap.parse_args()
 
@@ -481,6 +484,7 @@ def main():
     off_from = {"left": cmd["left"].copy(), "right": cmd["right"].copy()}
     dt, t_start, t_print = 1.0 / a.hz, time.time(), 0.0
     stuck_since, warned = {}, {}
+    rec = [] if a.record else None
     FINGER_NAMES = ["pinky", "ring", "middle", "index", "thumb_bend", "thumb_rot"]
     try:
         while a.seconds <= 0 or time.time() - t_start < a.seconds:
@@ -492,6 +496,11 @@ def main():
                 if live:
                     q, api = retarget(joints[side], side)
                     rad[side] = q
+                    if rec is not None:
+                        pj = getattr(retarget.rt[side].optimizer, "projected", None)
+                        pj = np.full(10, -1, dtype=np.int8) if pj is None else np.asarray(pj, dtype=np.int8)[:10]
+                        rec.append((t0, side == "right", np.asarray(joints[side], dtype=np.float32)[:25], q.copy(),
+                                    api.copy(), np.pad(pj, (0, 10 - len(pj)), constant_values=-1)))
                     last_live[side] = t0
                     if not was[side]:   # ON: first appearance, or back after being OFF
                         ramp_t0[side] = t0
@@ -545,6 +554,11 @@ def main():
     finally:
         stop.set()
         rx.stop()
+        if rec:
+            t, is_r, jn, rd, ap_, pj = zip(*rec)
+            np.savez_compressed(a.record, t=np.array(t), right=np.array(is_r), joints=np.stack(jn), rad=np.stack(rd),
+                                api=np.stack(ap_), projected=np.stack(pj), type=str(a.type or "yml"))
+            print(f"[Inspire] recorded {len(rec)} frames -> {a.record}")
         if dds is not None:
             # release: ramp both hands to open over --off-ramp (Ctrl+C again = open immediately)
             frm = {s: cmd[s].copy() for s in ("left", "right")}
