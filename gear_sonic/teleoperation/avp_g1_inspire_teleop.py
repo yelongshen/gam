@@ -480,6 +480,8 @@ def main():
     off_t0 = {"left": 0.0, "right": 0.0}
     off_from = {"left": cmd["left"].copy(), "right": cmd["right"].copy()}
     dt, t_start, t_print = 1.0 / a.hz, time.time(), 0.0
+    stuck_since, warned = {}, {}
+    FINGER_NAMES = ["pinky", "ring", "middle", "index", "thumb_bend", "thumb_rot"]
     try:
         while a.seconds <= 0 or time.time() - t_start < a.seconds:
             t0 = time.time()
@@ -508,6 +510,20 @@ def main():
                     cmd[side] = (1 - w) * off_from[side] + w * np.ones(6)
             if dds is not None:
                 dds.send(cmd)
+                act = dds.latest()
+                if act is not None:   # warn if a finger stays far from its command: hand / service problem, not retargeting
+                    for side in ("left", "right"):
+                        err = np.abs(cmd[side] - act[side])
+                        for i in range(6):
+                            key = (side, i)
+                            if err[i] > 0.4:
+                                stuck_since.setdefault(key, t0)
+                                if t0 - stuck_since[key] > 3.0 and t0 - warned.get(key, -99.0) > 10.0:
+                                    warned[key] = t0
+                                    print(f"[Inspire] WARNING {side} {FINGER_NAMES[i]} is not following: command {cmd[side][i]:.2f}, "
+                                          f"actual {act[side][i]:.2f} for {t0 - stuck_since[key]:.0f}s (hand / service problem?)")
+                            else:
+                                stuck_since.pop(key, None)
             if viz is not None and t0 - t_viz > 1.0 / a.viz_hz:
                 t_viz = t0
                 if not viz.alive():
@@ -517,7 +533,9 @@ def main():
                 t_print = t0
                 f = lambda v: " ".join(f"{x:5.2f}" for x in v)  # noqa: E731
                 act = dds.latest() if dds is not None else None
-                lag = ("   lag |cmd-actual| R %.2f L %.2f" % tuple(float(np.max(np.abs(cmd[s] - act[s]))) for s in ("right", "left"))
+                lag = ("   actual R [%s] L [%s]   lag |cmd-actual| R %.2f L %.2f" % (
+                           f(act["right"]), f(act["left"]),
+                           *[float(np.max(np.abs(cmd[s] - act[s]))) for s in ("right", "left")])
                        if act is not None else "")
                 print(f"L{'*' if was['left'] else ' '} api [{f(cmd['left'])}]   R{'*' if was['right'] else ' '} api [{f(cmd['right'])}]"
                       + lag + (f"   rad L [{f(rad['left'])}] R [{f(rad['right'])}]" if len(rad) == 2 else ""))
