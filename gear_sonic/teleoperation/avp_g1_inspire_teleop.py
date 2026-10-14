@@ -152,7 +152,7 @@ def urdf_edges(side):
 
 
 class InspireRetargeter:
-    def __init__(self, rtype=None):
+    def __init__(self, rtype=None, alpha=None):
         from dex_retargeting.retargeting_config import RetargetingConfig
         RetargetingConfig.set_default_urdf_dir(str(ASSETS))
         cfg = yaml.safe_load(YML.read_text())
@@ -164,6 +164,8 @@ class InspireRetargeter:
                 c = copy.deepcopy(cfg[side])
                 if rtype:
                     c["type"] = rtype
+                if alpha is not None:
+                    c["low_pass_alpha"] = alpha   # 1.0 = no smoothing; the yml value (0.2) smooths a lot
                 dex = c.pop("target_link_human_indices_dexpilot")
                 vec = c.pop("target_link_human_indices_vector")
                 # map the fork's key names to pip dex_retargeting 0.5.0
@@ -277,6 +279,9 @@ class InspireDDS:
         t0 = time.time()
         while self._state is None and time.time() - t0 < timeout:
             time.sleep(0.05)
+        return self.latest()
+
+    def latest(self):
         return None if self._state is None else {"right": self._state[:6].copy(), "left": self._state[6:].copy()}
 
     def send(self, api):
@@ -332,6 +337,9 @@ class InspireRelay:
             if self._state is not None:
                 break
             time.sleep(0.2)
+        return self.latest()
+
+    def latest(self):
         return None if self._state is None else {"right": self._state[:6].copy(), "left": self._state[6:].copy()}
 
     def state_age(self):
@@ -395,6 +403,9 @@ def main():
     ap.add_argument("--port", type=int, default=9870, help="UDP port of the AVPHandStreamer app")
     ap.add_argument("--hz", type=float, default=50.0, help="control rate")
     ap.add_argument("--type", choices=["dexpilot", "vector"], default=None, help="override the yml retargeting type")
+    ap.add_argument("--alpha", type=float, default=None,
+                    help="retargeting low-pass filter (0..1, 1 = off). The yml uses 0.2, which smooths a lot; try 0.6-1.0 for a "
+                         "snappier hand")
     ap.add_argument("--settle", "--ramp", dest="settle", type=float, default=3.0,
                     help="seconds to move from the hand's CURRENT pose to your tracked pose when a hand first appears "
                          "(smoothstep; the target keeps tracking your hand during the settle)")
@@ -425,7 +436,7 @@ def main():
         sys.exit(0 if check_state(a.net, relay=relay_addr) else 1)
 
     print("[Inspire] building retargeters (DexPilot on the Inspire URDF) ...")
-    retarget = InspireRetargeter(a.type)
+    retarget = InspireRetargeter(a.type, a.alpha)
     rx = Receiver(a.port)
     rx.start()
     stop = threading.Event()
@@ -496,8 +507,11 @@ def main():
             if t0 - t_print > 0.5 and viz is None:
                 t_print = t0
                 f = lambda v: " ".join(f"{x:5.2f}" for x in v)  # noqa: E731
+                act = dds.latest() if dds is not None else None
+                lag = ("   lag |cmd-actual| R %.2f L %.2f" % tuple(float(np.max(np.abs(cmd[s] - act[s]))) for s in ("right", "left"))
+                       if act is not None else "")
                 print(f"L{'*' if was['left'] else ' '} api [{f(cmd['left'])}]   R{'*' if was['right'] else ' '} api [{f(cmd['right'])}]"
-                      + (f"   rad L [{f(rad['left'])}] R [{f(rad['right'])}]" if len(rad) == 2 else ""))
+                      + lag + (f"   rad L [{f(rad['left'])}] R [{f(rad['right'])}]" if len(rad) == 2 else ""))
             time.sleep(max(0.0, dt - (time.time() - t0)))
     except KeyboardInterrupt:
         pass
