@@ -7,8 +7,10 @@ pico_trigger_inspire.py -- open/close the G1's Inspire hands with the PICO contr
        --> UDP --> inspire_relay.py (robot PC) --> DDS rt/inspire/cmd --> inspire_g1 --> Inspire hands
 
 Order of the 6 values per hand: [pinky, ring, middle, index, thumb_bend, thumb_rotation].
-Fingers close with the trigger. The thumb stays open unless you pass --thumb (its closed pose is NOT validated: tune it
-on one hand slowly).
+The four fingers close to --closed-value (default 0.2) and the thumb closes to thumb_bend 0 / thumb_rotation 0 (fully bent,
+rotated across the palm) with the same trigger. Use --no-thumb to keep the thumb open. A fully closed thumb together with
+closed fingers may collide mechanically: pull the trigger slowly the first time, and raise --thumb-bend-closed /
+--thumb-rot-closed if the thumb and fingers touch.
 
 Safety:
   * starts from the REAL hand pose (read back through the relay) and never sends anything before that is known
@@ -59,9 +61,11 @@ def main():
     ap.add_argument("--closed-value", type=float, default=0.2,
                     help="API value of the four fingers at a fully pulled trigger (0 = fist, 1 = open); 0.2 leaves the "
                          "fingers a little open so objects are not crushed")
-    ap.add_argument("--thumb", action="store_true", help="also move the thumb (closed pose unvalidated: tune carefully)")
-    ap.add_argument("--thumb-bend-closed", type=float, default=0.5, help="thumb_bend value at full trigger (with --thumb)")
-    ap.add_argument("--thumb-rot-closed", type=float, default=0.5, help="thumb_rotation value at full trigger (with --thumb)")
+    ap.add_argument("--no-thumb", action="store_true", help="keep the thumb open (only the four fingers move)")
+    ap.add_argument("--thumb-bend-closed", type=float, default=0.0,
+                    help="thumb_bend value at a fully pulled trigger (0 = fully bent, 1 = open); default 0.0")
+    ap.add_argument("--thumb-rot-closed", type=float, default=0.0,
+                    help="thumb_rotation value at a fully pulled trigger (0 = rotated across the palm, 1 = open); default 0.0")
     ap.add_argument("--deadzone", type=float, default=0.05, help="trigger below this does nothing")
     ap.add_argument("--gamma", type=float, default=1.0, help=">1 = gentler start of the pull")
     ap.add_argument("--max-speed", type=float, default=1.0, help="max change of any value per second (1.0 = full range in 1 s)")
@@ -94,8 +98,8 @@ def main():
                                                                   " ".join(f"{v:.2f}" for v in cmd["left"])))
 
     open_pose = np.ones(6)
-    closed_pose = np.array([a.closed_value] * 4 + [a.thumb_bend_closed if a.thumb else 1.0,
-                                                   a.thumb_rot_closed if a.thumb else 1.0])
+    closed_pose = np.array([a.closed_value] * 4 + [1.0 if a.no_thumb else a.thumb_bend_closed,
+                                                   1.0 if a.no_thumb else a.thumb_rot_closed])
     xrt.init()
     print("[trigger] waiting for controller data from the headset (XRoboToolkit: Controller ON, Send ON) ...")
     armed = {"left": False, "right": False}
