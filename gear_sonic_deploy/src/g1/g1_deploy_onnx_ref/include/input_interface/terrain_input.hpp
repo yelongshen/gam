@@ -14,13 +14,17 @@
  *   torso_quat        f64  [4]          x y z w
  *   timestamp         f64  [1]          when the publisher sampled the map (its clock)
  *   map_stamp         f64  [1]          stamp of the map it sampled (same clock)
+ *   pose_stamp        f64  [1]          optional: stamp of the torso pose it used (same clock)
  *   torso_grid_21       f32  [21, 21] optional: torso_z - surface_z, 10 cm, torso heading frame
  *   torso_grid_21_valid bool [21, 21] optional
  *
- * A message is usable when it arrived less than `max_msg_age_s` ago and its map is less
- * than `max_map_age_s` older than the sample (both default to a few map periods). When it
- * is not, the observation is "no map": every ray invalid and zero, which the policy was
- * trained on, rather than silently holding old heights.
+ * A message is usable when it arrived less than `max_msg_age_s` ago, its torso pose is less than
+ * `max_pose_age_s` older than the sample, and its map less than `max_map_age_s`. The publisher
+ * re-centres the grid on the latest pose at every sample, so the map's own age only delays newly
+ * seen ground: for static terrain a map a second old is still right, and the map limit only has to
+ * catch a mapper that stopped. A stale pose is worse: the grid would stay where the robot was.
+ * When a message is not usable, the observation is "no map" (every ray invalid and zero, which
+ * the policy was trained on) rather than silently holding old heights.
  */
 
 #ifndef TERRAIN_INPUT_HPP
@@ -43,8 +47,9 @@ struct TerrainInputOptions {
   std::string host = "127.0.0.1";
   int port = 5559;
   std::string topic = "terrain";
-  double max_msg_age_s = 0.1;  // 5 samples at 50 Hz
-  double max_map_age_s = 0.6;  // 3 periods of the 5 Hz map
+  double max_msg_age_s = 0.1;   // 5 samples at 50 Hz
+  double max_pose_age_s = 0.25;  // odometry runs at the IMU rate; this is a frozen pose
+  double max_map_age_s = 2.0;   // the 5 Hz map, slowed by the policy sharing the GPU: 0.2-0.5 s
 };
 
 inline TerrainInputOptions& GlobalTerrainInputOptions() {
@@ -79,7 +84,7 @@ class TerrainInput {
   }
   void Stop() { subscriber_.Stop(); }
 
-  enum class Status { kOk, kNoMessage, kStaleMessage, kStaleMap };
+  enum class Status { kOk, kNoMessage, kStaleMessage, kStalePose, kStaleMap };
 
   /// Copy the latest message if it is usable now.
   Status Latest(terrain_scan::TerrainMessage& out) const {
@@ -87,6 +92,7 @@ class TerrainInput {
     if (!have_msg_) return Status::kNoMessage;
     const double age = std::chrono::duration<double>(Clock::now() - recv_time_).count();
     if (age > options_.max_msg_age_s) return Status::kStaleMessage;
+    if (pose_age_s_ > options_.max_pose_age_s) return Status::kStalePose;
     if (map_age_s_ > options_.max_map_age_s) return Status::kStaleMap;
     out = msg_;
     return Status::kOk;
@@ -97,6 +103,7 @@ class TerrainInput {
       case Status::kOk: return "ok";
       case Status::kNoMessage: return "no terrain message yet";
       case Status::kStaleMessage: return "terrain messages stopped arriving";
+      case Status::kStalePose: return "terrain pose (odometry) is stale";
       case Status::kStaleMap: return "terrain map is stale";
     }
     return "?";
@@ -121,8 +128,8 @@ class TerrainInput {
     }
     terrain_scan::TerrainMessage m;
     float res = 0.f, origin[2] = {0.f, 0.f};
-    double timestamp = 0.0, map_stamp = 0.0;  // no NaN sentinels: built with -ffast-math
-    bool got_timestamp = false, got_map_stamp = false;
+    double timestamp = 0.0, map_stamp = 0.0, pose_stamp = 0.0;  // no NaN sentinels: -ffast-math
+    bool got_timestamp = false, got_map_stamp = false, got_pose_stamp = false;
     bool got_grid = false, got_res = false, got_origin = false, got_pos = false, got_quat = false;
     for (size_t i = 0; i < header.fields.size(); ++i) {
       const auto& f = header.fields[i];
@@ -147,6 +154,8 @@ class TerrainInput {
         got_timestamp = Read(f, b, "f64", 1, &timestamp);
       } else if (f.name == "map_stamp") {
         got_map_stamp = Read(f, b, "f64", 1, &map_stamp);
+      } else if (f.name == "pose_stamp") {
+        got_pose_stamp = Read(f, b, "f64", 1, &pose_stamp);
       } else if (f.name == "torso_grid_21" && f.shape.size() == 2 && f.shape[0] * f.shape[1] == terrain_scan::kTorsoGridCells) {
         m.torso_grid.resize(terrain_scan::kTorsoGridCells);
         if (!Read(f, b, "f32", m.torso_grid.size(), m.torso_grid.data())) m.torso_grid.clear();
@@ -167,6 +176,7 @@ class TerrainInput {
     msg_ = std::move(m);
     // Unknown map stamp -> treat the map as fresh; the message age still applies.
     map_age_s_ = (got_timestamp && got_map_stamp) ? timestamp - map_stamp : 0.0;
+    pose_age_s_ = (got_timestamp && got_pose_stamp) ? timestamp - pose_stamp : 0.0;  // older publisher: unchecked
     recv_time_ = Clock::now();
     have_msg_ = true;
   }
@@ -180,6 +190,7 @@ class TerrainInput {
   mutable std::mutex mutex_;
   terrain_scan::TerrainMessage msg_;
   double map_age_s_ = 0.0;
+  double pose_age_s_ = 0.0;
   Clock::time_point recv_time_{};
   bool have_msg_ = false;
   int warnings_ = 0;

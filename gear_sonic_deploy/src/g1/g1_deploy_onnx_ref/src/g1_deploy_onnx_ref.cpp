@@ -4287,8 +4287,8 @@ int main(int argc, char const* argv[]) {
     std::cout << "  --obs-config <path>: specify observation configuration YAML file" << std::endl;
     std::cout << "  --terrain-host <host> / --terrain-port <port> / --terrain-topic <topic>: onboard terrain map for the"
                  " height_map_* observations (default 127.0.0.1:5559 'terrain')" << std::endl;
-    std::cout << "  --terrain-max-msg-age <s> / --terrain-max-map-age <s>: treat the map as missing past these ages"
-                 " (default 0.1 / 0.6)" << std::endl;
+    std::cout << "  --terrain-max-msg-age <s> / --terrain-max-pose-age <s> / --terrain-max-map-age <s>: treat the"
+                 " map as missing past these ages (default 0.1 / 0.25 / 2.0)" << std::endl;
     std::cout << "  --encoder-file <path>: specify encoder ONNX file (optional)" << std::endl;
     std::cout << "  --planner-precision <16|32>: specify precision to run the planner model at (default: 16)" << std::endl;
     std::cout << "  --policy-precision <16|32>: specify precision to run the policy model at (default: 32)" << std::endl;
@@ -4536,6 +4536,8 @@ int main(int argc, char const* argv[]) {
       if (i + 1 < argc) { GlobalTerrainInputOptions().topic = argv[i + 1]; i++; }
     } else if (std::string(argv[i]) == "--terrain-max-msg-age") {
       if (i + 1 < argc) { GlobalTerrainInputOptions().max_msg_age_s = std::stod(argv[i + 1]); i++; }
+    } else if (std::string(argv[i]) == "--terrain-max-pose-age") {
+      if (i + 1 < argc) { GlobalTerrainInputOptions().max_pose_age_s = std::stod(argv[i + 1]); i++; }
     } else if (std::string(argv[i]) == "--terrain-max-map-age") {
       if (i + 1 < argc) { GlobalTerrainInputOptions().max_map_age_s = std::stod(argv[i + 1]); i++; }
     } else if (std::string(argv[i]) == "--enable-motion-recording") {

@@ -332,8 +332,12 @@ on localhost) and add **`--zmq-out-port 5560`**. The perception publishers hold 
 stream must then use 5560.
 
 `[HeightMap]` lines report the input state (`ok`, `no terrain message yet`, `terrain messages stopped
-arriving`, `terrain map is stale`). `--terrain-max-msg-age` (default 0.1 s) and `--terrain-max-map-age`
-(0.6 s) set when the map counts as missing.
+arriving`, `terrain pose (odometry) is stale`, `terrain map is stale`). `--terrain-max-msg-age`
+(default 0.1 s), `--terrain-max-pose-age` (0.25 s) and `--terrain-max-map-age` (2.0 s) set when the
+map counts as missing. The publisher re-centres the grids on the latest pose at every sample, so an
+older map only delays newly seen ground; the map limit catches a stopped mapper (on the gantry with
+the policy on the Jetson the map ran 0.3-0.5 s old, and the earlier 0.6 s limit dropped it
+repeatedly). The pose limit needs the `pose_stamp` field (terrain_publisher.py from 2026-10-19).
 
 Measured over the lab Wi-Fi (2026-10-08, robot on the gantry, 60 s): 50.0 Hz, 16.7 kB per message
 (6.7 Mbit/s), median gap 20 ms, worst 49 ms, none over 100 ms. If Wi-Fi bandwidth is tight,

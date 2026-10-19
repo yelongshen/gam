@@ -23,6 +23,7 @@ and publishes one message per sample on ZMQ PUB `bind` (default tcp://127.0.0.1:
   torso_grid_21_valid  bool [21, 21] cell observed
   timestamp            f64 [1]       when this sample was taken (local clock, s)
   map_stamp            f64 [1]       stamp of the map it was sampled from; staleness = timestamp - map_stamp
+  pose_stamp           f64 [1]       stamp of the torso pose (TF) the grids are centred on
 
 Forgetting: cells not updated for more than `max_cell_age` seconds (default 20; 0 = off) are treated
 as unseen, using the mapper's "time" layer (seconds since each cell's last update; it must be in the
@@ -115,6 +116,7 @@ class TerrainPublisher(Node):
             self.get_logger().warn(f"no TF yet: {e}", throttle_duration_sec=5.0)
             return
         t, q = tf.transform.translation, tf.transform.rotation
+        pose_stamp = tf.header.stamp.sec + tf.header.stamp.nanosec * 1e-9
         pos = np.array([t.x, t.y, t.z])
         quat = np.array([q.x, q.y, q.z, q.w])
         yaw = Rotation.from_quat(quat).as_euler("zyx")[0]
@@ -142,12 +144,14 @@ class TerrainPublisher(Node):
             "torso_quat": quat,
             "timestamp": np.array([time.time()]),
             "map_stamp": np.array([m["stamp"]]),
+            "pose_stamp": np.array([pose_stamp]),
         }))
         self.n_sent += 1
         now = time.time()
         if now - self.t_stat >= 10.0:
             self.get_logger().info(f"{self.n_sent / (now - self.t_stat):.1f} Hz; grid {valid.mean()*100:.0f}% valid, "
-                                   f"window {seen.mean()*100:.0f}% seen; map age {now - m['stamp']:.2f} s; "
+                                   f"window {seen.mean()*100:.0f}% seen; map age {now - m['stamp']:.2f} s, "
+                                   f"pose age {now - pose_stamp:.3f} s; "
                                    f"{m['n_stale']} map cells forgotten (> {self.p['max_cell_age']} s old)")
             self.n_sent, self.t_stat = 0, now
 
