@@ -172,3 +172,86 @@ TEST(TerrainScan, TorsoGridWithoutTheFieldsIsEmpty) {
     EXPECT_EQ(g.valid[i], 0.0);
   }
 }
+
+// 11 x 11 pelvis grid: golden cases from make_terrain_scan_golden.py (main_pelvis_grid). Layout:
+//   cases rows cols, then per case the four message lines of terrain_scan_golden.txt and the
+//   expected pelvis_heightmap_11 (121) / pelvis_heightmap_11_valid (121).
+TEST(TerrainScan, PelvisGridMatchesPythonReference) {
+  std::ifstream in(GoldenPath("pelvis_grid_golden.txt"));
+  ASSERT_TRUE(in.good()) << "missing " << GoldenPath("pelvis_grid_golden.txt");
+  int cases = 0, rows = 0, cols = 0;
+  in >> cases >> rows >> cols;
+  ASSERT_GT(cases, 0);
+  int cells_differing = 0, cells_total = 0, valid_total = 0, empty_cases = 0;
+  double worst = 0.0;
+  for (int c = 0; c < cases; ++c) {
+    terrain_scan::TerrainMessage msg;
+    msg.rows = rows;
+    msg.cols = cols;
+    float ox, oy, res;
+    in >> ox >> oy >> res;
+    msg.origin_x = ox;
+    msg.origin_y = oy;
+    msg.resolution = res;
+    double waist[3];
+    in >> msg.torso_pos[0] >> msg.torso_pos[1] >> msg.torso_pos[2];
+    for (auto& q : msg.torso_quat_xyzw) in >> q;
+    in >> waist[0] >> waist[1] >> waist[2];
+    msg.height_grid.resize(static_cast<size_t>(rows * cols));
+    msg.grid_valid.resize(static_cast<size_t>(rows * cols));
+    for (auto& h : msg.height_grid) in >> h;
+    for (auto& v : msg.grid_valid) {
+      int b;
+      in >> b;
+      v = static_cast<uint8_t>(b);
+    }
+    std::vector<double> want_h(terrain_scan::kPelvisGridCells), want_v(terrain_scan::kPelvisGridCells);
+    for (auto& h : want_h) in >> h;
+    for (auto& v : want_v) in >> v;
+    ASSERT_TRUE(in.good()) << "truncated pelvis-grid golden data at case " << c;
+    const auto got = terrain_scan::PelvisGridFromTerrainMessage(msg, waist[0], waist[1], waist[2]);
+    ASSERT_EQ(got.heights.size(), terrain_scan::kPelvisGridCells);
+    double seen = 0;
+    for (size_t i = 0; i < terrain_scan::kPelvisGridCells; ++i) {
+      const double err = std::abs(got.heights[i] - want_h[i]);
+      cells_differing += (err > 1e-9 || got.valid[i] != want_v[i]) ? 1 : 0;
+      worst = std::max(worst, err);
+      seen += want_v[i];
+      ++cells_total;
+    }
+    valid_total += static_cast<int>(seen);
+    empty_cases += seen == 0 ? 1 : 0;
+  }
+  std::cout << "pelvis grid: " << cells_total << " cells (" << valid_total << " observed, " << empty_cases
+            << " cases fully unseen), " << cells_differing << " differ from the Python reference, worst "
+            << worst << " m" << std::endl;
+  // Identical arithmetic on x86; a fused multiply-add can move a point that lands exactly on a
+  // cell boundary to the neighbouring cell (and so shift the median fill of that case).
+  EXPECT_LE(cells_differing, cells_total / 200);
+  EXPECT_GT(empty_cases, 0);
+  EXPECT_GT(valid_total, cells_total / 4);
+  EXPECT_LT(valid_total, cells_total);
+}
+
+TEST(TerrainScan, PelvisGridOnAFlatFloorIsAnalytic) {
+  terrain_scan::TerrainMessage msg;
+  msg.rows = msg.cols = 50;
+  msg.origin_x = msg.origin_y = -0.98;
+  msg.resolution = 0.04;
+  msg.height_grid.assign(2500, -0.95f);  // floor 0.95 m under the torso
+  msg.torso_pos = {1.0, 2.0, 0.95};
+  msg.torso_quat_xyzw = {0.0, 0.0, std::sin(0.2), std::cos(0.2)};
+  const auto g = terrain_scan::PelvisGridFromTerrainMessage(msg, 0.0, 0.0, 0.0);
+  const double pelvis_h = 0.95 - 0.054;  // waist chain: 0.035 + 0.019
+  for (size_t k = 0; k < terrain_scan::kPelvisGridCells; ++k) {
+    EXPECT_EQ(g.valid[k], 1.0);
+    EXPECT_NEAR(g.heights[k], -pelvis_h, 1e-6);
+  }
+  msg.grid_valid.assign(2500, 0);  // nothing observed
+  const auto e = terrain_scan::PelvisGridFromTerrainMessage(msg, 0.0, 0.0, 0.0);
+  for (size_t k = 0; k < terrain_scan::kPelvisGridCells; ++k) {
+    EXPECT_EQ(e.valid[k], 0.0);
+    EXPECT_EQ(e.heights[k], terrain_scan::kPelvisGridFallback);
+  }
+  EXPECT_EQ(terrain_scan::EmptyPelvisGrid().heights.size(), 121u);
+}

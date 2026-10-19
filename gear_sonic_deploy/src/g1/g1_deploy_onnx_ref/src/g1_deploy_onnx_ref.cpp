@@ -408,6 +408,8 @@ class G1Deploy {
     terrain_scan::Scan terrain_scan_ = terrain_scan::EmptyScan();
     // 21 x 21 torso grid (torso_heightmap_21 / torso_heightmap_21_valid), same terrain input.
     terrain_scan::TorsoGrid torso_grid_ = terrain_scan::EmptyTorsoGrid();
+    // 11 x 11 pelvis grid (pelvis_heightmap_11 / pelvis_heightmap_11_valid), same terrain input.
+    terrain_scan::PelvisGrid pelvis_grid_ = terrain_scan::EmptyPelvisGrid();
     TerrainInput::Status terrain_status_ = TerrainInput::Status::kNoMessage;
     
     // Active encoder observation functions (for encoder input)
@@ -1633,6 +1635,13 @@ class G1Deploy {
       return true;
     }
 
+    /// Copy this step's 11 x 11 pelvis grid (heights, or validity) into the observation buffer.
+    bool GatherPelvisGrid(std::vector<double>& target_buffer, size_t offset, bool validity) {
+      const auto& src = validity ? pelvis_grid_.valid : pelvis_grid_.heights;
+      std::copy(src.begin(), src.end(), target_buffer.begin() + static_cast<std::ptrdiff_t>(offset));
+      return true;
+    }
+
     /// Recompute the height-map scan from the latest terrain message and the current waist
     /// angles. No usable map (none yet, stopped, stale) -> every ray invalid, which the policy
     /// was trained on; never hold old heights.
@@ -1648,11 +1657,13 @@ class G1Deploy {
                                                         : terrain_scan::EmptyTorsoGrid();
       if (status != TerrainInput::Status::kOk || !state_logger_) {
         terrain_scan_ = terrain_scan::EmptyScan();
+        pelvis_grid_ = terrain_scan::EmptyPelvisGrid();
         return;
       }
       const auto hist = state_logger_->GetLatest(1, control_dt_, false);
       if (hist.empty() || hist[0].body_q.size() != mujoco_to_isaaclab.size()) {
         terrain_scan_ = terrain_scan::EmptyScan();
+        pelvis_grid_ = terrain_scan::EmptyPelvisGrid();
         return;
       }
       // body_q is in IsaacLab order with default angles subtracted; the waist joints are found
@@ -1662,9 +1673,10 @@ class G1Deploy {
           if (mujoco_to_isaaclab[i] == mujoco_index) return hist[0].body_q[i] + default_angles[mujoco_index];
         return 0.0;
       };
-      terrain_scan_ = terrain_scan::ScanFromTerrainMessage(msg, waist(G1JointIndex::WaistYaw),
-                                                           waist(G1JointIndex::WaistRoll),
-                                                           waist(G1JointIndex::WaistPitch));
+      const double wy = waist(G1JointIndex::WaistYaw), wr = waist(G1JointIndex::WaistRoll),
+                   wp = waist(G1JointIndex::WaistPitch);
+      terrain_scan_ = terrain_scan::ScanFromTerrainMessage(msg, wy, wr, wp);
+      pelvis_grid_ = terrain_scan::PelvisGridFromTerrainMessage(msg, wy, wr, wp);
     }
 
     bool GatherHisGravityDir(std::vector<double>& target_buffer, size_t offset, int num_frames = 5, int step_size = 1, bool newest_first = false) {
@@ -1876,7 +1888,9 @@ class G1Deploy {
               {"height_map_flat", terrain_scan_.points.size(), [this](std::vector<double>& buf, size_t offset) { return GatherHeightMap(buf, offset, false); }},
               {"height_map_valid_flat", terrain_scan_.valid.size(), [this](std::vector<double>& buf, size_t offset) { return GatherHeightMap(buf, offset, true); }},
               {"torso_heightmap_21", terrain_scan::kTorsoGridCells, [this](std::vector<double>& buf, size_t offset) { return GatherTorsoGrid(buf, offset, false); }},
-              {"torso_heightmap_21_valid", terrain_scan::kTorsoGridCells, [this](std::vector<double>& buf, size_t offset) { return GatherTorsoGrid(buf, offset, true); }}};
+              {"torso_heightmap_21_valid", terrain_scan::kTorsoGridCells, [this](std::vector<double>& buf, size_t offset) { return GatherTorsoGrid(buf, offset, true); }},
+              {"pelvis_heightmap_11", terrain_scan::kPelvisGridCells, [this](std::vector<double>& buf, size_t offset) { return GatherPelvisGrid(buf, offset, false); }},
+              {"pelvis_heightmap_11_valid", terrain_scan::kPelvisGridCells, [this](std::vector<double>& buf, size_t offset) { return GatherPelvisGrid(buf, offset, true); }}};
     }
     
     // Initialize observation functions
@@ -1914,7 +1928,8 @@ class G1Deploy {
         // Add to active functions (get function directly from registry)
         active_obs_functions_.emplace_back(config.name, registry_it->function, current_offset, dimension);
         current_offset += dimension;
-        if ((config.name.rfind("height_map", 0) == 0 || config.name.rfind("torso_heightmap", 0) == 0) && !terrain_input_) {
+        if ((config.name.rfind("height_map", 0) == 0 || config.name.rfind("torso_heightmap", 0) == 0 ||
+             config.name.rfind("pelvis_heightmap", 0) == 0) && !terrain_input_) {
           terrain_input_ = std::make_unique<TerrainInput>(GlobalTerrainInputOptions());
           terrain_input_->Start();
         }

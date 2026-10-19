@@ -313,11 +313,8 @@ struct TerrainMessage {
   std::vector<uint8_t> torso_grid_valid;
 };
 
-/// terrain_scan.scan_from_terrain_msg: the policy's height_map_flat / height_map_valid_flat.
-inline Scan ScanFromTerrainMessage(const TerrainMessage& msg, double waist_yaw, double waist_roll,
-                                   double waist_pitch, double size = kHeightMapSize,
-                                   double resolution = kHeightMapResolution,
-                                   double max_dist = kHeightMapMaxDist) {
+/// terrain_scan.HeightField.from_terrain_msg: unseen = not valid, or NaN.
+inline HeightField HeightFieldFromTerrainMessage(const TerrainMessage& msg) {
   HeightField hf;
   hf.rows = msg.rows;
   hf.cols = msg.cols;
@@ -333,6 +330,13 @@ inline Scan ScanFromTerrainMessage(const TerrainMessage& msg, double waist_yaw, 
       hf.seen[i] = 1;
     }
   }
+  return hf;
+}
+
+/// The pelvis pose in the message's grid frame (centred on the torso, rotated by the torso
+/// heading, z relative to the torso), from the torso pose and the waist angles.
+inline Pose PelvisInGridFrame(const TerrainMessage& msg, double waist_yaw, double waist_roll,
+                              double waist_pitch) {
   const auto& qx = msg.torso_quat_xyzw;
   const QuatWxyz torso_q{qx[3], qx[0], qx[1], qx[2]};
   const Pose pelvis = PelvisPoseFromTorso(msg.torso_pos, torso_q, waist_yaw, waist_roll, waist_pitch);
@@ -340,7 +344,16 @@ inline Scan ScanFromTerrainMessage(const TerrainMessage& msg, double waist_yaw, 
   const Mat3 rt_t = Transpose(RotZ(HeadingYaw(torso_q)));
   const Vec3 dp{pelvis.pos[0] - msg.torso_pos[0], pelvis.pos[1] - msg.torso_pos[1],
                 pelvis.pos[2] - msg.torso_pos[2]};
-  Pose pelvis_g{MatVec(rt_t, dp), MatToQuat(MatMul(rt_t, QuatToMat(pelvis.quat)))};
+  return {MatVec(rt_t, dp), MatToQuat(MatMul(rt_t, QuatToMat(pelvis.quat)))};
+}
+
+/// terrain_scan.scan_from_terrain_msg: the policy's height_map_flat / height_map_valid_flat.
+inline Scan ScanFromTerrainMessage(const TerrainMessage& msg, double waist_yaw, double waist_roll,
+                                   double waist_pitch, double size = kHeightMapSize,
+                                   double resolution = kHeightMapResolution,
+                                   double max_dist = kHeightMapMaxDist) {
+  const HeightField hf = HeightFieldFromTerrainMessage(msg);
+  const Pose pelvis_g = PelvisInGridFrame(msg, waist_yaw, waist_roll, waist_pitch);
   // No floor clamp on the robot: rays that miss are invalid, and invalid rays read zero.
   return TerrainScan(hf, pelvis_g, /*clamp_floor=*/false, 0.0, size, resolution, max_dist);
 }
@@ -396,6 +409,64 @@ inline TorsoGrid TorsoGridFromTerrainMessage(const TerrainMessage& msg) {
 
 /// Nothing observed: what the policy gets when there is no usable map.
 inline TorsoGrid EmptyTorsoGrid() { return FillTorsoGrid({}, {}); }
+
+// ---------------------------------------------------------------------------
+// 11 x 11 pelvis grid (the stair fine-tune's map; humanoid-foundation-model branch
+// env-posttrain): port of terrain_scan.pelvis_grid_from_terrain_msg.
+// ---------------------------------------------------------------------------
+
+constexpr int kPelvisGridN = 11;
+constexpr size_t kPelvisGridCells = static_cast<size_t>(kPelvisGridN) * kPelvisGridN;
+constexpr double kPelvisGridResolution = 0.1;
+constexpr double kPelvisGridFallback = -0.78;  // nothing observed: floor under a standing G1's pelvis
+
+struct PelvisGrid {
+  std::vector<double> heights;  ///< 121, surface_z - pelvis_z, [x][y]; unseen cells filled
+  std::vector<double> valid;    ///< 121, 1.0 / 0.0
+};
+
+/// pelvis_heightmap_11 / pelvis_heightmap_11_valid: at each offset of a 1 m grid in the pelvis
+/// heading frame (10 cm, index ix * 11 + iy), the map's nearest-cell surface height minus the
+/// pelvis height. Unseen cells take the median of the observed ones; nothing observed:
+/// kPelvisGridFallback.
+inline PelvisGrid PelvisGridFromTerrainMessage(const TerrainMessage& msg, double waist_yaw,
+                                               double waist_roll, double waist_pitch) {
+  const HeightField hf = HeightFieldFromTerrainMessage(msg);
+  const Pose p = PelvisInGridFrame(msg, waist_yaw, waist_roll, waist_pitch);
+  const double yaw = HeadingYaw(p.quat), c = std::cos(yaw), s = std::sin(yaw);
+  // np.linspace(start, stop, n): i * step + start, the last one exactly stop.
+  const double stop = 0.5 * (kPelvisGridN - 1) * kPelvisGridResolution, start = -stop;
+  const double step = (stop - start) / (kPelvisGridN - 1);
+  double lin[kPelvisGridN];
+  for (int i = 0; i < kPelvisGridN; ++i) lin[i] = i == kPelvisGridN - 1 ? stop : i * step + start;
+
+  PelvisGrid out{std::vector<double>(kPelvisGridCells, 0.0), std::vector<double>(kPelvisGridCells, 0.0)};
+  std::vector<double> seen;
+  for (int ix = 0; ix < kPelvisGridN; ++ix)
+    for (int iy = 0; iy < kPelvisGridN; ++iy) {
+      const double ox = lin[ix], oy = lin[iy];
+      double h;
+      if (!hf.Sample(p.pos[0] + (ox * c + oy * -s), p.pos[1] + (ox * s + oy * c), h)) continue;
+      const size_t k = static_cast<size_t>(ix * kPelvisGridN + iy);
+      out.heights[k] = h - p.pos[2];
+      out.valid[k] = 1.0;
+      seen.push_back(out.heights[k]);
+    }
+  double fill = kPelvisGridFallback;
+  if (!seen.empty()) {
+    std::sort(seen.begin(), seen.end());
+    const size_t m = seen.size() / 2;
+    fill = seen.size() % 2 ? seen[m] : (seen[m - 1] + seen[m]) / 2.0;
+  }
+  for (size_t k = 0; k < kPelvisGridCells; ++k)
+    if (out.valid[k] < 0.5) out.heights[k] = fill;
+  return out;
+}
+
+/// Nothing observed: what the policy gets when there is no usable map.
+inline PelvisGrid EmptyPelvisGrid() {
+  return {std::vector<double>(kPelvisGridCells, kPelvisGridFallback), std::vector<double>(kPelvisGridCells, 0.0)};
+}
 
 }  // namespace terrain_scan
 
