@@ -23,7 +23,7 @@ and publishes one message per sample on ZMQ PUB `bind` (default tcp://127.0.0.1:
   torso_grid_21_valid  bool [21, 21] cell observed
   timestamp            f64 [1]       when this sample was taken (local clock, s)
   map_stamp            f64 [1]       stamp of the map it was sampled from; staleness = timestamp - map_stamp
-  pose_stamp           f64 [1]       stamp of the torso pose (TF) the grids are centred on
+  pose_stamp           f64 [1]       stamp of the torso pose (odometry, or TF) the grids are centred on
 
 Forgetting: cells not updated for more than `max_cell_age` seconds (default 20; 0 = off) are treated
 as unseen, using the mapper's "time" layer (seconds since each cell's last update; it must be in the
@@ -31,6 +31,12 @@ map_topic's published layers - see g1_desktop_overrides.yaml). elevation_mapping
 expires a cell that no later ray passes through, so something that stood in the LiDAR's blind ring
 (a person, the gantry) would otherwise stay in the policy input indefinitely. While walking, cells
 under the feet were seen ~1-3 s earlier, well inside the default.
+
+Pose: the torso pose comes from DLIO's odometry topic (`odom_topic`, default /dlio/odom: 100 Hz,
+~5 ms old on arrival), received on its own thread. The TF robot/odom -> torso_link only updates at
+the LiDAR's 10 Hz, and with its listener on this node's single thread it went unread while the map
+callback ran: grids were centred on poses up to 0.7 s old (gantry, 2026-10-19). An empty
+`odom_topic` falls back to that TF.
 
 Run inside the perception container (run_emc.sh starts it).
 """
@@ -41,6 +47,9 @@ import numpy as np
 import rclpy
 import zmq
 from grid_map_msgs.msg import GridMap
+from nav_msgs.msg import Odometry
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation
@@ -57,7 +66,7 @@ class TerrainPublisher(Node):
         super().__init__("terrain_publisher")
         p = {k: self.declare_parameter(k, v).value for k, v in [
             ("map_topic", "/elevation_mapping_node/elevation_map_raw"), ("layer", "elevation"),
-            ("map_frame", "robot/odom"), ("base_frame", "torso_link"),
+            ("map_frame", "robot/odom"), ("base_frame", "torso_link"), ("odom_topic", "/dlio/odom"),
             ("bind", "tcp://127.0.0.1:5559"), ("topic", "terrain"), ("rate", 50.0),
             ("grid_size", 50), ("grid_resolution", 0.04),
             ("max_cell_age", 20.0), ("age_layer", "time")]}
@@ -71,8 +80,15 @@ class TerrainPublisher(Node):
         self.grid_res = np.array([res], dtype=np.float32)
 
         self.map = None       # dict: E, res, cx, cy, stamp, points, tree
-        self.tf = Buffer()
-        TransformListener(self.tf, self)
+        self.odom = None      # (pos, quat xyzw, stamp) of the latest odometry message
+        if p["odom_topic"]:
+            # Own callback group: the multi-threaded executor runs it while the map callback or a
+            # tick is busy, so the pose stays current.
+            self.create_subscription(Odometry, p["odom_topic"], self.on_odom, 10,
+                                     callback_group=MutuallyExclusiveCallbackGroup())
+        else:
+            self.tf = Buffer()
+            TransformListener(self.tf, self)
         self.create_subscription(GridMap, p["map_topic"], self.on_map, 2)
         self.sock = zmq.Context.instance().socket(zmq.PUB)
         self.sock.setsockopt(zmq.SNDHWM, 4)
@@ -80,8 +96,18 @@ class TerrainPublisher(Node):
         self.topic = p["topic"].encode()
         self.n_sent, self.t_stat = 0, time.time()
         self.create_timer(1.0 / float(p["rate"]), self.tick)
+        pose_src = p["odom_topic"] or f"TF {p['map_frame']}->{p['base_frame']}"
         self.get_logger().info(f"publishing '{p['topic']}' on {p['bind']} at {p['rate']} Hz "
-                               f"from {p['map_topic']} [{p['layer']}] + TF {p['map_frame']}->{p['base_frame']}")
+                               f"from {p['map_topic']} [{p['layer']}] + pose {pose_src}")
+
+    def on_odom(self, msg):
+        if msg.header.frame_id != self.p["map_frame"] or msg.child_frame_id != self.p["base_frame"]:
+            self.get_logger().warn(f"odometry is {msg.header.frame_id}->{msg.child_frame_id}, expected "
+                                   f"{self.p['map_frame']}->{self.p['base_frame']}", throttle_duration_sec=10.0)
+            return
+        t, q = msg.pose.pose.position, msg.pose.pose.orientation
+        self.odom = (np.array([t.x, t.y, t.z]), np.array([q.x, q.y, q.z, q.w]),
+                     msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9)
 
     def on_map(self, msg):
         if self.p["layer"] not in msg.layers:
@@ -110,15 +136,21 @@ class TerrainPublisher(Node):
         m = self.map
         if m is None:
             return
-        try:
-            tf = self.tf.lookup_transform(self.p["map_frame"], self.p["base_frame"], rclpy.time.Time())
-        except Exception as e:  # noqa: BLE001 - TF not up yet
-            self.get_logger().warn(f"no TF yet: {e}", throttle_duration_sec=5.0)
-            return
-        t, q = tf.transform.translation, tf.transform.rotation
-        pose_stamp = tf.header.stamp.sec + tf.header.stamp.nanosec * 1e-9
-        pos = np.array([t.x, t.y, t.z])
-        quat = np.array([q.x, q.y, q.z, q.w])
+        if self.p["odom_topic"]:
+            if self.odom is None:
+                self.get_logger().warn(f"no odometry on {self.p['odom_topic']} yet", throttle_duration_sec=5.0)
+                return
+            pos, quat, pose_stamp = self.odom
+        else:
+            try:
+                tf = self.tf.lookup_transform(self.p["map_frame"], self.p["base_frame"], rclpy.time.Time())
+            except Exception as e:  # noqa: BLE001 - TF not up yet
+                self.get_logger().warn(f"no TF yet: {e}", throttle_duration_sec=5.0)
+                return
+            t, q = tf.transform.translation, tf.transform.rotation
+            pose_stamp = tf.header.stamp.sec + tf.header.stamp.nanosec * 1e-9
+            pos = np.array([t.x, t.y, t.z])
+            quat = np.array([q.x, q.y, q.z, q.w])
         yaw = Rotation.from_quat(quat).as_euler("zyx")[0]
 
         # generic grid: nearest map cell (same 4 cm resolution as the mapper) at each rotated cell centre
@@ -159,8 +191,10 @@ class TerrainPublisher(Node):
 def main():
     rclpy.init(args=sys.argv)
     node = TerrainPublisher()
+    executor = MultiThreadedExecutor(num_threads=3)
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
