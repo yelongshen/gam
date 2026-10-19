@@ -15,13 +15,18 @@ Algorithm
 2. Bin every point into a cell based on its (x, y) position.
 3. Aggregate the Z values that fall in each cell using `agg` ("max" for a
    terrain/obstacle height map -- useful for foot placement and collision
-   checking; "min" for a floor/ground map; "mean" for a smoothed surface).
+   checking; "min" for a floor/ground map; "mean"/"median" for a smoothed
+   surface). With noisy sources (the D435i depth cloud) "max" picks the
+   upward noise tail in every cell -- prefer "median" there.
 4. Cells with no points are filled with `empty_value` (default: NaN).
 
-Coordinate convention: matches the raw LiDAR points directly, i.e. the
-LiDAR's own frame (`livox_frame` on this G1), which is sensor/robot-relative
-by default -- not a global/world frame. If you need a world-frame height
-map, transform the points first using the robot's estimated pose.
+Coordinate convention: z must be "up" -- the input points must already be in
+a gravity-aligned frame. Do NOT pass raw `livox_frame` points: the G1's
+MID-360 is mounted upside down, so the floor sits at z ~ +1.3 m there and
+"max" returns the floor instead of obstacles, and ~30% of its points are
+(0, 0, 0) no-returns. Use `g1_frames.lidar_to_level()` /
+`g1_frames.depth_to_level()` first, which clean the points and express them
+in the gravity-levelled torso frame (still robot-relative, not world).
 
 Usage (standalone self-test with synthetic data):
     python3 gear_sonic_deploy/scripts/height_map.py
@@ -38,7 +43,7 @@ class HeightMapConfig:
     half_extent: float = 1.0     # meters; grid covers [-half_extent, +half_extent]
     center_x: float = 0.0        # meters, grid center X (in the point cloud's frame)
     center_y: float = 0.0        # meters, grid center Y
-    agg: str = "max"             # "max" | "min" | "mean"
+    agg: str = "max"             # "max" | "min" | "mean" | "median"
     empty_value: float = float("nan")
     z_min_filter: float = None   # drop points with z < this (e.g. exclude floor)
     z_max_filter: float = None   # drop points with z > this (e.g. exclude ceiling)
@@ -109,8 +114,17 @@ def build_height_map(points: np.ndarray, config: HeightMapConfig = None) -> np.n
         with np.errstate(invalid="ignore", divide="ignore"):
             flat = sums / counts
         flat[counts == 0] = config.empty_value
+    elif config.agg == "median":
+        # Sort by (cell, z), then take the middle element of each cell's run.
+        order = np.lexsort((z, flat_idx))
+        idx_sorted, z_sorted = flat_idx[order], z[order]
+        cells, starts, counts = np.unique(idx_sorted, return_index=True, return_counts=True)
+        lo = z_sorted[starts + (counts - 1) // 2]
+        hi = z_sorted[starts + counts // 2]
+        flat = np.full(n_cells, config.empty_value, dtype=np.float64)
+        flat[cells] = 0.5 * (lo + hi)
     else:
-        raise ValueError(f"Unknown agg mode: {config.agg!r} (expected 'max'/'min'/'mean')")
+        raise ValueError(f"Unknown agg mode: {config.agg!r} (expected 'max'/'min'/'mean'/'median')")
 
     grid = flat.reshape(config.grid_size, config.grid_size).astype(np.float32)
     return grid
