@@ -122,12 +122,15 @@ class TerrainPublisher(Node):
                                f"from {p['map_topic']} [{p['layer']}] + pose {pose_src}")
 
     def check_clear_service(self):
-        self._clear_check.cancel()
+        """Every 5 s until the mapper's clear service is up (the mapper starts ~40 s after this)."""
+        self._clear_checks = getattr(self, "_clear_checks", 0) + 1
         if self.clear_client.service_is_ready():
+            self._clear_check.cancel()
             self.get_logger().info(f"pose guard on; map clear service {self.p['clear_service']} ready")
-        else:
-            self.get_logger().warn(f"pose guard on, but {self.p['clear_service']} is not available: "
-                                   "the map will not be cleared after an odometry jump")
+        elif self._clear_checks == 24:
+            self._clear_check.cancel()
+            self.get_logger().warn(f"pose guard on, but {self.p['clear_service']} is still not available "
+                                   "after 2 min: the map will not be cleared after an odometry jump")
 
     def on_odom(self, msg):
         if msg.header.frame_id != self.p["map_frame"] or msg.child_frame_id != self.p["base_frame"]:
