@@ -382,6 +382,62 @@ cd ~/gam
 
 ---
 
+## 10c. Height-Map Policies (onboard terrain map, policy on a workstation over Wi-Fi)
+
+Policies with the `height_map_flat` / `height_map_valid_flat` (or `torso_heightmap_21*`) observations
+read the robot's onboard terrain map: `perception/terrain_publisher.py` publishes it on ZMQ topic
+`terrain` (port 5559), and the deploy binary subscribes with `--terrain-host` / `--terrain-port`.
+With no usable map every ray reads invalid and zero, so the policy never sees stale heights.
+
+**Robot (Jetson):** start the perception stack serving the network. On a gantry add `GANTRY_FILTER=true`;
+keep the robot still for ~5 s while DLIO calibrates.
+```bash
+cd <gam checkout on the robot>   # branch daphne/height-map-deploy
+TERRAIN_BIND=tcp://0.0.0.0:5559 GANTRY_FILTER=true gear_sonic_deploy/perception/jetson/run_onboard.sh start
+# ... run_onboard.sh status / stop
+```
+
+**Workstation:** build this branch (§10), then check the map arrives before starting a policy:
+```bash
+cd gear_sonic_deploy/build && cmake -S .. -B . -DBUILD_TESTS=ON && cmake --build . --target terrain_probe g1_deploy_onnx_ref -j"$(nproc)"
+cd .. && ./target/release/terrain_probe 10 5559 <ROBOT_WIFI_IP>     # expect "ok:" lines, floor ~0.8 m below the torso
+```
+
+**Policy:** the usual command plus the terrain host and the height-map observation config. For bring-up,
+`policy/height_map/observation_config_no_vr_llam_100k_height_map.yaml` with a decoder widened by
+`scripts/widen_decoder_for_height_map.py` behaves exactly like `sonic_no_vr_llam_100k`
+(zero weights on the map) while exercising the whole path:
+```bash
+./target/release/g1_deploy_onnx_ref <IFACE> \
+  policy/height_map/no_vr_llam_100k/model_decoder.onnx \
+  reference/example/ \
+  --obs-config policy/height_map/observation_config_no_vr_llam_100k_height_map.yaml \
+  --encoder-file policy/height_map/no_vr_llam_100k/model_encoder.onnx \
+  --input-type zmq --zmq-host localhost --zmq-port 5556 --zmq-topic pose --zmq-conflate \
+  --terrain-host <ROBOT_WIFI_IP> \
+  2>&1 | tee /tmp/hm_run.log
+```
+**Policy on the Jetson instead** (next to the perception stack): drop `--terrain-host` (the map is
+on localhost) and add **`--zmq-out-port 5560`**. The perception publishers hold 5557 (depth) and
+5558 (LiDAR) and the terrain topic 5559, so the default debug port 5557 fails with
+`zmq::error_t: Address already in use` (checked 2026-10-08). Anything that reads the `g1_debug`
+stream must then use 5560.
+
+`[HeightMap]` lines report the input state (`ok`, `no terrain message yet`, `terrain messages stopped
+arriving`, `terrain pose (odometry) is stale`, `terrain map is stale`). `--terrain-max-msg-age`
+(default 0.1 s), `--terrain-max-pose-age` (0.25 s) and `--terrain-max-map-age` (2.0 s) set when the
+map counts as missing. The publisher re-centres the grids on the latest pose at every sample, so an
+older map only delays newly seen ground; the map limit catches a stopped mapper (on the gantry with
+the policy on the Jetson the map ran 0.3-0.5 s old, and the earlier 0.6 s limit dropped it
+repeatedly). The pose limit needs the `pose_stamp` field (terrain_publisher.py from 2026-10-19).
+
+Measured over the lab Wi-Fi (2026-10-08, robot on the gantry, 60 s): 50.0 Hz, 16.7 kB per message
+(6.7 Mbit/s), median gap 20 ms, worst 49 ms, none over 100 ms. If Wi-Fi bandwidth is tight,
+`TERRAIN_RATE=25` halves it (the map itself updates at 5 Hz). The terrain subscription connects to the
+robot's port 5559, so it does not collide with a workstation-side `--zmq-out-port 5559`.
+
+---
+
 ## 11. Troubleshooting
 
 

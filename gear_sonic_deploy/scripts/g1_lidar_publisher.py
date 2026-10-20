@@ -75,6 +75,7 @@ import argparse
 import json
 import struct
 import sys
+import threading
 import time
 
 import numpy as np
@@ -274,8 +275,23 @@ def main():
 
     ctx = zmq.Context.instance()
     sock = ctx.socket(zmq.PUB)
-    sock.setsockopt(zmq.SNDHWM, 2)  # drop old frames rather than queue
+    # Clouds (10 Hz, ~330 kB) and IMU samples (~200 Hz) share this socket, and g1_zmq_bridge.py
+    # reads both on one thread that stalls tens of ms on every cloud. With a high-water mark of 2
+    # the IMU samples arriving meanwhile were dropped (ZMQ drops NEW messages at the mark): the
+    # bridge got ~176 of ~200 Hz, with 30-40 gaps > 15 ms per 5 s at rest (2026-10-20), which DLIO
+    # integrates through. 100 messages hold half a second of IMU.
+    sock.setsockopt(zmq.SNDHWM, 100)
     sock.bind(f"{args.bind}:{args.port}")
+    # The DDS layer calls `callback` and `imu_callback` on different threads, and a ZMQ socket must
+    # not be used by two threads at once: unguarded, the two sends overlapped now and then and the
+    # publisher died with a segfault inside zmq send (faulthandler, 2026-10-20) -- the "silent"
+    # exits that left DLIO without data. Every send goes through `send`, under this lock.
+    sock_lock = threading.Lock()
+
+    def send(packed):
+        with sock_lock:
+            sock.send(packed)
+
     print(f"[lidar_pub] bound {args.bind}:{args.port} zmq_topic={args.zmq_topic!r} "
           f"dds_topic={args.lidar_topic!r}", flush=True)
     if not args.no_imu:
@@ -329,7 +345,7 @@ def main():
                     payload[k] = decoded[k]
 
         packed = pack_message(args.zmq_topic, payload)
-        sock.send(packed)
+        send(packed)
 
         state["n"] += 1
         state["bytes"] += len(packed)
@@ -358,7 +374,7 @@ def main():
         q = msg.orientation
         av = msg.angular_velocity
         la = msg.linear_acceleration
-        sock.send(pack_message(args.zmq_imu_topic, {
+        send(pack_message(args.zmq_imu_topic, {
             # Sensor-side stamp comes from the robot's main controller clock,
             # which free-runs ~17min off this Jetson's NTP-synced clock -- keep
             # both so downstream can pick a consistent timebase.

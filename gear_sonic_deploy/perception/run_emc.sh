@@ -32,8 +32,12 @@ if [ "$ODOM_SOURCE" = "dlio" ]; then
 fi
 
 if [ "${TERRAIN_PUB:-true}" = "true" ]; then
+  TERRAIN_RATE=${TERRAIN_RATE:-50.0}
+  [[ "$TERRAIN_RATE" == *.* ]] || TERRAIN_RATE="$TERRAIN_RATE.0"  # the ROS parameter is a double
   # policy-agnostic terrain input over ZMQ (see terrain_publisher.py for the message layout)
+  # TERRAIN_BIND=tcp://0.0.0.0:5559 serves a policy running on another machine (e.g. over Wi-Fi)
   nohup python3 "$HERE"/terrain_publisher.py --ros-args -p bind:=${TERRAIN_BIND:-tcp://127.0.0.1:5559} \
+    -p rate:=$TERRAIN_RATE \
     > "$LOG/terrain.log" 2>&1 &
 fi
 

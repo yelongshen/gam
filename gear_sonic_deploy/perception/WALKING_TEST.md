@@ -40,12 +40,15 @@ cd ~/gam; L=~/g1_perception_logs; T=$(date +%Y%m%d_%H%M%S); echo "recording walk
 # LiDAR, IMU, DLIO pose, TF (inside the container; ~2 MB/s)
 docker exec -d g1_perception bash -lc "source /opt/ros/humble/install/setup.bash && source /ws/install/setup.bash && timeout -s INT 900 ros2 bag record -o /logs/walk_$T /g1/lidar/points /g1/imu /dlio/odom /tf /tf_static > /logs/walk_${T}_bag.log 2>&1"
 # the terrain topic, every message
-setsid nohup timeout 900 python3 gear_sonic_deploy/scripts/terrain_subscriber.py --seconds 900 --record $L/walk_${T}_terrain.npz > $L/walk_${T}_terrain.log 2>&1 < /dev/null &
+setsid nohup nice -n 19 taskset -c 1-3 timeout 900 python3 gear_sonic_deploy/scripts/terrain_subscriber.py --seconds 900 --record $L/walk_${T}_terrain.npz > $L/walk_${T}_terrain.log 2>&1 < /dev/null &
 # CPU / GPU / RAM / temperature, once per second
 setsid nohup timeout 900 tegrastats --interval 1000 > $L/walk_${T}_tegrastats.log 2>&1 < /dev/null &
 ```
 Everything stops by itself after 15 min (`timeout 900`). Recording adds little load: measured on
 the robot, CPU 0 at about 33% median, cores 1-3 about 19%, cores 4-7 (perception) about 46%.
+Start it BEFORE the controller, and run any other host-side recorder the same way (`nice -n 19
+taskset -c 1-3`): two Python recorders started next to a standing controller starved the LiDAR
+publisher for a few seconds (2026-10-20), and DLIO was off by up to 3.4 m until it recovered.
 
 ## 3. Walk
 1. Start the walking controller as usual and stand for about 10 s.
@@ -76,6 +79,18 @@ python3 gear_sonic_deploy/perception/analyze_walk.py ~/g1_perception_logs/walk_$
 # DLIO accuracy: each still period vs the first, by ICP on the raw scans (independent of DLIO)
 docker exec g1_perception bash -lc "source /opt/ros/humble/install/setup.bash && source /ws/install/setup.bash && python3 /perception/eval_motion.py /logs/walk_$T /logs/walk_${T}_eval"
 ```
+With a policy running (runner launched with `--zmq-out-port 5560`, and `perception/record_zmq_raw.py
+--port 5560 --topic g1_debug` recording next to `record_terrain.py`), check the map against the feet
+and replay the pose guard. These need msgpack and mujoco, so run them off the robot:
+```bash
+# supporting sole vs the mapped floor, map/pose age, blind zone under the soles
+python3 gear_sonic_deploy/perception/analyze_policy_walk.py walk_terrain.npz walk_g1_debug.npz --window START,END --match 0.06
+# what the pose guard rejects in a recording, and why (for tuning its thresholds)
+python3 gear_sonic_deploy/scripts/replay_pose_guard.py walk_terrain.npz
+```
+Gantry reference (2026-10-20, run 9): supporting sole -2.0 cm median (p10/p90 -4.4/-0.8) from the
+mapped floor, map age 0.43 s median, nothing rejected.
+
 To look at the data elsewhere, copy `~/g1_perception_logs/walk_<T>*` off the robot.
 The bag directory is written by the container as root: delete old ones with
 `docker exec g1_perception rm -rf /logs/walk_<T>` (or `sudo rm -rf`).

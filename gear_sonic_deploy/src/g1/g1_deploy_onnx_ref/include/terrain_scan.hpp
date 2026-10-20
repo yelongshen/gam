@@ -1,0 +1,473 @@
+/**
+ * @file terrain_scan.hpp
+ * @brief The policy's pelvis height-map observation, computed from the onboard terrain map.
+ *
+ * Port of gear_sonic/utils/terrain_scan.py (scan_from_terrain_msg and what it calls); the
+ * unit test checks it against golden outputs of that Python reference.
+ *
+ * The observation is a fan of n x n rays (n = int(size / resolution) + 1, 11 by default)
+ * cast from the pelvis along normalize(x, y, -1), rotated by the pelvis heading, marched
+ * against a 2.5D height field. Output per ray: the hit point relative to the pelvis in the
+ * pelvis heading frame ([x][y][xyz] order, 363 values), and a validity flag (121 values).
+ * A ray is valid when it lands on an observed cell from above, or runs into a taller
+ * observed cell from an observed one; invalid rays read zero. See
+ * gear_sonic/README_height_map.md.
+ *
+ * Header-only, C++17, no dependencies beyond the standard library.
+ * Quaternions are wxyz unless a name says otherwise.
+ */
+
+#ifndef TERRAIN_SCAN_HPP
+#define TERRAIN_SCAN_HPP
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+#include <vector>
+
+namespace terrain_scan {
+
+constexpr double kHeightMapSize = 1.5;
+constexpr double kHeightMapResolution = 0.15;
+constexpr double kHeightMapMaxDist = 5.0;
+
+using Vec3 = std::array<double, 3>;
+using Mat3 = std::array<std::array<double, 3>, 3>;
+using QuatWxyz = std::array<double, 4>;
+
+inline int NumRaysPerSide(double size = kHeightMapSize, double resolution = kHeightMapResolution) {
+  return static_cast<int>(size / resolution) + 1;
+}
+
+// ---------------------------------------------------------------------------
+// Small rotation helpers (row-major 3x3)
+// ---------------------------------------------------------------------------
+
+inline Mat3 RotZ(double a) {
+  const double c = std::cos(a), s = std::sin(a);
+  return {{{c, -s, 0.0}, {s, c, 0.0}, {0.0, 0.0, 1.0}}};
+}
+inline Mat3 RotX(double a) {
+  const double c = std::cos(a), s = std::sin(a);
+  return {{{1.0, 0.0, 0.0}, {0.0, c, -s}, {0.0, s, c}}};
+}
+inline Mat3 RotY(double a) {
+  const double c = std::cos(a), s = std::sin(a);
+  return {{{c, 0.0, s}, {0.0, 1.0, 0.0}, {-s, 0.0, c}}};
+}
+
+inline Mat3 MatMul(const Mat3& a, const Mat3& b) {
+  Mat3 r{};
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      r[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
+  return r;
+}
+inline Mat3 Transpose(const Mat3& a) {
+  Mat3 r{};
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j) r[i][j] = a[j][i];
+  return r;
+}
+inline Vec3 MatVec(const Mat3& a, const Vec3& v) {
+  return {a[0][0] * v[0] + a[0][1] * v[1] + a[0][2] * v[2],
+          a[1][0] * v[0] + a[1][1] * v[1] + a[1][2] * v[2],
+          a[2][0] * v[0] + a[2][1] * v[1] + a[2][2] * v[2]};
+}
+
+inline Mat3 QuatToMat(const QuatWxyz& q_in) {
+  const double n = std::sqrt(q_in[0] * q_in[0] + q_in[1] * q_in[1] + q_in[2] * q_in[2] + q_in[3] * q_in[3]);
+  const double w = q_in[0] / n, x = q_in[1] / n, y = q_in[2] / n, z = q_in[3] / n;
+  return {{{1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y)},
+           {2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x)},
+           {2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)}}};
+}
+
+inline QuatWxyz MatToQuat(const Mat3& m) {
+  const double t = m[0][0] + m[1][1] + m[2][2];
+  QuatWxyz q{};
+  if (t > 0) {
+    const double s = 2.0 * std::sqrt(t + 1.0);
+    q = {0.25 * s, (m[2][1] - m[1][2]) / s, (m[0][2] - m[2][0]) / s, (m[1][0] - m[0][1]) / s};
+  } else {
+    int i = 0;
+    if (m[1][1] > m[i][i]) i = 1;
+    if (m[2][2] > m[i][i]) i = 2;
+    const int j = (i + 1) % 3, k = (i + 2) % 3;
+    const double s = 2.0 * std::sqrt(1.0 + m[i][i] - m[j][j] - m[k][k]);
+    q[0] = (m[k][j] - m[j][k]) / s;
+    q[1 + i] = 0.25 * s;
+    q[1 + j] = (m[j][i] + m[i][j]) / s;
+    q[1 + k] = (m[k][i] + m[i][k]) / s;
+  }
+  if (q[0] < 0) {
+    for (auto& v : q) v = -v;
+  }
+  return q;
+}
+
+/// Yaw of the sim's get_heading_q: the twist about z of a wxyz quaternion.
+inline double HeadingYaw(const QuatWxyz& q) { return 2.0 * std::atan2(q[3], q[0]); }
+
+// ---------------------------------------------------------------------------
+// Pelvis pose from the torso pose (waist chain of gear_sonic_deploy/g1/g1_29dof.xml)
+// ---------------------------------------------------------------------------
+
+struct Pose {
+  Vec3 pos{};
+  QuatWxyz quat{1.0, 0.0, 0.0, 0.0};
+};
+
+inline Pose PelvisPoseFromTorso(const Vec3& torso_pos, const QuatWxyz& torso_quat, double waist_yaw,
+                                double waist_roll, double waist_pitch) {
+  const Vec3 waist_roll_offset{-0.0039635, 0.0, 0.035};
+  const Vec3 torso_offset{0.0, 0.0, 0.019};
+  const Mat3 rz = RotZ(waist_yaw), rx = RotX(waist_roll), ry = RotY(waist_pitch);
+  const Mat3 r_pt = MatMul(MatMul(rz, rx), ry);
+  const Vec3 rx_off = MatVec(rx, torso_offset);
+  const Vec3 t_pt = MatVec(rz, {waist_roll_offset[0] + rx_off[0], waist_roll_offset[1] + rx_off[1],
+                                waist_roll_offset[2] + rx_off[2]});
+  const Mat3 r_wp = MatMul(QuatToMat(torso_quat), Transpose(r_pt));
+  const Vec3 off = MatVec(r_wp, t_pt);
+  return {{torso_pos[0] - off[0], torso_pos[1] - off[1], torso_pos[2] - off[2]}, MatToQuat(r_wp)};
+}
+
+// ---------------------------------------------------------------------------
+// Height field and the ray march
+// ---------------------------------------------------------------------------
+
+// gear_sonic_deploy compiles with -ffast-math, under which the compiler may assume no NaN or
+// infinity ever occurs: std::isnan / std::isfinite and NaN comparisons can be optimised away.
+// So nothing here relies on them. Unseen cells are an explicit flag, and NaNs arriving in a
+// message (NaN = unseen) are detected from the bits, which fast-math cannot assume away.
+inline bool IsFiniteBits(float v) {
+  uint32_t b;
+  std::memcpy(&b, &v, sizeof b);
+  return (b & 0x7f800000u) != 0x7f800000u;
+}
+
+/// Gravity-aligned 2.5D terrain: heights[row * cols + col] = terrain z at the cell centre
+/// origin + (col, row) * resolution, used only where seen[...] is set.
+struct HeightField {
+  std::vector<double> heights;
+  std::vector<uint8_t> seen;  ///< same size as heights; 0 = unseen
+  int rows = 0, cols = 0;
+  double origin_x = 0.0, origin_y = 0.0, resolution = 0.04;
+
+  /// Nearest-cell height (np.rint semantics: round half to even). False if unseen or off the grid.
+  bool Sample(double x, double y, double& h) const {
+    const long i = static_cast<long>(std::nearbyint((x - origin_x) / resolution));
+    const long j = static_cast<long>(std::nearbyint((y - origin_y) / resolution));
+    if (i < 0 || i >= cols || j < 0 || j >= rows) return false;
+    const size_t k = static_cast<size_t>(j) * static_cast<size_t>(cols) + static_cast<size_t>(i);
+    if (!seen[k]) return false;
+    h = heights[k];
+    return true;
+  }
+
+  /// Rays below `value` (two cells under the lowest observed height) can't land from above.
+  struct FloorStop {
+    bool any = false;  ///< false: nothing observed, no limit
+    double value = 0.0;
+  };
+  FloorStop LowestStop() const {
+    FloorStop f;
+    for (size_t k = 0; k < heights.size(); ++k) {
+      if (!seen[k]) continue;
+      f.value = f.any ? std::min(f.value, heights[k]) : heights[k];
+      f.any = true;
+    }
+    if (f.any) f.value -= 2.0 * resolution;
+    return f;
+  }
+};
+
+struct RayHit {
+  Vec3 point{};
+  bool hit = false;
+  bool valid = false;
+};
+
+/// First hit of one ray (see terrain_scan.raycast_heightfield). floor = hf.LowestStop().
+inline RayHit RaycastHeightField(const HeightField& hf, const Vec3& start, const Vec3& dir, double max_dist,
+                                 const HeightField::FloorStop& floor, int refine = 8) {
+  const double step = 0.5 * hf.resolution;
+  const size_t n_t = static_cast<size_t>(std::ceil((max_dist + step) / step));  // np.arange length
+  auto t_at = [&](size_t k) { return k + 1 == n_t ? std::min(static_cast<double>(k) * step, max_dist)
+                                                  : static_cast<double>(k) * step; };
+  auto h_at = [&](double t, double& h) { return hf.Sample(start[0] + t * dir[0], start[1] + t * dir[1], h); };
+  // Unseen cells never stop a ray; neither does anything below the floor stop.
+  auto below = [&](double t) {
+    double h;
+    const double z = start[2] + t * dir[2];
+    return h_at(t, h) && z <= h && (!floor.any || z >= floor.value);
+  };
+
+  RayHit out;
+  size_t k = n_t - 1;
+  for (size_t s = 0; s < n_t; ++s) {
+    if (below(t_at(s))) {
+      out.hit = true;
+      k = s;
+      break;
+    }
+  }
+  if (out.hit) {
+    const double tk = t_at(k);
+    double h_prev, h_k = 0.0;
+    const bool prev_unseen = k > 0 && !h_at(t_at(k - 1), h_prev);
+    h_at(tk, h_k);
+    const double penetration = h_k - (start[2] + tk * dir[2]);
+    out.valid = !prev_unseen || penetration <= 1.01 * step;
+  }
+
+  // Bisection between the last sample above the surface and the first below it.
+  double lo = t_at(k > 0 ? k - 1 : 0), hi = t_at(k);
+  for (int it = 0; it < refine; ++it) {
+    const double mid = 0.5 * (lo + hi);
+    double h;
+    const bool inside = h_at(mid, h) && (start[2] + mid * dir[2]) <= h;
+    if (out.hit && inside) hi = mid;
+    if (out.hit && !inside) lo = mid;
+  }
+  const double t_hit = out.hit ? hi : max_dist;
+  out.point = {start[0] + t_hit * dir[0], start[1] + t_hit * dir[1], start[2] + t_hit * dir[2]};
+  return out;
+}
+
+/// Unit ray directions in the root heading frame, [x][y] order, n*n entries.
+inline std::vector<Vec3> ScanRayDirs(double size = kHeightMapSize, double resolution = kHeightMapResolution) {
+  const int n = NumRaysPerSide(size, resolution);
+  std::vector<double> lin(static_cast<size_t>(n));
+  const double start = -0.5 * size, stop = 0.5 * size, step = (stop - start) / (n - 1);
+  for (int i = 0; i < n; ++i) lin[static_cast<size_t>(i)] = start + i * step;  // np.linspace
+  lin[static_cast<size_t>(n - 1)] = stop;
+  std::vector<Vec3> dirs;
+  dirs.reserve(static_cast<size_t>(n * n));
+  for (int i = 0; i < n; ++i)
+    for (int j = 0; j < n; ++j) {
+      const double x = lin[static_cast<size_t>(i)], y = lin[static_cast<size_t>(j)];
+      const double norm = std::sqrt(x * x + y * y + 1.0);
+      dirs.push_back({x / norm, y / norm, -1.0 / norm});
+    }
+  return dirs;
+}
+
+struct Scan {
+  std::vector<double> points;  ///< n*n*3, pelvis heading frame, invalid rays zero
+  std::vector<double> valid;   ///< n*n, 1.0 / 0.0
+};
+
+/// The sim height_map observation against a height field (terrain_scan.terrain_scan), with
+/// invalid rays zeroed as the policy sees them. root_pose: pelvis pose in the field's frame.
+/// clamp_floor: apply the sim's floor clamp at floor_z (off on the robot, i.e. floor_z = -inf).
+inline Scan TerrainScan(const HeightField& hf, const Pose& root, bool clamp_floor, double floor_z,
+                        double size = kHeightMapSize, double resolution = kHeightMapResolution,
+                        double max_dist = kHeightMapMaxDist) {
+  const double yaw = HeadingYaw(root.quat);
+  const double c = std::cos(yaw), s = std::sin(yaw);
+  const auto floor_stop = hf.LowestStop();
+  const auto dirs_local = ScanRayDirs(size, resolution);
+  Scan out;
+  out.points.assign(dirs_local.size() * 3, 0.0);
+  out.valid.assign(dirs_local.size(), 0.0);
+  for (size_t r = 0; r < dirs_local.size(); ++r) {
+    const Vec3& d = dirs_local[r];
+    const Vec3 dir{c * d[0] - s * d[1], s * d[0] + c * d[1], d[2]};
+    RayHit h = RaycastHeightField(hf, root.pos, dir, max_dist, floor_stop);
+    if (!h.valid) continue;
+    double scale = 1.0;
+    if (clamp_floor) {  // the sim's floor clamp
+      const double denom = std::max(root.pos[2] - h.point[2], 1e-8);
+      scale = std::min((root.pos[2] - floor_z) / denom, 1.0);
+    }
+    const double dx = (h.point[0] - root.pos[0]) * scale;
+    const double dy = (h.point[1] - root.pos[1]) * scale;
+    const double dz = (h.point[2] - root.pos[2]) * scale;
+    out.points[3 * r + 0] = c * dx + s * dy;
+    out.points[3 * r + 1] = -s * dx + c * dy;
+    out.points[3 * r + 2] = dz;
+    out.valid[r] = 1.0;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// From one `terrain` message (gam perception/terrain_publisher.py)
+// ---------------------------------------------------------------------------
+
+/// The fields of a `terrain` message this observation needs.
+struct TerrainMessage {
+  std::vector<float> height_grid;   ///< rows*cols, terrain_z - torso_z, [y][x]; NaN = unseen
+  std::vector<uint8_t> grid_valid;  ///< rows*cols, empty = all valid
+  int rows = 0, cols = 0;
+  double origin_x = 0.0, origin_y = 0.0, resolution = 0.04;
+  Vec3 torso_pos{};
+  std::array<double, 4> torso_quat_xyzw{0.0, 0.0, 0.0, 1.0};
+  /// 21 x 21 torso grid (torso_z - surface_z, [y][x], NaN = unseen); empty if the publisher
+  /// does not send it (older terrain_publisher.py).
+  std::vector<float> torso_grid;
+  std::vector<uint8_t> torso_grid_valid;
+};
+
+/// terrain_scan.HeightField.from_terrain_msg: unseen = not valid, or NaN.
+inline HeightField HeightFieldFromTerrainMessage(const TerrainMessage& msg) {
+  HeightField hf;
+  hf.rows = msg.rows;
+  hf.cols = msg.cols;
+  hf.origin_x = msg.origin_x;
+  hf.origin_y = msg.origin_y;
+  hf.resolution = msg.resolution;
+  hf.heights.assign(msg.height_grid.size(), 0.0);
+  hf.seen.assign(msg.height_grid.size(), 0);
+  for (size_t i = 0; i < msg.height_grid.size(); ++i) {
+    const float v = msg.height_grid[i];
+    if ((msg.grid_valid.empty() || msg.grid_valid[i] != 0) && IsFiniteBits(v)) {
+      hf.heights[i] = static_cast<double>(v);
+      hf.seen[i] = 1;
+    }
+  }
+  return hf;
+}
+
+/// The pelvis pose in the message's grid frame (centred on the torso, rotated by the torso
+/// heading, z relative to the torso), from the torso pose and the waist angles.
+inline Pose PelvisInGridFrame(const TerrainMessage& msg, double waist_yaw, double waist_roll,
+                              double waist_pitch) {
+  const auto& qx = msg.torso_quat_xyzw;
+  const QuatWxyz torso_q{qx[3], qx[0], qx[1], qx[2]};
+  const Pose pelvis = PelvisPoseFromTorso(msg.torso_pos, torso_q, waist_yaw, waist_roll, waist_pitch);
+  // Into the grid frame: centred on the torso, rotated by the torso heading, z relative.
+  const Mat3 rt_t = Transpose(RotZ(HeadingYaw(torso_q)));
+  const Vec3 dp{pelvis.pos[0] - msg.torso_pos[0], pelvis.pos[1] - msg.torso_pos[1],
+                pelvis.pos[2] - msg.torso_pos[2]};
+  return {MatVec(rt_t, dp), MatToQuat(MatMul(rt_t, QuatToMat(pelvis.quat)))};
+}
+
+/// terrain_scan.scan_from_terrain_msg: the policy's height_map_flat / height_map_valid_flat.
+inline Scan ScanFromTerrainMessage(const TerrainMessage& msg, double waist_yaw, double waist_roll,
+                                   double waist_pitch, double size = kHeightMapSize,
+                                   double resolution = kHeightMapResolution,
+                                   double max_dist = kHeightMapMaxDist) {
+  const HeightField hf = HeightFieldFromTerrainMessage(msg);
+  const Pose pelvis_g = PelvisInGridFrame(msg, waist_yaw, waist_roll, waist_pitch);
+  // No floor clamp on the robot: rays that miss are invalid, and invalid rays read zero.
+  return TerrainScan(hf, pelvis_g, /*clamp_floor=*/false, 0.0, size, resolution, max_dist);
+}
+
+/// All rays invalid: what the policy gets when there is no usable map.
+inline Scan EmptyScan(double size = kHeightMapSize, double resolution = kHeightMapResolution) {
+  const auto n = static_cast<size_t>(NumRaysPerSide(size, resolution));
+  return {std::vector<double>(n * n * 3, 0.0), std::vector<double>(n * n, 0.0)};
+}
+
+// ---------------------------------------------------------------------------
+// 21 x 21 torso grid (the heightmap flow policy's map; humanoid-foundation-model branch
+// mmurray/fm): port of terrain_scan.torso_grid_from_terrain_msg / fill_torso_grid.
+// ---------------------------------------------------------------------------
+
+constexpr int kTorsoGridN = 21;
+constexpr size_t kTorsoGridCells = static_cast<size_t>(kTorsoGridN) * kTorsoGridN;
+constexpr double kTorsoGridFallback = 0.85;  // nothing observed: VideoMimic's default torso height
+
+struct TorsoGrid {
+  std::vector<double> heights;  ///< 441, torso_z - surface_z, [y][x]; unseen cells filled
+  std::vector<double> valid;    ///< 441, 1.0 / 0.0
+};
+
+/// Unseen cells take the median of the observed ones (np.median: mean of the two middle values
+/// for an even count); with nothing observed, kTorsoGridFallback.
+inline TorsoGrid FillTorsoGrid(const std::vector<float>& grid, const std::vector<uint8_t>& valid_in) {
+  TorsoGrid out{std::vector<double>(kTorsoGridCells, kTorsoGridFallback), std::vector<double>(kTorsoGridCells, 0.0)};
+  std::vector<double> seen;
+  for (size_t i = 0; i < kTorsoGridCells && i < grid.size(); ++i) {
+    const bool ok = (valid_in.empty() || valid_in[i] != 0) && IsFiniteBits(grid[i]);
+    if (ok) {
+      out.valid[i] = 1.0;
+      seen.push_back(static_cast<double>(grid[i]));
+    }
+  }
+  double fill = kTorsoGridFallback;
+  if (!seen.empty()) {
+    std::sort(seen.begin(), seen.end());
+    const size_t m = seen.size() / 2;
+    fill = seen.size() % 2 ? seen[m] : (seen[m - 1] + seen[m]) / 2.0;
+  }
+  for (size_t i = 0; i < kTorsoGridCells; ++i)
+    out.heights[i] = out.valid[i] > 0.5 ? static_cast<double>(grid[i]) : fill;
+  return out;
+}
+
+/// torso_heightmap_21 / torso_heightmap_21_valid from one terrain message.
+inline TorsoGrid TorsoGridFromTerrainMessage(const TerrainMessage& msg) {
+  if (msg.torso_grid.size() != kTorsoGridCells) return FillTorsoGrid({}, {});
+  return FillTorsoGrid(msg.torso_grid, msg.torso_grid_valid);
+}
+
+/// Nothing observed: what the policy gets when there is no usable map.
+inline TorsoGrid EmptyTorsoGrid() { return FillTorsoGrid({}, {}); }
+
+// ---------------------------------------------------------------------------
+// 11 x 11 pelvis grid (the stair fine-tune's map; humanoid-foundation-model branch
+// env-posttrain): port of terrain_scan.pelvis_grid_from_terrain_msg.
+// ---------------------------------------------------------------------------
+
+constexpr int kPelvisGridN = 11;
+constexpr size_t kPelvisGridCells = static_cast<size_t>(kPelvisGridN) * kPelvisGridN;
+constexpr double kPelvisGridResolution = 0.1;
+constexpr double kPelvisGridFallback = -0.78;  // nothing observed: floor under a standing G1's pelvis
+
+struct PelvisGrid {
+  std::vector<double> heights;  ///< 121, surface_z - pelvis_z, [x][y]; unseen cells filled
+  std::vector<double> valid;    ///< 121, 1.0 / 0.0
+};
+
+/// pelvis_heightmap_11 / pelvis_heightmap_11_valid: at each offset of a 1 m grid in the pelvis
+/// heading frame (10 cm, index ix * 11 + iy), the map's nearest-cell surface height minus the
+/// pelvis height. Unseen cells take the median of the observed ones; nothing observed:
+/// kPelvisGridFallback.
+inline PelvisGrid PelvisGridFromTerrainMessage(const TerrainMessage& msg, double waist_yaw,
+                                               double waist_roll, double waist_pitch) {
+  const HeightField hf = HeightFieldFromTerrainMessage(msg);
+  const Pose p = PelvisInGridFrame(msg, waist_yaw, waist_roll, waist_pitch);
+  const double yaw = HeadingYaw(p.quat), c = std::cos(yaw), s = std::sin(yaw);
+  // np.linspace(start, stop, n): i * step + start, the last one exactly stop.
+  const double stop = 0.5 * (kPelvisGridN - 1) * kPelvisGridResolution, start = -stop;
+  const double step = (stop - start) / (kPelvisGridN - 1);
+  double lin[kPelvisGridN];
+  for (int i = 0; i < kPelvisGridN; ++i) lin[i] = i == kPelvisGridN - 1 ? stop : i * step + start;
+
+  PelvisGrid out{std::vector<double>(kPelvisGridCells, 0.0), std::vector<double>(kPelvisGridCells, 0.0)};
+  std::vector<double> seen;
+  for (int ix = 0; ix < kPelvisGridN; ++ix)
+    for (int iy = 0; iy < kPelvisGridN; ++iy) {
+      const double ox = lin[ix], oy = lin[iy];
+      double h;
+      if (!hf.Sample(p.pos[0] + (ox * c + oy * -s), p.pos[1] + (ox * s + oy * c), h)) continue;
+      const size_t k = static_cast<size_t>(ix * kPelvisGridN + iy);
+      out.heights[k] = h - p.pos[2];
+      out.valid[k] = 1.0;
+      seen.push_back(out.heights[k]);
+    }
+  double fill = kPelvisGridFallback;
+  if (!seen.empty()) {
+    std::sort(seen.begin(), seen.end());
+    const size_t m = seen.size() / 2;
+    fill = seen.size() % 2 ? seen[m] : (seen[m - 1] + seen[m]) / 2.0;
+  }
+  for (size_t k = 0; k < kPelvisGridCells; ++k)
+    if (out.valid[k] < 0.5) out.heights[k] = fill;
+  return out;
+}
+
+/// Nothing observed: what the policy gets when there is no usable map.
+inline PelvisGrid EmptyPelvisGrid() {
+  return {std::vector<double>(kPelvisGridCells, kPelvisGridFallback), std::vector<double>(kPelvisGridCells, 0.0)};
+}
+
+}  // namespace terrain_scan
+
+#endif  // TERRAIN_SCAN_HPP

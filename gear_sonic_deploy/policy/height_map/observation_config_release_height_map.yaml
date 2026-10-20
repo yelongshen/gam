@@ -1,0 +1,96 @@
+# SONIC release + pelvis height map - Observation Configuration
+# ===============================================================
+# For a decoder trained with humanoid-foundation-model's sonic_release_height_map recipe, e.g. the
+# warm start from gear_sonic/utils/warm_start_height_map.py (release weights, zero weights on the
+# height-map inputs: acts exactly like the release decoder) or a fine-tune of it.
+#   Decoder: <run>/exported/<ckpt>_decoder.onnx, input 1478 = token 64 + proprioception 930 + height map 484
+#   Encoder: the released model_encoder.onnx (huggingface.co/nvidia/GEAR-SONIC), unchanged, input 1762;
+#            the encoder section below is the released observation_config.yaml's, verbatim.
+# Check a decoder/encoder pair with scripts/check_obs_config.py. The height-map inputs come from
+# perception/terrain_publisher.py (--terrain-* flags); with no usable map every ray reads invalid.
+
+# G1 Deploy - Observation Configuration
+# ====================================
+# Total dimension: 436 (64+12+116+116+116+12)
+
+observations:
+
+  - name: "token_state"
+    enabled: true
+
+  - name: "his_base_angular_velocity_10frame_step1"
+    enabled: true
+    
+  - name: "his_body_joint_positions_10frame_step1"
+    enabled: true
+    
+  - name: "his_body_joint_velocities_10frame_step1"
+    enabled: true
+    
+  - name: "his_last_actions_10frame_step1"
+    enabled: true
+
+  - name: "his_gravity_dir_10frame_step1"
+    enabled: true
+  # pelvis height map (must be last, as in training): needs the onboard `terrain` topic
+  - name: "height_map_flat"
+    enabled: true
+  - name: "height_map_valid_flat"
+    enabled: true
+
+encoder:
+  dimension: 64
+  use_fp16: false
+  encoder_observations:
+    - name: "encoder_mode_4"
+      enabled: true
+    - name: "motion_joint_positions_10frame_step5"
+      enabled: true
+    - name: "motion_joint_velocities_10frame_step5"
+      enabled: true
+    - name: "motion_root_z_position_10frame_step5"
+      enabled: true
+    - name: "motion_root_z_position"
+      enabled: true
+    - name: "motion_anchor_orientation"
+      enabled: true
+    - name: "motion_anchor_orientation_10frame_step5"
+      enabled: true
+    - name: "motion_joint_positions_lowerbody_10frame_step5"
+      enabled: true
+    - name: "motion_joint_velocities_lowerbody_10frame_step5"
+      enabled: true
+    - name: "vr_3point_local_target"
+      enabled: true
+    - name: "vr_3point_local_orn_target"
+      enabled: true
+    - name: "smpl_joints_10frame_step1"
+      enabled: true
+    - name: "smpl_anchor_orientation_10frame_step1" 
+      enabled: true
+    - name: "motion_joint_positions_wrists_10frame_step1" 
+      enabled: true
+  encoder_modes:
+    - name: "g1"
+      mode_id: 0
+      required_observations:
+        - encoder_mode_4
+        - motion_joint_positions_10frame_step5
+        - motion_joint_velocities_10frame_step5
+        - motion_anchor_orientation_10frame_step5
+    - name: "teleop"
+      mode_id: 1
+      required_observations:
+        - encoder_mode_4
+        - motion_joint_positions_lowerbody_10frame_step5
+        - motion_joint_velocities_lowerbody_10frame_step5
+        - vr_3point_local_target
+        - vr_3point_local_orn_target
+        - motion_anchor_orientation
+    - name: "smpl"
+      mode_id: 2
+      required_observations:
+        - encoder_mode_4
+        - smpl_joints_10frame_step1
+        - smpl_anchor_orientation_10frame_step1
+        - motion_joint_positions_wrists_10frame_step1

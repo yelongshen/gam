@@ -1,0 +1,66 @@
+# SONIC no-teleop + pelvis height map - Observation Configuration
+# ================================================================
+# For ONNX models exported from a sonic_release_no_teleop_height_map checkpoint via:
+#   python gear_sonic/eval_agent_trl.py +checkpoint=<run>/last.pt \
+#       +headless=True ++num_envs=1 +export_onnx_only=true
+# Check a pair of exported models against this file with:
+#   python gear_sonic_deploy/scripts/check_obs_config.py <this file> \
+#       <run>/exported/last_decoder.onnx <run>/exported/last_encoder.onnx
+#
+# Decoder (policy) input: 1478 = token 64 + proprioception 930 + height map 484.
+# The height map comes from the onboard `terrain` topic (see --terrain-* flags and
+# gear_sonic/README_height_map.md); with no usable map every ray reads invalid.
+#
+# Encoder input: 1483 = 1 encoder-index scalar + 1482 tokenizer obs. Two encoders
+# (g1, smpl), so the encoder-index slot is 3 wide ("encoder_mode") and smpl is mode 1,
+# not 2 as in the 3-encoder release. Mode 1 is what the teleop inputs request; without
+# SMPL data the runner falls back to g1 (mode 0).
+
+observations:
+  - name: "token_state"
+    enabled: true
+  - name: "his_base_angular_velocity_10frame_step1"
+    enabled: true
+  - name: "his_body_joint_positions_10frame_step1"
+    enabled: true
+  - name: "his_body_joint_velocities_10frame_step1"
+    enabled: true
+  - name: "his_last_actions_10frame_step1"
+    enabled: true
+  - name: "his_gravity_dir_10frame_step1"
+    enabled: true
+  - name: "height_map_flat"
+    enabled: true
+  - name: "height_map_valid_flat"
+    enabled: true
+
+encoder:
+  dimension: 64
+  use_fp16: false
+  encoder_observations:
+    - name: "encoder_mode"
+      enabled: true
+    - name: "command_multi_future_nonflat"
+      enabled: true
+    - name: "motion_anchor_ori_b_mf_nonflat"
+      enabled: true
+    - name: "smpl_joints_multi_future_local_nonflat"
+      enabled: true
+    - name: "smpl_root_ori_b_multi_future"
+      enabled: true
+    - name: "joint_pos_multi_future_wrist_for_smpl"
+      enabled: true
+  encoder_modes:
+    - name: "g1"
+      mode_id: 0
+      required_observations:
+        - encoder_mode
+        - command_multi_future_nonflat
+        - motion_anchor_ori_b_mf_nonflat
+    - name: "smpl"
+      mode_id: 1
+      required_observations:
+        - encoder_mode
+        - smpl_joints_multi_future_local_nonflat
+        - smpl_root_ori_b_multi_future
+        - joint_pos_multi_future_wrist_for_smpl

@@ -25,16 +25,17 @@ odom_source:=dlio
 
 Timestamps: lidar/IMU stamps come from the sensor clock (~18 min off the Jetson) and
 depth stamps from the Jetson clock. Each is mapped onto this machine's clock with an
-offset = min(receive time - sensor time) over a sliding window, i.e. the least-delayed
-message defines the offset, so relative timing between lidar and IMU is preserved.
+offset defined by the least-delayed message (min(receive time - sensor time)), slewing at
+most 0.5 ms/s so the mapping never jumps (../scripts/clock_map.py: a sliding-window minimum
+stepped by the transport-delay spread whenever its fastest sample aged out, which under CPU
+load made DLIO diverge). The 5 s status line counts IMU / cloud stamps that went backwards
+or left gaps (> 15 ms IMU, > 150 ms cloud) after mapping.
 """
 import array
-import collections
 import json
 import struct
 import sys
 import threading
-import time
 
 import lz4.frame as lz4frame
 import numpy as np
@@ -49,6 +50,7 @@ from std_msgs.msg import Header
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 
 import g1_frames as gf
+from clock_map import ClockMap, StampMonitor
 
 HEADER_SIZE = 1280
 DTYPES = {"f32": np.float32, "f64": np.float64, "i32": np.int32, "i64": np.int64, "bool": np.bool_}
@@ -112,19 +114,6 @@ def to_time_msg(t):
     return TimeMsg(sec=sec, nanosec=int((t - sec) * 1e9))
 
 
-class ClockMap:
-    """Map a remote clock onto the local one: local = remote + min(recv - remote) over a window."""
-
-    def __init__(self, window=400):
-        self.samples = collections.deque(maxlen=window)
-        self.lock = threading.Lock()
-
-    def __call__(self, remote_t):
-        with self.lock:
-            self.samples.append(time.time() - remote_t)
-            return remote_t + min(self.samples)
-
-
 class G1ZmqBridge(Node):
     def __init__(self):
         super().__init__("g1_zmq_bridge")
@@ -157,6 +146,8 @@ class G1ZmqBridge(Node):
 
         self.sensor_clock = ClockMap()   # MID-360 cloud + IMU stamps
         self.jetson_clock = ClockMap()   # g1_depth_publisher stamp_host
+        self.imu_stamps = StampMonitor(gap=0.015)      # ~200 Hz
+        self.cloud_stamps = StampMonitor(gap=0.150)    # 10 Hz
         self.accel = None       # EMA of MID-360 IMU specific force (livox frame, g)
         self.torso_height = None
         self.rays = None        # cached depth deprojection rays
@@ -198,7 +189,9 @@ class G1ZmqBridge(Node):
                 self.accel = a if self.accel is None else 0.98 * self.accel + 0.02 * a
             imu = Imu()
             t = float(d["stamp_sec"][0]) + float(d["stamp_nanosec"][0]) * 1e-9
-            imu.header = Header(stamp=to_time_msg(self.sensor_clock(t)), frame_id="mid360_imu")
+            t_local = self.sensor_clock(t)
+            self.imu_stamps(t_local)
+            imu.header = Header(stamp=to_time_msg(t_local), frame_id="mid360_imu")
             imu.linear_acceleration.x, imu.linear_acceleration.y, imu.linear_acceleration.z = map(float, a * GRAVITY)
             w = d["angular_velocity"].astype(np.float64)
             imu.angular_velocity.x, imu.angular_velocity.y, imu.angular_velocity.z = map(float, w)
@@ -211,7 +204,9 @@ class G1ZmqBridge(Node):
         d = parse_lidar(msg, b"lidar_cloud")
         pts = d["points"]
         if "stamp_sec" in d:
-            stamp = to_time_msg(self.sensor_clock(float(d["stamp_sec"][0]) + float(d["stamp_nanosec"][0]) * 1e-9))
+            t_local = self.sensor_clock(float(d["stamp_sec"][0]) + float(d["stamp_nanosec"][0]) * 1e-9)
+            self.cloud_stamps(t_local)
+            stamp = to_time_msg(t_local)
         else:
             stamp = self.get_clock().now().to_msg()
         header = Header(stamp=stamp, frame_id="mid360_link")
@@ -277,7 +272,9 @@ class G1ZmqBridge(Node):
         c = self.counts
         self.get_logger().info(f"last 5 s: lidar {c['lidar']/5:.1f} Hz (with per-point time: {c['timed']/5:.1f} Hz), "
                                f"depth {c['depth']/5:.1f} Hz, imu {c['imu']/5:.0f} Hz"
-                               + (f", gantry filter dropped {c['gantry_dropped']/5:.0f} pts/s" if self.gantry else ""))
+                               + (f", gantry filter dropped {c['gantry_dropped']/5:.0f} pts/s" if self.gantry else "")
+                               + "; stamps backwards/gaps: imu {}/{}, cloud {}/{}".format(
+                                   *self.imu_stamps.take(), *self.cloud_stamps.take()))
         self.counts = {k: 0 for k in c}
 
 
