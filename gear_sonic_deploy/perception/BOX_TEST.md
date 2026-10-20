@@ -10,7 +10,12 @@ in the policy inputs) are what the sim's map corruption should reproduce.
 - A rigid box or plywood step, 0.1-0.3 m high, at least 0.3 x 0.3 m, with a flat top. Measure
   length, width and height to the millimetre.
 - Flat floor, nothing else within 1.5 m of the box or the robot (people step out of the window).
-- Robot standing (or on the gantry with `GANTRY_FILTER=true`), facing the box 0.6-1.0 m away.
+- Robot standing (or on the gantry with `GANTRY_FILTER=true`), facing the box with its near edge
+  0.35-0.4 m away: the map is a 2 x 2 m window centred on the torso, so a box much further out
+  runs off its far edge.
+- Nobody within 1.5 m of the robot or the box while recording, the person pushing it included
+  where possible (the analysis leaves out cells taller than 1.5 x the box, but a person next to
+  the box still corrupts its edges).
 
 ## Recording (on the robot)
 
@@ -26,7 +31,7 @@ One recording per condition, e.g.:
 
 1. `static`: robot standing still, 60 s.
 2. `approach`: robot walked or stepped slowly toward the box and back (teleop or the gantry
-   rail), 60 s. This exercises the blind zone and the map's memory of ground it has passed.
+   rail), 60-120 s, coming to ~0.3 m of the box's near edge. This exercises the blind zone and the map's memory of ground it has passed.
 3. `with_policy`: as `static`, with the policy loaded on the Jetson (map age under GPU load).
 
 ## Analysis (workstation, humanoid-foundation-model branch `daphne/box-map-check`)
