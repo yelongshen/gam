@@ -281,7 +281,12 @@ def main():
 
     ctx = zmq.Context.instance()
     sock = ctx.socket(zmq.PUB)
-    sock.setsockopt(zmq.SNDHWM, 2)  # drop old frames rather than queue
+    # Clouds (10 Hz, ~330 kB) and IMU samples (~200 Hz) share this socket, and g1_zmq_bridge.py
+    # reads both on one thread that stalls tens of ms on every cloud. With a high-water mark of 2
+    # the IMU samples arriving meanwhile were dropped (ZMQ drops NEW messages at the mark): the
+    # bridge got ~176 of ~200 Hz, with 30-40 gaps > 15 ms per 5 s at rest (2026-10-20), which DLIO
+    # integrates through. 100 messages hold half a second of IMU.
+    sock.setsockopt(zmq.SNDHWM, 100)
     sock.bind(f"{args.bind}:{args.port}")
     print(f"[lidar_pub] bound {args.bind}:{args.port} zmq_topic={args.zmq_topic!r} "
           f"dds_topic={args.lidar_topic!r}", flush=True)
