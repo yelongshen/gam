@@ -17,6 +17,7 @@
 // (only the area ahead is mapped), a chair seat ~1 m front-left at the right height.
 #include "input_interface/terrain_input.hpp"
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <thread>
 
@@ -30,6 +31,11 @@ static double median(std::vector<double> v) {
 int main(int argc, char** argv) {
   const double seconds = argc > 1 ? std::atof(argv[1]) : 20.0;
   if (argc > 2) GlobalTerrainInputOptions().port = std::atoi(argv[2]);
+  std::FILE* dump = argc > 3 ? std::fopen(argv[3], "w") : nullptr;
+  if (argc > 3 && !dump) {
+    std::fprintf(stderr, "cannot write %s\n", argv[3]);
+    return 1;
+  }
   if (argc > 3) GlobalTerrainInputOptions().host = argv[3];
   TerrainInput in(GlobalTerrainInputOptions());
   in.Start();
@@ -38,8 +44,33 @@ int main(int argc, char** argv) {
   terrain_scan::TorsoGrid last_grid;
   bool have = false;
   const auto t0 = std::chrono::steady_clock::now();
+  auto last_print = t0 - std::chrono::seconds(1);
+  terrain_scan::Vec3 last_pos{1e9, 1e9, 1e9};
+  size_t n_dumped = 0;
   while (std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count() < seconds) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(dump ? 2 : 500));
+    if (dump) {
+      terrain_scan::TerrainMessage d;
+      const auto st = in.Latest(d);
+      if (st == TerrainInput::Status::kOk && d.torso_pos != last_pos) {
+        last_pos = d.torso_pos;
+        const double now = std::chrono::duration<double>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        const auto pg = terrain_scan::PelvisGridFromTerrainMessage(d, 0.0, 0.0, 0.0);
+        const auto sc = terrain_scan::ScanFromTerrainMessage(d, 0.0, 0.0, 0.0);
+        std::fprintf(dump, "%.6f,%s,%.7f,%.7f,%.7f,%.7f,%.7f,%.7f,%.7f", now, TerrainInput::StatusName(st),
+                     d.torso_pos[0], d.torso_pos[1], d.torso_pos[2], d.torso_quat_xyzw[0], d.torso_quat_xyzw[1],
+                     d.torso_quat_xyzw[2], d.torso_quat_xyzw[3]);
+        for (double v : pg.heights) std::fprintf(dump, ",%.6f", v);
+        for (double v : pg.valid) std::fprintf(dump, ",%.0f", v);
+        for (size_t r = 0; r < sc.valid.size(); ++r) std::fprintf(dump, ",%.6f", sc.points[3 * r + 2]);
+        for (double v : sc.valid) std::fprintf(dump, ",%.0f", v);
+        std::fprintf(dump, "\n");
+        ++n_dumped;
+      }
+      if (std::chrono::steady_clock::now() - last_print < std::chrono::milliseconds(500)) continue;
+      last_print = std::chrono::steady_clock::now();
+    }
     terrain_scan::TerrainMessage m;
     const auto st = in.Latest(m);
     if (st != TerrainInput::Status::kOk) {
@@ -72,6 +103,10 @@ int main(int argc, char** argv) {
       }
       std::printf("\n");
     }
+  }
+  if (dump) {
+    std::fclose(dump);
+    std::printf("\n%zu messages written to %s\n", n_dumped, argv[3]);
   }
   in.Stop();
   return 0;
