@@ -79,6 +79,7 @@ import argparse
 import json
 import struct
 import sys
+import threading
 import time
 
 import numpy as np
@@ -288,6 +289,16 @@ def main():
     # integrates through. 100 messages hold half a second of IMU.
     sock.setsockopt(zmq.SNDHWM, 100)
     sock.bind(f"{args.bind}:{args.port}")
+    # The DDS layer calls `callback` and `imu_callback` on different threads, and a ZMQ socket must
+    # not be used by two threads at once: unguarded, the two sends overlapped now and then and the
+    # publisher died with a segfault inside zmq send (faulthandler, 2026-10-20) -- the "silent"
+    # exits that left DLIO without data. Every send goes through `send`, under this lock.
+    sock_lock = threading.Lock()
+
+    def send(packed):
+        with sock_lock:
+            sock.send(packed)
+
     print(f"[lidar_pub] bound {args.bind}:{args.port} zmq_topic={args.zmq_topic!r} "
           f"dds_topic={args.lidar_topic!r}", flush=True)
     if not args.no_imu:
@@ -345,7 +356,7 @@ def main():
                     payload[k] = decoded[k]
 
         packed = pack_message(args.zmq_topic, payload)
-        sock.send(packed)
+        send(packed)
 
         state["n"] += 1
         state["bytes"] += len(packed)
@@ -374,7 +385,7 @@ def main():
         q = msg.orientation
         av = msg.angular_velocity
         la = msg.linear_acceleration
-        sock.send(pack_message(args.zmq_imu_topic, {
+        send(pack_message(args.zmq_imu_topic, {
             # Sensor-side stamp comes from the robot's main controller clock,
             # which free-runs ~17min off this Jetson's NTP-synced clock -- keep
             # both so downstream can pick a consistent timebase.
