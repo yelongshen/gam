@@ -15,6 +15,7 @@
  *   timestamp         f64  [1]          when the publisher sampled the map (its clock)
  *   map_stamp         f64  [1]          stamp of the map it sampled (same clock)
  *   pose_stamp        f64  [1]          optional: stamp of the torso pose it used (same clock)
+ *   pose_ok           bool [1]          optional: the publisher's pose guard accepted the pose
  *   torso_grid_21       f32  [21, 21] optional: torso_z - surface_z, 10 cm, torso heading frame
  *   torso_grid_21_valid bool [21, 21] optional
  *
@@ -23,6 +24,8 @@
  * re-centres the grid on the latest pose at every sample, so the map's own age only delays newly
  * seen ground: for static terrain a map a second old is still right, and the map limit only has to
  * catch a mapper that stopped. A stale pose is worse: the grid would stay where the robot was.
+ * A fresh pose can still be wrong (odometry divergence); terrain_publisher.py's pose guard then
+ * sends pose_ok = false, and the message is not usable either (kRejectedPose).
  * When a message is not usable, the observation is "no map" (every ray invalid and zero, which
  * the policy was trained on) rather than silently holding old heights.
  */
@@ -84,7 +87,7 @@ class TerrainInput {
   }
   void Stop() { subscriber_.Stop(); }
 
-  enum class Status { kOk, kNoMessage, kStaleMessage, kStalePose, kStaleMap };
+  enum class Status { kOk, kNoMessage, kStaleMessage, kStalePose, kStaleMap, kRejectedPose };
 
   /// Copy the latest message if it is usable now.
   Status Latest(terrain_scan::TerrainMessage& out) const {
@@ -94,6 +97,7 @@ class TerrainInput {
     if (age > options_.max_msg_age_s) return Status::kStaleMessage;
     if (pose_age_s_ > options_.max_pose_age_s) return Status::kStalePose;
     if (map_age_s_ > options_.max_map_age_s) return Status::kStaleMap;
+    if (!pose_ok_) return Status::kRejectedPose;
     out = msg_;
     return Status::kOk;
   }
@@ -105,6 +109,7 @@ class TerrainInput {
       case Status::kStaleMessage: return "terrain messages stopped arriving";
       case Status::kStalePose: return "terrain pose (odometry) is stale";
       case Status::kStaleMap: return "terrain map is stale";
+      case Status::kRejectedPose: return "terrain pose rejected as implausible (odometry jump)";
     }
     return "?";
   }
@@ -130,6 +135,7 @@ class TerrainInput {
     float res = 0.f, origin[2] = {0.f, 0.f};
     double timestamp = 0.0, map_stamp = 0.0, pose_stamp = 0.0;  // no NaN sentinels: -ffast-math
     bool got_timestamp = false, got_map_stamp = false, got_pose_stamp = false;
+    bool pose_ok = true;  // publishers before the pose guard do not send it
     bool got_grid = false, got_res = false, got_origin = false, got_pos = false, got_quat = false;
     for (size_t i = 0; i < header.fields.size(); ++i) {
       const auto& f = header.fields[i];
@@ -156,6 +162,9 @@ class TerrainInput {
         got_map_stamp = Read(f, b, "f64", 1, &map_stamp);
       } else if (f.name == "pose_stamp") {
         got_pose_stamp = Read(f, b, "f64", 1, &pose_stamp);
+      } else if (f.name == "pose_ok") {
+        uint8_t v = 1;
+        if (Read(f, b, "bool", 1, &v)) pose_ok = v != 0;
       } else if (f.name == "torso_grid_21" && f.shape.size() == 2 && f.shape[0] * f.shape[1] == terrain_scan::kTorsoGridCells) {
         m.torso_grid.resize(terrain_scan::kTorsoGridCells);
         if (!Read(f, b, "f32", m.torso_grid.size(), m.torso_grid.data())) m.torso_grid.clear();
@@ -177,6 +186,7 @@ class TerrainInput {
     // Unknown map stamp -> treat the map as fresh; the message age still applies.
     map_age_s_ = (got_timestamp && got_map_stamp) ? timestamp - map_stamp : 0.0;
     pose_age_s_ = (got_timestamp && got_pose_stamp) ? timestamp - pose_stamp : 0.0;  // older publisher: unchecked
+    pose_ok_ = pose_ok;
     recv_time_ = Clock::now();
     have_msg_ = true;
   }
@@ -191,6 +201,7 @@ class TerrainInput {
   terrain_scan::TerrainMessage msg_;
   double map_age_s_ = 0.0;
   double pose_age_s_ = 0.0;
+  bool pose_ok_ = true;
   Clock::time_point recv_time_{};
   bool have_msg_ = false;
   int warnings_ = 0;

@@ -24,6 +24,8 @@ and publishes one message per sample on ZMQ PUB `bind` (default tcp://127.0.0.1:
   timestamp            f64 [1]       when this sample was taken (local clock, s)
   map_stamp            f64 [1]       stamp of the map it was sampled from; staleness = timestamp - map_stamp
   pose_stamp           f64 [1]       stamp of the torso pose (odometry, or TF) the grids are centred on
+  pose_ok              bool [1]      the pose passed ../scripts/pose_guard.py; when False every grid is
+                                     all-unseen (NaN / not valid), so any consumer gets "no map"
 
 Forgetting: cells not updated for more than `max_cell_age` seconds (default 20; 0 = off) are treated
 as unseen, using the mapper's "time" layer (seconds since each cell's last update; it must be in the
@@ -38,9 +40,19 @@ the LiDAR's 10 Hz, and with its listener on this node's single thread it went un
 callback ran: grids were centred on poses up to 0.7 s old (gantry, 2026-10-19). An empty
 `odom_topic` falls back to that TF.
 
+Pose guard: a fresh pose can still be wrong -- DLIO diverged twice on the gantry under CPU load
+(2026-10-20), to 59 m and to 3.5 m, and the map re-centred on it showed phantom surfaces up to
+~60 cm around a robot on a flat floor. ../scripts/pose_guard.py rejects a pose that moves or turns
+faster than a G1 can, or puts the torso implausibly high or low above the floor the map shows, and
+keeps rejecting it for 2 s after the last violation. While rejected the message carries pose_ok =
+False and no observed cells; once per rejection the mapper's map is cleared (`clear_service`,
+default /elevation_mapping_node/clear_map; empty = off), since points fused with a wrong pose
+would otherwise stay. `pose_guard` = False turns the guard off.
+
 Run inside the perception container (run_emc.sh starts it).
 """
 import sys
+import threading
 import time
 
 import numpy as np
@@ -53,9 +65,11 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation
+from std_srvs.srv import Trigger
 from tf2_ros import Buffer, TransformListener
 
 import terrain_grids as tg
+from pose_guard import PoseGuard
 import videomimic_obs as vo
 import zmq_packed
 from elevation_mapping_cupy.gridmap_utils import decode_multiarray_to_rows_cols
@@ -69,7 +83,8 @@ class TerrainPublisher(Node):
             ("map_frame", "robot/odom"), ("base_frame", "torso_link"), ("odom_topic", "/dlio/odom"),
             ("bind", "tcp://127.0.0.1:5559"), ("topic", "terrain"), ("rate", 50.0),
             ("grid_size", 50), ("grid_resolution", 0.04),
-            ("max_cell_age", 20.0), ("age_layer", "time")]}
+            ("max_cell_age", 20.0), ("age_layer", "time"),
+            ("pose_guard", True), ("clear_service", "/elevation_mapping_node/clear_map")]}
         self.p = p
         n, res = int(p["grid_size"]), float(p["grid_resolution"])
         c = (np.arange(n) - (n - 1) / 2.0) * res
@@ -81,6 +96,10 @@ class TerrainPublisher(Node):
 
         self.map = None       # dict: E, res, cx, cy, stamp, points, tree
         self.odom = None      # (pos, quat xyzw, stamp) of the latest odometry message
+        self.guard = PoseGuard() if p["pose_guard"] else None
+        self.guard_lock = threading.Lock()
+        self.n_rejected = 0
+        self.clear_client = self.create_client(Trigger, p["clear_service"]) if p["pose_guard"] and p["clear_service"] else None
         if p["odom_topic"]:
             # Own callback group: the multi-threaded executor runs it while the map callback or a
             # tick is busy, so the pose stays current.
@@ -108,6 +127,9 @@ class TerrainPublisher(Node):
         t, q = msg.pose.pose.position, msg.pose.pose.orientation
         self.odom = (np.array([t.x, t.y, t.z]), np.array([q.x, q.y, q.z, q.w]),
                      msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9)
+        if self.guard is not None:
+            with self.guard_lock:
+                self.guard.odom(self.odom[2], self.odom[0], self.odom[1])
 
     def on_map(self, msg):
         if self.p["layer"] not in msg.layers:
@@ -151,6 +173,9 @@ class TerrainPublisher(Node):
             pose_stamp = tf.header.stamp.sec + tf.header.stamp.nanosec * 1e-9
             pos = np.array([t.x, t.y, t.z])
             quat = np.array([q.x, q.y, q.z, q.w])
+            if self.guard is not None:
+                with self.guard_lock:
+                    self.guard.odom(pose_stamp, pos, quat)
         yaw = Rotation.from_quat(quat).as_euler("zyx")[0]
 
         # generic grid: nearest map cell (same 4 cm resolution as the mapper) at each rotated cell centre
@@ -162,6 +187,29 @@ class TerrainPublisher(Node):
             obs, seen = vo.terrain_obs(m["points"], pos, yaw, return_mask=True, tree=m["tree"])
         else:
             obs, seen = np.full((vo.GRID_N, vo.GRID_N), vo.DEFAULT_HEIGHT), np.zeros((vo.GRID_N, vo.GRID_N), bool)
+
+        pose_ok = True
+        if self.guard is not None:
+            with self.guard_lock:
+                self.guard.floor(pose_stamp, h, valid, self.local)
+                pose_ok, why = self.guard.state(pose_stamp)
+                new_episode = self.guard.take_new_episode()
+            if not pose_ok:
+                # no observed cells: every consumer (old runners included) sees "no map"
+                h = np.full_like(h, np.nan)
+                valid = np.zeros_like(valid)
+                torso_h, torso_valid = np.full_like(torso_h, np.nan), np.zeros_like(torso_valid)
+                seen = np.zeros_like(seen)
+                self.n_rejected += 1
+                self.get_logger().warn(f"pose rejected ({', '.join(why)}): publishing no map",
+                                       throttle_duration_sec=1.0)
+            if new_episode and self.clear_client is not None:
+                if self.clear_client.service_is_ready():
+                    self.clear_client.call_async(Trigger.Request())
+                    self.get_logger().warn(f"cleared the elevation map ({self.p['clear_service']})")
+                else:
+                    self.get_logger().warn(f"{self.p['clear_service']} not available; map not cleared",
+                                           throttle_duration_sec=10.0)
 
         self.sock.send(zmq_packed.pack(self.topic, {
             "height_grid": h.reshape(self.grid_shape),
@@ -177,6 +225,7 @@ class TerrainPublisher(Node):
             "timestamp": np.array([time.time()]),
             "map_stamp": np.array([m["stamp"]]),
             "pose_stamp": np.array([pose_stamp]),
+            "pose_ok": np.array([pose_ok]),
         }))
         self.n_sent += 1
         now = time.time()
@@ -184,8 +233,9 @@ class TerrainPublisher(Node):
             self.get_logger().info(f"{self.n_sent / (now - self.t_stat):.1f} Hz; grid {valid.mean()*100:.0f}% valid, "
                                    f"window {seen.mean()*100:.0f}% seen; map age {now - m['stamp']:.2f} s, "
                                    f"pose age {now - pose_stamp:.3f} s; "
-                                   f"{m['n_stale']} map cells forgotten (> {self.p['max_cell_age']} s old)")
-            self.n_sent, self.t_stat = 0, now
+                                   f"{m['n_stale']} map cells forgotten (> {self.p['max_cell_age']} s old); "
+                                   f"pose rejected in {self.n_rejected} samples")
+            self.n_sent, self.t_stat, self.n_rejected = 0, now, 0
 
 
 def main():
