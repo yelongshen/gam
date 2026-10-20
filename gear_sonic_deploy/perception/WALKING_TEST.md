@@ -40,12 +40,15 @@ cd ~/gam; L=~/g1_perception_logs; T=$(date +%Y%m%d_%H%M%S); echo "recording walk
 # LiDAR, IMU, DLIO pose, TF (inside the container; ~2 MB/s)
 docker exec -d g1_perception bash -lc "source /opt/ros/humble/install/setup.bash && source /ws/install/setup.bash && timeout -s INT 900 ros2 bag record -o /logs/walk_$T /g1/lidar/points /g1/imu /dlio/odom /tf /tf_static > /logs/walk_${T}_bag.log 2>&1"
 # the terrain topic, every message
-setsid nohup timeout 900 python3 gear_sonic_deploy/scripts/terrain_subscriber.py --seconds 900 --record $L/walk_${T}_terrain.npz > $L/walk_${T}_terrain.log 2>&1 < /dev/null &
+setsid nohup nice -n 19 taskset -c 1-3 timeout 900 python3 gear_sonic_deploy/scripts/terrain_subscriber.py --seconds 900 --record $L/walk_${T}_terrain.npz > $L/walk_${T}_terrain.log 2>&1 < /dev/null &
 # CPU / GPU / RAM / temperature, once per second
 setsid nohup timeout 900 tegrastats --interval 1000 > $L/walk_${T}_tegrastats.log 2>&1 < /dev/null &
 ```
 Everything stops by itself after 15 min (`timeout 900`). Recording adds little load: measured on
 the robot, CPU 0 at about 33% median, cores 1-3 about 19%, cores 4-7 (perception) about 46%.
+Start it BEFORE the controller, and run any other host-side recorder the same way (`nice -n 19
+taskset -c 1-3`): two Python recorders started next to a standing controller starved the LiDAR
+publisher for a few seconds (2026-10-20), and DLIO was off by up to 3.4 m until it recovered.
 
 ## 3. Walk
 1. Start the walking controller as usual and stand for about 10 s.

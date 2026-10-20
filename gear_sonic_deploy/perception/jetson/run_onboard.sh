@@ -8,7 +8,8 @@
 #
 # Env: CPUS (container cpuset, default 4-7), GANTRY_FILTER (true|false, default false),
 #      WS (colcon workspace with elevation_mapping_cupy, dlio, ros2_numpy; default ~/g1_perception_ws),
-#      IMAGE (default g1_perception:humble-r35.3.1), PUB_TIMEOUT (s, default 3600).
+#      IMAGE (default g1_perception:humble-r35.3.1), PUB_TIMEOUT (s, default 3600),
+#      PUB_CPUS (host publishers' cores, default 1-3).
 set -eo pipefail
 HERE=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 SCRIPTS=$(readlink -f "$HERE/../../scripts")
@@ -17,6 +18,12 @@ WS=${WS:-$HOME/g1_perception_ws}
 IMAGE=${IMAGE:-g1_perception:humble-r35.3.1}
 CPUS=${CPUS:-4-7}
 PUB_TIMEOUT=${PUB_TIMEOUT:-3600}
+# The publishers stay off CPU 0 (gear_sonic's SCHED_FIFO control thread) and off the container's
+# cores. Unpinned, the LiDAR publisher was starved whenever other work started on the robot
+# (2026-10-20: two recorders starting next to a standing runner -> LiDAR 3.4 Hz, 12 IMU gaps in 5 s,
+# DLIO off by up to 3.4 m for ~6 s). Without root it cannot be given a higher priority, so the
+# depth publisher (less time-critical) runs at nice 5 and recorders should run at nice 19.
+PUB_CPUS=${PUB_CPUS:-1-3}
 LOG=${LOG_DIR:-/tmp/g1_perception_logs}; mkdir -p "$LOG"
 # Host-side publishers: one OpenBLAS thread (numpy otherwise spins a busy thread on every core,
 # including CPU 0 where gear_sonic's control thread runs).
@@ -26,9 +33,9 @@ start_publishers() {
   pkill -f "$SCRIPTS/g1_lidar_publisher.py" || true
   pkill -f "$SCRIPTS/g1_depth_publisher.py" || true
   sleep 1
-  setsid nohup timeout "$PUB_TIMEOUT" python3 "$SCRIPTS/g1_lidar_publisher.py" --iface eth0 --port 5558 --fastlio \
+  setsid nohup taskset -c "$PUB_CPUS" timeout "$PUB_TIMEOUT" python3 "$SCRIPTS/g1_lidar_publisher.py" --iface eth0 --port 5558 --fastlio \
     > "$LOG/lidar_pub.log" 2>&1 < /dev/null &
-  setsid nohup timeout "$PUB_TIMEOUT" python3 "$SCRIPTS/g1_depth_publisher.py" --port 5557 --decimate 2 --fps 15 \
+  setsid nohup taskset -c "$PUB_CPUS" nice -n 5 timeout "$PUB_TIMEOUT" python3 "$SCRIPTS/g1_depth_publisher.py" --port 5557 --decimate 2 --fps 15 \
     --max-range 2.5 --no-points > "$LOG/depth_pub.log" 2>&1 < /dev/null &
 }
 
