@@ -31,9 +31,9 @@ static double median(std::vector<double> v) {
 int main(int argc, char** argv) {
   const double seconds = argc > 1 ? std::atof(argv[1]) : 20.0;
   if (argc > 2) GlobalTerrainInputOptions().port = std::atoi(argv[2]);
-  std::FILE* dump = argc > 3 ? std::fopen(argv[3], "w") : nullptr;
-  if (argc > 3 && !dump) {
-    std::fprintf(stderr, "cannot write %s\n", argv[3]);
+  std::FILE* dump = argc > 4 ? std::fopen(argv[4], "w") : nullptr;
+  if (argc > 4 && !dump) {
+    std::fprintf(stderr, "cannot write %s\n", argv[4]);
     return 1;
   }
   if (argc > 3) GlobalTerrainInputOptions().host = argv[3];
@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
   }
   if (dump) {
     std::fclose(dump);
-    std::printf("\n%zu messages written to %s\n", n_dumped, argv[3]);
+    std::printf("\n%zu messages written to %s\n", n_dumped, argv[4]);
   }
   in.Stop();
   return 0;
