@@ -46,7 +46,7 @@ Pose guard: a fresh pose can still be wrong -- DLIO diverged twice on the gantry
 faster than a G1 can, or puts the torso implausibly high or low above the floor the map shows, and
 keeps rejecting it for 2 s after the last violation. While rejected the message carries pose_ok =
 False and no observed cells; once per rejection the mapper's map is cleared (`clear_service`,
-default /elevation_mapping_node/clear_map; empty = off), since points fused with a wrong pose
+default /elevation_mapping_cupy/clear_map; empty = off), since points fused with a wrong pose
 would otherwise stay. `pose_guard` = False turns the guard off.
 
 Run inside the perception container (run_emc.sh starts it).
@@ -84,7 +84,7 @@ class TerrainPublisher(Node):
             ("bind", "tcp://127.0.0.1:5559"), ("topic", "terrain"), ("rate", 50.0),
             ("grid_size", 50), ("grid_resolution", 0.04),
             ("max_cell_age", 20.0), ("age_layer", "time"),
-            ("pose_guard", True), ("clear_service", "/elevation_mapping_node/clear_map")]}
+            ("pose_guard", True), ("clear_service", "/elevation_mapping_cupy/clear_map")]}
         self.p = p
         n, res = int(p["grid_size"]), float(p["grid_resolution"])
         c = (np.arange(n) - (n - 1) / 2.0) * res
@@ -115,9 +115,19 @@ class TerrainPublisher(Node):
         self.topic = p["topic"].encode()
         self.n_sent, self.t_stat = 0, time.time()
         self.create_timer(1.0 / float(p["rate"]), self.tick)
+        if self.clear_client is not None:
+            self._clear_check = self.create_timer(5.0, self.check_clear_service)
         pose_src = p["odom_topic"] or f"TF {p['map_frame']}->{p['base_frame']}"
         self.get_logger().info(f"publishing '{p['topic']}' on {p['bind']} at {p['rate']} Hz "
                                f"from {p['map_topic']} [{p['layer']}] + pose {pose_src}")
+
+    def check_clear_service(self):
+        self._clear_check.cancel()
+        if self.clear_client.service_is_ready():
+            self.get_logger().info(f"pose guard on; map clear service {self.p['clear_service']} ready")
+        else:
+            self.get_logger().warn(f"pose guard on, but {self.p['clear_service']} is not available: "
+                                   "the map will not be cleared after an odometry jump")
 
     def on_odom(self, msg):
         if msg.header.frame_id != self.p["map_frame"] or msg.child_frame_id != self.p["base_frame"]:
